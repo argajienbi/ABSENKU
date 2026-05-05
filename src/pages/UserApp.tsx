@@ -853,7 +853,7 @@ export default function UserApp() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
-      <div className="flex-1 overflow-y-auto pb-24 relative">
+      <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
         {/* Header */}
         <div className="relative bg-teal-500 pb-20 pt-8 px-6 dark:bg-teal-800 shrink-0">
           <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px]">

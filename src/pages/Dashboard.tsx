@@ -409,7 +409,7 @@ export default function Dashboard() {
         </header>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="w-full mx-auto p-1 bg-gray-100 dark:bg-gray-800 rounded-xl grid grid-cols-5 items-center">
+          <TabsList className="w-full mx-auto p-1 bg-gray-100 dark:bg-gray-800 rounded-xl grid grid-cols-3 sm:grid-cols-6 items-center gap-1">
             <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 relative py-2.5 px-3 transition-all flex justify-center">
               <Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Overview</span>
               {pendingApprovalsCount > 0 && (
