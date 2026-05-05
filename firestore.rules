@@ -122,7 +122,8 @@ service cloud.firestore {
 
     // Settings Collection
     match /settings/global {
-      allow read: if true;
+      allow get: if true;
+      allow list: if true;
       allow write: if isAdmin() && isValidSettings(incoming());
     }
 

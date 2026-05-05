@@ -21,12 +21,13 @@ import { format } from "date-fns";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle, Download, ChevronDown } from "lucide-react";
+import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle, Download, ChevronDown, ClipboardList } from "lucide-react";
 
-import { QRCodeSVG } from 'qrcode.react';
+import { QRCodeCanvas } from 'qrcode.react';
 import { WaveBackground } from "../components/WaveBackground";
 import { SHIFTS } from "../constants";
 import { PerformanceAnalytics } from "../components/Analytics";
+import { RekapAbsensi } from "../components/RekapAbsensi";
 import { MapPicker } from "../components/MapPicker";
 import { BankingStyleDashboardCards } from "../components/BankingStyleDashboardCards";
 import { uploadFileToStorage, deleteFileFromStorage } from "../lib/storage";
@@ -429,10 +430,11 @@ export default function Dashboard() {
             <TabsTrigger value="announcements" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Briefcase className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Portal</span></TabsTrigger>
             <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Performance</span></TabsTrigger>
             <TabsTrigger value="live-map" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><MapPin className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Peta Live</span></TabsTrigger>
+            <TabsTrigger value="rekap" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><ClipboardList className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Rekap</span></TabsTrigger>
             <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Settings className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Pengaturan</span></TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
             <BankingStyleDashboardCards attendances={filteredAttendances} usersList={filteredUsersList} />
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0">
               <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
@@ -673,7 +675,7 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="users" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="users" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0">
               <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent flex flex-col space-y-1">
                 <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">User Directory</CardTitle>
@@ -747,7 +749,7 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="announcements" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="announcements" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
             <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0">
                <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent">
                   <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">Portal Pengumuman</CardTitle>
@@ -760,11 +762,11 @@ export default function Dashboard() {
                        <div className="space-y-4">
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black tracking-widest uppercase text-slate-500">Judul Pengumuman</Label>
-                            <Input placeholder="Contoh: Jadwal Libur Lebaran" value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)} className="border-teal-100 rounded-xl" />
+                            <Input placeholder="Contoh: Jadwal Libur Lebaran" value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)} className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-xl" />
                          </div>
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black tracking-widest uppercase text-slate-500">Tipe Pengumuman</Label>
-                            <select value={announcementType} onChange={e => setAnnouncementType(e.target.value)} className="w-full h-10 items-center justify-between rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-slate-500 font-bold outline-none">
+                            <select value={announcementType} onChange={e => setAnnouncementType(e.target.value)} className="w-full h-10 items-center justify-between rounded-xl border border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-slate-500 dark:text-gray-300 font-bold outline-none">
                               <option value="info">Info / Umum</option>
                               <option value="danger">Penting / Darurat</option>
                               <option value="success">Prestasi / Meriah</option>
@@ -773,7 +775,7 @@ export default function Dashboard() {
                          <div className="space-y-1.5">
                             <Label className="text-[10px] font-black tracking-widest uppercase text-slate-500">Konten Pengumuman</Label>
                             <textarea 
-                              className="w-full min-h-[120px] rounded-xl border border-teal-100 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-600 bg-white" 
+                              className="w-full min-h-[120px] rounded-xl border border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-600" 
                               placeholder="Tulis pesan lengkap..."
                               value={announcementContent}
                               onChange={e => setAnnouncementContent(e.target.value)}
@@ -816,11 +818,11 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
           
-          <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
              <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
           </TabsContent>
 
-          <TabsContent value="live-map" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-[700px]">
+          <TabsContent value="live-map" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out h-[700px]">
               <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden h-full flex flex-col">
                 <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
                   <div className="flex justify-between items-center">
@@ -852,7 +854,11 @@ export default function Dashboard() {
               </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <TabsContent value="rekap" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
+             <RekapAbsensi usersList={filteredUsersList} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
               <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
                 <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
                   <MapPin className="w-4 h-4" /> Geofence Configuration
@@ -1363,7 +1369,7 @@ export default function Dashboard() {
               <div className="flex flex-col items-center p-8">
                 <div 
                   id="member-card-print"
-                  className="bg-white border border-slate-200 overflow-hidden relative shadow-2xl flex"
+                  className="bg-white border-0 overflow-hidden relative shadow-2xl flex flex-col items-center"
                   style={{ 
                     width: '85.6mm', 
                     height: '54mm', 
@@ -1371,53 +1377,75 @@ export default function Dashboard() {
                     fontFamily: 'system-ui, sans-serif'
                   }}
                 >
-                   {/* Dominant Tosca Abstract Wave Background */}
-                   <div className="absolute inset-0 bg-gradient-to-br from-teal-400 to-teal-700 pointer-events-none"></div>
-                   <svg viewBox="0 0 1440 320" className="absolute top-0 left-0 w-full z-0 opacity-30 pointer-events-none text-teal-100" xmlns="http://www.w3.org/2000/svg">
-                      <path fill="currentColor" d="M0,224L48,202.7C96,181,192,139,288,144C384,149,480,203,576,197.3C672,192,768,128,864,122.7C960,117,1056,171,1152,192C1248,213,1344,203,1392,197.3L1440,192L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
-                   </svg>
-                   <svg viewBox="0 0 1440 320" className="absolute bottom-0 left-0 w-full z-0 opacity-20 pointer-events-none text-teal-200 rotate-180" xmlns="http://www.w3.org/2000/svg">
-                      <path fill="currentColor" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,138.7C960,139,1056,117,1152,112C1248,107,1344,117,1392,122.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-                   </svg>
-                   
-                   {/* Left Side: Photo & Info */}
-                   <div className="w-[60%] h-full p-4 flex flex-col justify-between relative">
-                      <div className="flex items-center gap-3">
-                         <div className="w-12 h-12 rounded-lg bg-teal-100 border-2 border-white shadow-md overflow-hidden">
+                   {/* Background Elements */}
+                   <div className="absolute inset-0 bg-slate-50"></div>
+                   <div className="absolute top-0 right-0 w-48 h-48 bg-teal-600/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                   <div className="absolute bottom-0 left-0 w-32 h-32 bg-teal-600/10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
+
+                   {/* Header / Top Bar */}
+                   <div className="h-[9mm] bg-teal-800 flex items-center px-4 relative z-10 w-full shrink-0 border-b-2 border-teal-600">
+                      <div className="flex items-center gap-2">
+                        {settings?.appLogoUrl ? (
+                          <img src={settings.appLogoUrl} className="h-[22px] object-contain brightness-0 invert" alt="Logo" />
+                        ) : (
+                          <div className="w-[20px] h-[20px] bg-white text-teal-800 rounded flex items-center justify-center shadow-lg">
+                            <Briefcase className="w-[12px] h-[12px]" />
+                          </div>
+                        )}
+                        <h1 className="text-[12px] font-black tracking-[0.1em] text-white uppercase ml-1 opacity-95">{settings?.appName || "ABSENKU"}</h1>
+                      </div>
+                   </div>
+
+                   {/* Main Content Area */}
+                   <div className="flex-1 flex w-full relative z-10 items-center pl-3 pr-2 py-1 justify-between">
+                      {/* Left: Info & Photo */}
+                      <div className="flex gap-4 items-center w-[72%]">
+                         {/* Photo */}
+                         <div className="w-[22.5mm] h-[28mm] rounded-lg bg-teal-50 border-[2.5px] border-white shadow-[0_2px_10px_rgba(0,0,0,0.06)] overflow-hidden shrink-0 flex items-center justify-center">
                            {selectedUserForCard.avatarUrl ? (
                               <img src={selectedUserForCard.avatarUrl} className="w-full h-full object-cover" alt="Avatar" />
                            ) : (
-                              <div className="w-full h-full flex items-center justify-center font-black text-teal-300 text-xl">
+                              <div className="w-full h-full flex items-center justify-center font-black text-teal-300 text-4xl">
                                 {selectedUserForCard.name ? selectedUserForCard.name[0] : "P"}
                               </div>
                            )}
                          </div>
-                         <div>
-                            <h2 className="text-[12px] font-black text-teal-950 uppercase tracking-tighter leading-none mb-0.5">{selectedUserForCard.name}</h2>
-                            <p className="text-[6px] font-bold text-slate-500 uppercase tracking-wider">{selectedUserForCard.role}</p>
+
+                         {/* Info Text */}
+                         <div className="flex flex-col justify-center pb-1">
+                            <div className="mb-[2.5mm]">
+                               <h2 className="text-[13px] font-black text-slate-800 uppercase tracking-tight leading-none mb-1 line-clamp-2">{selectedUserForCard.name}</h2>
+                               <p className="text-[7.5px] font-black text-teal-600 uppercase tracking-widest">{selectedUserForCard.role?.replace(/_/g, ' ') || "EMPLOYEE"}</p>
+                            </div>
+
+                            <div className="grid gap-[1.5mm]">
+                               <div>
+                                  <p className="text-[5.5px] font-black text-slate-400 uppercase tracking-[0.1em] mb-0.5">ID KARYAWAN</p>
+                                  <p className="text-[9px] font-bold text-slate-800 leading-none">{selectedUserForCard.uniqueId || "-"}</p>
+                               </div>
+                               <div>
+                                  <p className="text-[5.5px] font-black text-slate-400 uppercase tracking-[0.1em] mb-0.5">JADWAL SHIFT</p>
+                                  <p className="text-[8px] font-bold text-slate-800 leading-none">
+                                      {selectedUserForCard.shiftId ? shiftsInput[selectedUserForCard.shiftId]?.name || "CUSTOM" : "TIDAK ADA SHIFT"}
+                                  </p>
+                               </div>
+                            </div>
                          </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-1">
-                         <div className="space-y-0.5">
-                            <p className="text-[5px] font-black text-slate-400 uppercase tracking-[0.2em]">KODE UNIK</p>
-                            <p className="text-[8px] font-black text-teal-800 uppercase">{selectedUserForCard.uniqueId}</p>
-                         </div>
-                         <div className="space-y-0.5">
-                            <p className="text-[5px] font-black text-slate-400 uppercase tracking-[0.2em]">SHIFT</p>
-                            <p className="text-[8px] font-black text-teal-800 uppercase">
-                                 {selectedUserForCard.shiftId ? shiftsInput[selectedUserForCard.shiftId]?.name || "CUSTOM" : "NO SHIFT"}
-                            </p>
-                         </div>
+                      {/* Right: QR Code */}
+                      <div className="w-[28%] flex flex-col items-center justify-center pr-2 border-l border-slate-200/60 pl-3 py-1">
+                          <div className="bg-white p-1 rounded border border-slate-200 shadow-sm w-[21mm] h-[21mm] flex items-center justify-center">
+                            <QRCodeCanvas value={selectedUserForCard.id} style={{ width: '100%', height: '100%' }} level="Q" />
+                          </div>
+                          <p className="text-[4px] font-black text-slate-400 uppercase mt-1 tracking-widest text-center">{selectedUserForCard.id.slice(0, 10)}</p>
                       </div>
                    </div>
 
-                   {/* Right Side: QR Code (Dominant) */}
-                   <div className="w-[40%] h-full flex flex-col items-center justify-center p-3 bg-teal-50/30 border-l border-teal-100/50">
-                      <div className="bg-white p-1 rounded-lg shadow-sm border border-teal-100">
-                         <QRCodeSVG value={selectedUserForCard.id} size={110} level="H" />
-                      </div>
-                      <p className="text-[5px] font-black text-teal-800/40 uppercase mt-2 tracking-widest text-center">ID: {selectedUserForCard.id.slice(0, 8)}...</p>
+                   {/* Footer Bar */}
+                   <div className="h-[3.5mm] bg-teal-900 flex items-center px-4 justify-between relative z-10 w-full shrink-0">
+                      <p className="text-[4.5px] font-bold text-teal-100/70 uppercase tracking-widest">KARTU TANDA PENGENAL (KTP)</p>
+                      <p className="text-[4.5px] font-bold text-teal-100/70 uppercase tracking-widest">HARAP DIKEMBALIKAN JIKA DITEMUKAN</p>
                    </div>
                 </div>
 
@@ -1426,39 +1454,26 @@ export default function Dashboard() {
                   <Button onClick={async () => {
                     const el = document.getElementById("member-card-print");
                     if (!el) return;
-                    toast.info("Menyiapkan dokumen cetak...");
+                    toast.info("Menyiapkan dokumen...", { id: 'print-id' });
                     try {
                       // Slight delay for renders
                       await new Promise(r => setTimeout(r, 250));
-                      const url = await toPng(el, { cacheBust: true, pixelRatio: 3 });
-                      const printWindow = window.open('', '_blank');
-                      if (printWindow) {
-                        printWindow.document.write(`
-                          <html>
-                            <head>
-                              <title>Print Card - ${selectedUserForCard.name}</title>
-                              <style>
-                                @media print {
-                                  @page { size: landscape; margin: 0; }
-                                  body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: white; }
-                                  img { max-width: 100%; max-height: 100%; object-fit: contain; }
-                                }
-                                body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f1f5f9; }
-                                img { box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 4mm; width: 85.6mm; }
-                              </style>
-                            </head>
-                            <body onload="setTimeout(() => { window.print(); window.close(); }, 500)">
-                              <img src="${url}" />
-                            </body>
-                          </html>
-                        `);
-                        printWindow.document.close();
-                      }
+                      const url = await toPng(el, { cacheBust: true, pixelRatio: 3, useCORS: true });
+                      const pdf = new jsPDF({
+                        orientation: "landscape",
+                        unit: "mm",
+                        format: [85.6, 54]
+                      });
+                      pdf.addImage(url, 'PNG', 0, 0, 85.6, 54);
+                      pdf.save(`IDCard_${selectedUserForCard.name?.replace(/\s+/g, '_') || 'Karyawan'}.pdf`);
+                      toast.dismiss();
+                      toast.success("Berhasil mengunduh dokumen", { id: 'print-id' });
                     } catch (e) {
+                      toast.dismiss();
                       console.error("Print error", e);
-                      toast.error("Gagal cetak kartu");
+                      toast.error("Gagal mengunduh kartu", { id: 'print-id' });
                     }
-                  }} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-teal-600/20 rounded-2xl active:scale-95 transition-all">CETAK KARTU (85.6x54mm)</Button>
+                  }} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-teal-600/20 rounded-2xl active:scale-95 transition-all">UNDUH KARTU (PDF)</Button>
                 </div>
               </div>
             )}

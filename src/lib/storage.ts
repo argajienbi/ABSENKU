@@ -1,4 +1,4 @@
-import { ref, uploadString, getDownloadURL, uploadBytesResumable, deleteObject } from "firebase/storage";
+import { ref, uploadString, getDownloadURL, uploadBytesResumable, deleteObject, StringFormat } from "firebase/storage";
 import { storage } from "./firebase";
 
 // Simple polyfill for uuidv4 since we might not have uuid package installed, actually let's just make a simple one
@@ -48,7 +48,7 @@ export async function uploadBase64Image(base64String: string, pathPrefix: string
   const storageRef = ref(storage, filePath);
   
   // Format needs to be base64url if it's straight base64, but data_url is better if it starts with data:image/...
-  let format = base64String.startsWith('data:') ? 'data_url' : 'base64';
+  let format: StringFormat = (base64String.startsWith('data:') ? 'data_url' : 'base64') as StringFormat;
   let processedBase64 = base64String;
 
   // Compress if it is a data URL to save quota

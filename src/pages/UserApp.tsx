@@ -87,7 +87,7 @@ export default function UserApp() {
   
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"home" | "absen" | "history" | "profile" | "izin_menu" | "hris" | "notifications">("home");
-  const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card">("menu");
+  const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card" | "changelog">("menu");
   const [idCardSide, setIdCardSide] = useState<"front" | "back">("front");
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -724,14 +724,21 @@ export default function UserApp() {
 
   const handleDownloadIDCard = async () => {
     if (!idCardRef.current) return;
+    toast.loading("Menyiapkan dokumen...");
     try {
-      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.png`;
-      a.click();
+      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3, useCORS: true });
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [54, 86]
+      });
+      pdf.addImage(url, 'PNG', 0, 0, 54, 86);
+      pdf.save(`IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.pdf`);
+      toast.dismiss();
+      toast.success("Dokumen berhasil diunduh");
     } catch (e) {
       console.error("Failed to download ID Card", e);
+      toast.dismiss();
       toast.error("Gagal mengunduh kartu ID");
     }
   };
@@ -739,7 +746,7 @@ export default function UserApp() {
   const handleShareIDCard = async () => {
     if (!idCardRef.current) return;
     try {
-      const blob = await toBlob(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+      const blob = await toBlob(idCardRef.current, { cacheBust: true, pixelRatio: 3, useCORS: true });
       if (!blob) return;
       const file = new File([blob], `IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -754,27 +761,6 @@ export default function UserApp() {
     } catch (e) {
       console.error("Failed to share ID Card", e);
       toast.error("Gagal membagikan kartu ID");
-    }
-  };
-
-  const handlePrintIDCard = async () => {
-    if (!idCardRef.current) return;
-    toast.loading("Menyiapkan dokumen PDF...");
-    try {
-      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: [54, 86]
-      });
-      pdf.addImage(url, 'PNG', 0, 0, 54, 86);
-      pdf.save(`IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.pdf`);
-      toast.dismiss();
-      toast.success("PDF berhasil diunduh");
-    } catch (e) {
-      toast.dismiss();
-      console.error("Failed to print/save PDF ID Card", e);
-      toast.error("Gagal membuat dokumen PDF");
     }
   };
 
@@ -1187,7 +1173,7 @@ export default function UserApp() {
                                 </span>
                              </div>
                              <MapPicker 
-                               center={{ lat: location.latitude, lng: location.longitude }} 
+                               center={{ lat: location.lat, lng: location.lng }} 
                                radius={settings?.radiusMeters || 100}
                                readonly={true}
                              />
@@ -1625,7 +1611,7 @@ export default function UserApp() {
 
                     {/* Portrait Name Tag ID Card */}
                     <div 
-                      className="relative mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl bg-white w-full max-w-[320px] aspect-[1/1.75] border-2 border-slate-100 dark:border-gray-800 transition-all duration-500 transform" 
+                      className="relative mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl bg-white w-full max-w-[320px] aspect-[54/86] border-2 border-slate-100 dark:border-gray-800 transition-all duration-500 transform" 
                       ref={idCardRef}
                       onClick={() => setIdCardSide(idCardSide === 'front' ? 'back' : 'front')}
                     >
@@ -1732,15 +1718,12 @@ export default function UserApp() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-2 pt-4 px-2">
+                    <div className="grid grid-cols-2 gap-2 pt-4 px-2">
                        <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-teal-100 text-teal-700 bg-teal-50 hover:bg-teal-100 dark:bg-gray-800 dark:border-gray-700 dark:text-teal-400" onClick={handleShareIDCard}>
                           <Share2 className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Bagikan</span>
                        </Button>
                        <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-purple-100 text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-gray-800 dark:border-gray-700 dark:text-purple-400" onClick={handleDownloadIDCard}>
-                          <Download className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Unduh</span>
-                       </Button>
-                       <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-blue-100 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-gray-800 dark:border-gray-700 dark:text-blue-400" onClick={handlePrintIDCard}>
-                          <Printer className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Cetak PDF</span>
+                          <Download className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Unduh PDF</span>
                        </Button>
                     </div>
                   </div>
@@ -1761,7 +1744,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "Remix Absen"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.1.2 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.2.2 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -1801,7 +1784,39 @@ export default function UserApp() {
 
                                <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.1.2 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.2 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan UI: Optimasi animasi transisi antar menu di halaman Dashboard Admin menjadi lebih mulus.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.1</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan bug tampilan pada filter dropdown menu rekap absensi yang menyebabkan Invalid Hook Error.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Fitur Baru: Penambahan Menu Rekap Absensi Admin. Fitur untuk menampilkan dan mendownload log kehadiran karyawan secara harian, mingguan, dan bulanan.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.1.3</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan bug tampilan teks tidak terlihat saat mode gelap (Dark Mode) aktif pada form Portal Pengumuman.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.1.2</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Perbaikan tata letak tombol Export Laporan di tampilan Desktop / Mobile agar rata kanan.</li>
                                  </ul>
