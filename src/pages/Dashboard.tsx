@@ -67,6 +67,8 @@ export default function Dashboard() {
     }
   }, [pendingApprovalsCount]);
 
+  const [activeTab, setActiveTab] = useState("overview");
+
   // Settings forms
   const [radiusInput, setRadiusInput] = useState(100);
   const [latInput, setLatInput] = useState(-6.2088);
@@ -413,25 +415,41 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="w-full mx-auto p-1 bg-gray-100 dark:bg-gray-800 rounded-xl grid grid-cols-3 sm:grid-cols-6 items-center gap-1">
-            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 relative py-2.5 px-3 transition-all flex justify-center">
-              <Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Overview</span>
-              {pendingApprovalsCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[9px] text-white items-center justify-center font-black shadow-sm">
-                    {pendingApprovalsCount}
-                  </span>
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Users className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">User</span></TabsTrigger>
-            <TabsTrigger value="announcements" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Briefcase className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Portal</span></TabsTrigger>
-            <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Performance</span></TabsTrigger>
-            <TabsTrigger value="live-map" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><MapPin className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Peta Live</span></TabsTrigger>
-            <TabsTrigger value="rekap" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><ClipboardList className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Rekap</span></TabsTrigger>
-            <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Settings className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Pengaturan</span></TabsTrigger>
+        <div className="grid grid-cols-4 sm:grid-cols-7 gap-4 mb-8">
+          {[
+            { value: "overview", label: "Overview", icon: Activity },
+            { value: "users", label: "User", icon: Users },
+            { value: "announcements", label: "Portal", icon: Briefcase },
+            { value: "analytics", label: "Performance", icon: Activity },
+            { value: "live-map", label: "Peta Live", icon: MapPin },
+            { value: "rekap", label: "Rekap", icon: ClipboardList },
+            { value: "settings", label: "Pengaturan", icon: Settings },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.value}
+                onClick={() => setActiveTab(item.value)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-3xl bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all ${activeTab === item.value ? 'ring-2 ring-teal-500' : ''}`}
+              >
+                <div className={`p-4 rounded-2xl ${item.value === 'overview' ? 'bg-teal-500 text-white' : item.value === 'users' ? 'bg-sky-500 text-white' : item.value === 'announcements' ? 'bg-teal-600 text-white' : item.value === 'analytics' ? 'bg-purple-500 text-white' : item.value === 'live-map' ? 'bg-amber-500 text-white' : item.value === 'rekap' ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white'}`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <span className="text-xs font-bold text-slate-700 dark:text-gray-200 text-center">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="hidden">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="users">User</TabsTrigger>
+            <TabsTrigger value="announcements">Portal</TabsTrigger>
+            <TabsTrigger value="analytics">Performance</TabsTrigger>
+            <TabsTrigger value="live-map">Peta Live</TabsTrigger>
+            <TabsTrigger value="rekap">Rekap</TabsTrigger>
+            <TabsTrigger value="settings">Pengaturan</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
