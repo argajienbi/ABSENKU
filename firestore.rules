@@ -103,6 +103,7 @@ service cloud.firestore {
                     exists(/databases/$(database)/documents/users/$(incoming().userId));
       allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+      allow delete: if isValidId(attendanceId) && isAdmin();
     }
 
     // LeaveRequests Collection

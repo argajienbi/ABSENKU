@@ -273,7 +273,8 @@ export default function Dashboard() {
       toast.success("User berhasil dihapus.");
       setSelectedUserForEdit(null);
     } catch (e) {
-      toast.error("Gagal menghapus user.");
+      console.error("Error deleting user:", e);
+      toast.error(`Gagal menghapus user: ${e instanceof Error ? e.message : 'Unknown error'}`);
     }
   };
 
@@ -600,10 +601,32 @@ export default function Dashboard() {
                           </TableCell>
                           <TableCell className="px-6 py-4 text-center">
                             {log.photoBase64 ? (
-                              <div className="flex justify-center">
+                              <div className="flex justify-center relative group">
                                 <a href={log.photoBase64} target="_blank" rel="noreferrer" className="block hover:opacity-80 transition-opacity">
                                   <img src={log.photoBase64} alt="Foto Bukti" className="w-12 h-12 object-cover rounded-md border border-slate-200 shadow-sm" />
                                 </a>
+                                {(user?.role === "superadmin" || user?.role === "admin") && (
+                                  <button 
+                                    onClick={async (e) => {
+                                      e.preventDefault();
+                                      if (!window.confirm("Hapus foto saja dari record ini?")) return;
+                                      try {
+                                        const photoToDelete = log.photoBase64;
+                                        await updateDoc(doc(db, "attendance", log.id), { photoBase64: "" });
+                                        if (photoToDelete) {
+                                          await deleteFileFromStorage(photoToDelete);
+                                        }
+                                        toast.success("Foto dihapus");
+                                      } catch (err) {
+                                        toast.error("Gagal hapus foto");
+                                      }
+                                    }}
+                                    className="absolute -top-1 -right-1 bg-rose-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:scale-110 active:scale-95"
+                                    title="Hapus Foto"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                )}
                               </div>
                             ) : (
                               <span className="text-slate-400 text-[10px]">-</span>
@@ -653,7 +676,7 @@ export default function Dashboard() {
                                   {log.status || 'APPROVED'}
                                 </span>
                               )}
-                              {user?.role === "superadmin" && (
+                              {(user?.role === "superadmin" || user?.role === "admin") && (
                                 <Button 
                                   size="sm" 
                                   variant="ghost" 
@@ -662,12 +685,14 @@ export default function Dashboard() {
                                     if (user?.role === "demo") { toast.error("Akun demo."); return; }
                                     if (!window.confirm("Hapus log absensi ini permanen?")) return;
                                     try {
-                                      if (log.photoBase64) {
-                                        await deleteFileFromStorage(log.photoBase64);
-                                      }
+                                      const photoToDelete = log.photoBase64;
                                       await deleteDoc(doc(db, "attendance", log.id));
+                                      if (photoToDelete) {
+                                        await deleteFileFromStorage(photoToDelete);
+                                      }
                                       toast.success("Log absensi dihapus");
                                     } catch (e) {
+                                      console.error("Error deleting log:", e);
                                       toast.error("Gagal menghapus log");
                                     }
                                   }}
