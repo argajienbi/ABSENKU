@@ -57,19 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser({ uid: fbUser.uid, ...userSnap.data() } as AppUser);
             setLoading(false);
           } else {
-            // Create new user if doesn't exist
-            const newUserData = {
-              uid: fbUser.uid,
-              email: fbUser.email || "",
-              name: fbUser.displayName || fbUser.email?.split("@")[0] || "User",
-              role: fbUser.email === "armin.gandi@gmail.com" ? "superadmin" : "staff",
-              uniqueId: "USR-" + Date.now().toString().slice(-6),
-              createdAt: Date.now(),
-              avatarUrl: fbUser.photoURL || "",
-              shiftId: "shift1", // Default shift
-            };
-            await setDoc(userRef, newUserData);
-            // onSnapshot will trigger again for the selection above
+            // The document will be created by the registration flow in Login.tsx
+            // Until then, keep user as null.
+            setUser(null);
+            setLoading(false);
           }
         }, (error) => {
           handleFirestoreError(error, OperationType.GET, "users");

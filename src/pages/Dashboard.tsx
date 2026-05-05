@@ -1224,8 +1224,10 @@ export default function Dashboard() {
                       <Input 
                         className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
                         placeholder="Misal: BMTxxxxxxxxxxxx..."
-                        value={fcmVapidKeyInput} 
-                        onChange={(e) => setFcmVapidKeyInput(e.target.value)} 
+                        value={user?.role === "demo" ? "************************" : fcmVapidKeyInput} 
+                        onChange={(e) => setFcmVapidKeyInput(e.target.value)}
+                        disabled={user?.role === "demo"}
+                        type={user?.role === "demo" ? "password" : "text"}
                       />
                       <p className="text-[10px] text-gray-500 mt-1">
                         Dapatkan VAPID Key dari Firebase Console {'->'} Project Settings {'->'} Cloud Messaging {'->'} Web Push certificates. 
@@ -1238,8 +1240,10 @@ export default function Dashboard() {
                       <Input 
                         className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
                         placeholder="AIzaSy..."
-                        value={googleMapsApiKeyInput} 
+                        value={user?.role === "demo" ? "************************" : googleMapsApiKeyInput} 
                         onChange={(e) => setGoogleMapsApiKeyInput(e.target.value)} 
+                        disabled={user?.role === "demo"}
+                        type={user?.role === "demo" ? "password" : "text"}
                       />
                       <p className="text-[10px] text-gray-500 mt-1">
                         Dapatkan dari Google Cloud Console. Pastikan Maps JavaScript API telah diaktifkan untuk key tersebut. Map tidak akan muncul sebelum diisi.

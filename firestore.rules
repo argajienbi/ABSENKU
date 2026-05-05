@@ -98,7 +98,7 @@ service cloud.firestore {
     // Attendance Collection
     match /attendance/{attendanceId} {
       allow get: if isValidId(attendanceId) && (isOwner(resource.data.userId) || isAdminOrDemo());
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
+      allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
       allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && incoming().userId == request.auth.uid &&
                     exists(/databases/$(database)/documents/users/$(incoming().userId));
       allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
@@ -108,7 +108,7 @@ service cloud.firestore {
     // LeaveRequests Collection
     match /leaveRequests/{requestId} {
       allow get: if isValidId(requestId) && (isOwner(resource.data.userId) || isAdminOrDemo());
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
+      allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
       allow create: if isValidId(requestId) && isSignedIn() && !isBanned() && isValidLeaveRequest(incoming()) && incoming().userId == request.auth.uid;
       allow update: if isValidId(requestId) && isAdmin() && isValidLeaveRequest(incoming());
     }
@@ -116,7 +116,7 @@ service cloud.firestore {
     // Payroll Collection
     match /payroll/{payrollId} {
       allow get: if isValidId(payrollId) && (isOwner(resource.data.userId) || isAdminOrDemo());
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
+      allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
       allow write: if isValidId(payrollId) && isAdmin() && isValidPayrollRecord(incoming());
     }
 

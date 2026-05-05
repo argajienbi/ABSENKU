@@ -1773,6 +1773,22 @@ export default function UserApp() {
                                 <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
                                 <span>Tampilan Admin Dashboard lengkap & Generate Laporan Excel/PDF/CSV.</span>
                               </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Real-Time Live Logs untuk memantau status absensi karyawan secara langsung.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Integrasi Peta Live (Live Map) dengan layanan Google Maps API.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Konfigurasi Geofencing & Multi-Area dengan radius dan titik kordinat cabang.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Manajemen Lengkap Organisasi (Pengumuman, Akun Karyawan, Shift, & Token Referral).</span>
+                              </li>
                             </ul>
                          </div>
 
@@ -1784,7 +1800,16 @@ export default function UserApp() {
 
                                <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.2 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.4 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan Keamanan: Menyembunyikan dan menonaktifkan perubahan API Key (Google Maps & VAPID Key) dari tipe akun Demo di Dashboard Pengaturan.</li>
+                                    <li>Perbaikan Bug Akses Basis Data: Memperbaiki kendala "Missing or insufficient permissions" yang terjadi pada sinkronisasi data realtime Absensi, Izin, dan Penggajian untuk akun non-admin.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.2</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Peningkatan UI: Optimasi animasi transisi antar menu di halaman Dashboard Admin menjadi lebih mulus.</li>
                                  </ul>
