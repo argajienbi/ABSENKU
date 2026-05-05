@@ -82,6 +82,8 @@ export function useSettings() {
   }, []);
 
   useEffect(() => {
+    let manifestURL: string | null = null;
+    
     if (settings?.appName) {
       document.title = settings.appName;
       
@@ -105,12 +107,14 @@ export function useSettings() {
           {
             "src": "https://cdn-icons-png.flaticon.com/512/3204/3204361.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
           },
           {
             "src": "https://cdn-icons-png.flaticon.com/512/3204/3204361.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "any maskable"
           }
         ]
       };
@@ -118,7 +122,7 @@ export function useSettings() {
       try {
         const stringManifest = JSON.stringify(manifest);
         const blob = new Blob([stringManifest], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
+        manifestURL = URL.createObjectURL(blob);
         
         let link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
         if (link) {
@@ -133,6 +137,12 @@ export function useSettings() {
         console.error("Error updating manifest:", err);
       }
     }
+
+    return () => {
+      if (manifestURL) {
+        URL.revokeObjectURL(manifestURL);
+      }
+    };
   }, [settings?.appName]);
 
   return settings;

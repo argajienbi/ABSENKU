@@ -1743,8 +1743,8 @@ export default function UserApp() {
                         <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/50 rounded-2xl flex items-center justify-center mb-3">
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
-                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "Remix Absen"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.2.2 (Terbaru)</p>
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Sistem Absensi Kehadiran</p>
                       </div>
 
                       <div className="space-y-6">
