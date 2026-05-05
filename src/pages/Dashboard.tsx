@@ -14,10 +14,14 @@ import { Label } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import { format } from "date-fns";
-import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle } from "lucide-react";
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle, Download, ChevronDown } from "lucide-react";
 
 import { QRCodeSVG } from 'qrcode.react';
 import { WaveBackground } from "../components/WaveBackground";
@@ -436,53 +440,104 @@ export default function Dashboard() {
                   <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">Real-Time Live Logs</CardTitle>
                   <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Daftar absensi terbaru dari seluruh user</CardDescription>
                 </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                <Button variant="outline" size="sm" className="bg-white dark:bg-gray-700 border-teal-100 dark:border-teal-900 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900 h-10 w-full sm:w-auto transition-all" onClick={() => {
-                  const header = [
-                    "Nama Karyawan", 
-                    "Role", 
-                    "Shift", 
-                    "ID Karyawan (RFID/NFC)", 
-                    "Tanggal Transaksi", 
-                    "Jam Transaksi", 
-                    "Tipe Transaksi", 
-                    "Metode", 
-                    "Status Validasi Radius", 
-                    "Catatan Laporan Tambahan", 
-                    "Status Approval"
-                  ].map(h => `"${h}"`).join(',');
-
-                  let allRecords: string[] = [];
-                  filteredUsersList.forEach(usr => {
-                    const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
-                    if (userAttendances.length === 0) {
-                      allRecords.push([
-                        usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A",
-                        "-", "-", "-", "-", "-", "-", "-"
-                      ].map(v => `"${v}"`).join(','));
-                    } else {
-                      userAttendances.forEach(log => {
-                        allRecords.push([
-                          usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A",
-                          format(new Date(log.timestamp), "yyyy-MM-dd"),
-                          format(new Date(log.timestamp), "HH:mm:ss"),
-                          log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual",
-                          log.extraData ? log.extraData.replace(/,/g, ' ') : "-",
-                          log.status || "APPROVED"
-                        ].map(v => `"${v}"`).join(','));
+                <div className="flex sm:justify-end gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="inline-flex items-center justify-center bg-white dark:bg-gray-700 border border-teal-100 dark:border-teal-900 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900 h-10 px-4 w-full sm:w-auto transition-all shadow-sm cursor-pointer outline-none">
+                    <Download className="w-4 h-4 mr-2" /> Export Laporan <ChevronDown className="w-3 h-3 ml-2" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[200px] rounded-xl">
+                    <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
+                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe", "Metode", "Status Radius", "Catatan", "Status Approval"];
+                      let allRecords: any[][] = [header];
+                      
+                      filteredUsersList.forEach(usr => {
+                        const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
+                        if (userAttendances.length === 0) {
+                          allRecords.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-", "-", "-", "-", "-", "-", "-", "-"]);
+                        } else {
+                          userAttendances.forEach(log => {
+                            allRecords.push([
+                              usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-",
+                              format(new Date(log.timestamp), "yyyy-MM-dd"),
+                              format(new Date(log.timestamp), "HH:mm:ss"),
+                              log.type, log.method, log.withinRadius ? "Ya" : "Tidak",
+                              log.extraData ? log.extraData.replace(/,/g, ' ') : "-",
+                              log.status || "APPROVED"
+                            ]);
+                          });
+                        }
                       });
-                    }
-                  });
 
-                  const blob = new Blob([`${header}\n${allRecords.join('\n')}`], { type: 'text/csv;charset=utf-8;' });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url;
-                  a.download = `Laporan_Lengkap_Karyawan_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
-                  a.click();
-                }}>
-                  <Activity className="w-4 h-4 mr-2" /> Export Laporan Lengkap
-                </Button>
+                      const ws = XLSX.utils.aoa_to_sheet(allRecords);
+                      const wb = XLSX.utils.book_new();
+                      XLSX.utils.book_append_sheet(wb, ws, "Laporan Absensi");
+                      XLSX.writeFile(wb, `Laporan_Absensi_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
+                      toast.success("Laporan Excel berhasil diunduh.");
+                    }}>
+                      Export Excel (.xlsx)
+                    </DropdownMenuItem>
+                    
+                    <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
+                      const doc = new jsPDF('landscape');
+                      const header = [["Nama", "Role", "Shift", "Tanggal", "Jam", "Tipe", "Metode", "Radius", "Status"]];
+                      let rows: any[][] = [];
+                      
+                      filteredUsersList.forEach(usr => {
+                        const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
+                        if (userAttendances.length === 0) {
+                          rows.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", "-", "-", "-", "-", "-", "-"]);
+                        } else {
+                          userAttendances.forEach(log => {
+                            rows.push([
+                              usr.name || "-", usr.role || "-", usr.shiftId || "-",
+                              format(new Date(log.timestamp), "yyyy-MM-dd"),
+                              format(new Date(log.timestamp), "HH:mm:ss"),
+                              log.type, log.method, log.withinRadius ? "Ya" : "Tidak",
+                              log.status || "APPROVED"
+                            ]);
+                          });
+                        }
+                      });
+
+                      doc.text("Laporan Absensi Lengkap", 14, 15);
+                      autoTable(doc, {
+                        head: header,
+                        body: rows,
+                        startY: 20,
+                        styles: { fontSize: 8 },
+                        headStyles: { fillColor: [13, 148, 136] }
+                      });
+                      doc.save(`Laporan_Absensi_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
+                      toast.success("Laporan PDF berhasil diunduh.");
+                    }}>
+                      Export PDF (.pdf)
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
+                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe Transaksi", "Metode", "Status Validasi Radius", "Catatan Laporan Tambahan", "Status Approval"].map(h => `"${h}"`).join(',');
+                      let allRecords: string[] = [];
+                      filteredUsersList.forEach(usr => {
+                        const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
+                        if (userAttendances.length === 0) {
+                          allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", "-", "-", "-", "-", "-", "-", "-"].map(v => `"${v}"`).join(','));
+                        } else {
+                          userAttendances.forEach(log => {
+                            allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.status || "APPROVED"].map(v => `"${v}"`).join(','));
+                          });
+                        }
+                      });
+                      const blob = new Blob([`${header}\n${allRecords.join('\n')}`], { type: 'text/csv;charset=utf-8;' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Laporan_Absensi_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
+                      a.click();
+                      toast.success("Laporan CSV berhasil diunduh.");
+                    }}>
+                      Export CSV (.csv)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 </div>
               </CardHeader>
               <CardContent className="p-0">

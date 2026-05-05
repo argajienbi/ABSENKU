@@ -24,7 +24,7 @@ import {
   MapPin, LogOut, Code, UserSquare2, Fingerprint, CalendarDays,
   Home, User, Settings as SettingsIcon, Sun, Moon, Briefcase, ArrowLeft,
   Share2, Download, Check, AlertCircle, Activity, ChevronRight, Printer, Camera, Key, Phone, Edit, IdCard,
-  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell
+  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell, Info
 } from "lucide-react";
 import { WaveBackground } from "../components/WaveBackground";
 import { Card, CardContent } from "../components/ui/card";
@@ -1590,6 +1590,21 @@ export default function UserApp() {
                           </div>
                           <ChevronRight className="w-4 h-4 text-gray-400" />
                         </button>
+                        <button 
+                          onClick={() => setProfileTab('changelog')}
+                          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-t border-gray-100 dark:border-gray-700/50"
+                        >
+                          <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                             <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <Info className="w-4 h-4" />
+                             </div>
+                             <div className="text-left py-2">
+                                <div>Tentang Aplikasi</div>
+                                <div className="text-xs text-gray-400 font-normal">Versi & Info Pembaruan</div>
+                             </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
                     </Card>
                   </>
                 )}
@@ -1728,6 +1743,121 @@ export default function UserApp() {
                           <Printer className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Cetak PDF</span>
                        </Button>
                     </div>
+                  </div>
+                )}
+
+                {profileTab === "changelog" && (
+                  <div className="space-y-4 animate-in fade-in">
+                    <div className="flex items-center mb-4 px-2">
+                       <button onClick={() => setProfileTab('menu')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                          <ArrowLeft className="w-5 h-5" />
+                       </button>
+                       <h2 className="text-xl font-bold ml-2 dark:text-gray-100">Tentang Aplikasi</h2>
+                    </div>
+
+                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl p-6">
+                      <div className="flex flex-col items-center justify-center mb-6">
+                        <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/50 rounded-2xl flex items-center justify-center mb-3">
+                          <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+                        </div>
+                        <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "Remix Absen"}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.1.2 (Terbaru)</p>
+                      </div>
+
+                      <div className="space-y-6">
+                         <div>
+                            <h4 className="text-sm font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                               <Fingerprint className="w-4 h-4" /> Fitur Tersedia
+                            </h4>
+                            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Absensi Foto Selfie Otomatis dengan Deteksi Wajah AI & Geolocation.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Mode Offline PWA: Absen tersimpan saat internet putus.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Pengajuan Izin, Sakit, & Cuti dengan persetujuan Admin.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Push Notification (FCM) untuk info penting dari perusahaan.</span>
+                              </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Tampilan Admin Dashboard lengkap & Generate Laporan Excel/PDF/CSV.</span>
+                              </li>
+                            </ul>
+                         </div>
+
+                         <div className="pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                            <h4 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                               <Code className="w-4 h-4" /> Log Perubahan (Changelog)
+                            </h4>
+                            <div className="space-y-5">
+
+                               <div className="relative pl-4 border-l-2 border-teal-500/30">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.1.2 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan tata letak tombol Export Laporan di tampilan Desktop / Mobile agar rata kanan.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.1.1</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan bug tampilan pada menu Export Laporan (Hydration Error - struktur tombol bertumpuk).</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.1.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Penambahan fitur nyata Generate Laporan (Export Excel, CSV, dan PDF) di Dashboard Admin.</li>
+                                 </ul>
+                               </div>
+                               
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.0.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Dukungan PWA (Progresive Web App) & Offline Mode.</li>
+                                    <li>Optimalisasi kompresi foto base64 untuk menghemat kuota.</li>
+                                    <li>Perbaikan tata letak responsive & ukuran UI menyesuaikan layar (Desktop/Tablet/Android).</li>
+                                    <li>Perbaikan masalah menu bawah yang bertumpuk (overlap) dengan isi layar.</li>
+                                    <li>Penayangan riwayat Log Perubahan & Fitur (Tentang Aplikasi).</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 2.1.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Integrasi Web Push Notification API untuk pesan dari Admin.</li>
+                                    <li>Peningkatan limit AI Face-API Detection dan Auto-capture.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 1.0.0 <span className="text-xs font-normal text-gray-500 ml-2">Rilis Awal</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Sistem Absensi Dasar (Masuk/Pulang).</li>
+                                    <li>Validasi Jarak Titik Koordinat 50m.</li>
+                                    <li>Auth dengan Firebase (Google/Email).</li>
+                                 </ul>
+                               </div>
+                               
+                            </div>
+                         </div>
+                      </div>
+                    </Card>
                   </div>
                 )}
 
