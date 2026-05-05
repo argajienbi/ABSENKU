@@ -1,0 +1,1859 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useAuth } from "../contexts/AuthContext";
+import { useSettings, calculateDistance } from "../lib/settingsObject";
+import { collection, query, where, onSnapshot, doc, setDoc, updateDoc } from "firebase/firestore";
+import { auth, db, handleFirestoreError, OperationType, requestFCMPermission } from "../lib/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
+import { format, isSameDay, isWeekend, eachDayOfInterval, subDays, isSaturday, isSunday } from "date-fns";
+import { id } from "date-fns/locale";
+import { isHoliday, setCustomHolidays } from "../lib/dateUtils";
+import Webcam from "react-webcam";
+import { Html5Qrcode } from "html5-qrcode";
+import { useTheme } from "next-themes";
+import { SHIFTS, WAVE_SVG } from "../constants";
+import { verifyFace } from "../lib/faceVerification";
+import { uploadBase64Image } from "../lib/storage";
+import * as faceapi from "face-api.js";
+import { QRCodeCanvas } from "qrcode.react";
+import { toPng, toBlob } from "html-to-image";
+import { jsPDF } from "jspdf";
+import {
+  MapPin, LogOut, Code, UserSquare2, Fingerprint, CalendarDays,
+  Home, User, Settings as SettingsIcon, Sun, Moon, Briefcase, ArrowLeft,
+  Share2, Download, Check, AlertCircle, Activity, ChevronRight, Printer, Camera, Key, Phone, Edit, IdCard,
+  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell
+} from "lucide-react";
+import { WaveBackground } from "../components/WaveBackground";
+import { Card, CardContent } from "../components/ui/card";
+import { FloatingNav } from "../components/FloatingNav";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Calendar } from "../components/ui/calendar";
+
+export default function UserApp() {
+  const { user } = useAuth();
+  const settings = useSettings();
+  const navigate = useNavigate();
+  const { theme, setTheme } = useTheme();
+
+  if (user?.isBanned) {
+    return (
+      <WaveBackground>
+        <div className="min-h-screen flex items-center justify-center p-6">
+          <Card className="w-full max-w-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-0 shadow-2xl rounded-[2.5rem] overflow-hidden p-8 text-center space-y-6">
+            <div className="w-24 h-24 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400">
+              <ShieldAlert className="w-12 h-12" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-black text-rose-900 dark:text-rose-50 uppercase tracking-tighter">AKUN DIBLOKIR</h1>
+              <p className="text-sm font-medium text-slate-500 dark:text-gray-400">Maaf, akun Anda telah dinonaktifkan oleh admin. Silakan hubungi pengelola untuk informasi lebih lanjut.</p>
+            </div>
+            <Button 
+                variant="outline" 
+                onClick={() => auth.signOut()}
+                className="w-full h-14 rounded-2xl border-rose-100 dark:border-rose-900 text-rose-600 font-black uppercase tracking-widest hover:bg-rose-50 transition-all shadow-lg shadow-rose-200/20"
+            >
+              Keluar Sesi
+            </Button>
+          </Card>
+        </div>
+      </WaveBackground>
+    );
+  }
+
+  const resolvedShifts = React.useMemo(() => {
+    const rawShifts = settings?.shifts && Object.keys(settings.shifts).length > 0 ? settings.shifts : SHIFTS;
+    return rawShifts as any;
+  }, [settings]);
+
+  useEffect(() => {
+    if (settings?.holidays) {
+      setCustomHolidays(settings.holidays);
+    }
+  }, [settings?.holidays]);
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [distance, setDistance] = useState<number | null>(null);
+  const [isWithinRadius, setIsWithinRadius] = useState(false);
+  const [locationError, setLocationError] = useState(false);
+  const [isFakeGPS, setIsFakeGPS] = useState(false);
+  const lastPosRef = useRef<{lat: number, lng: number, time: number} | null>(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<"home" | "absen" | "history" | "profile" | "izin_menu" | "hris" | "notifications">("home");
+  const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card">("menu");
+  const [idCardSide, setIdCardSide] = useState<"front" | "back">("front");
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editFaceBase64, setEditFaceBase64] = useState<string | null>(null);
+  const [fcmVapidKey, setFcmVapidKey] = useState("");
+  const [showFcmSetup, setShowFcmSetup] = useState(false);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      toast.success("Anda kembali online. Data akan sinkron otomatis.", {
+        icon: <Wifi className="w-4 h-4 text-teal-500" />
+      });
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      toast.warning("Anda sedang offline. Absen tetap disimpan secara lokal.", {
+        icon: <WifiOff className="w-4 h-4 text-orange-500" />
+      });
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+  const [showFaceUpdateCam, setShowFaceUpdateCam] = useState(false);
+  const editWebcamRef = useRef<Webcam>(null);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+
+  const [isFaceDetected, setIsFaceDetected] = useState(false);
+  const [isModelsLoaded, setIsModelsLoaded] = useState(false);
+  const [autoCaptureActive, setAutoCaptureActive] = useState(false);
+  const [confirmData, setConfirmData] = useState<{ method: "selfie" | "qr" | "rfid"; photoBase64: string | null; extraData?: string } | null>(null);
+  
+  // Home states
+  const [type, setType] = useState<"in" | "out" | "overtime_in" | "overtime_out" | "sick" | "permit" | "cuti" | "melahirkan" | "meninggal">("in");
+  const isDocumentCapture = ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type);
+  const [activeAbsenTab, setActiveAbsenTab] = useState("selfie"); // selfie for document upload too
+  const webcamRef = useRef<Webcam>(null);
+  const idCardRef = useRef<HTMLDivElement>(null);
+  const [rfidInput, setRfidInput] = useState("");
+  const [permitProof, setPermitProof] = useState<string | null>(null);
+  const [permitStartDate, setPermitStartDate] = useState<Date | undefined>(new Date());
+  const [permitEndDate, setPermitEndDate] = useState<Date | undefined>(new Date());
+
+  // History states
+  const [myHistory, setMyHistory] = useState<any[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([]);
+  const [payroll, setPayroll] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [appNotifications, setAppNotifications] = useState<any[]>([]);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const getStatusForDate = React.useCallback((date: Date) => {
+    const isToday = isSameDay(date, new Date());
+    const isFuture = date > new Date() && !isToday;
+    
+    // User shift settings
+    const shiftId = user?.shiftId || "shift1";
+    const shiftConfig = resolvedShifts[shiftId] || resolvedShifts.shift1;
+    const dayOfWeek = date.getDay();
+    const dayShift = shiftConfig?.workDays[dayOfWeek];
+    const isTodayHoliday = isHoliday(date);
+    const isOffDay = !dayShift || isTodayHoliday;
+
+    if (isFuture) return null;
+
+    const dayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), date));
+    
+    const sickLog = dayLogs.find(l => l.type === 'sick');
+    if (sickLog) return 'sick';
+    const permitLog = dayLogs.find(l => ['permit', 'cuti', 'melahirkan', 'meninggal'].includes(l.type));
+    if (permitLog) return 'permit'; 
+
+    const inLogs = dayLogs.filter(l => l.type === 'in');
+    const outLogs = dayLogs.filter(l => l.type === 'out');
+
+    if (inLogs.length === 0 && outLogs.length === 0) {
+        if (!isOffDay && !isToday) return 'alpa'; 
+        return null;
+    }
+
+    if (inLogs.length > 0) {
+        const sortedIn = [...inLogs].sort((a,b) => a.timestamp - b.timestamp);
+        const firstInLog = sortedIn[0];
+        
+        let isLate = false;
+        if (firstInLog.status === 'pending_approval' || firstInLog.status === 'rejected') {
+          isLate = true; 
+        } else if (!firstInLog.status || firstInLog.status === 'approved') {
+          const firstInDate = new Date(firstInLog.timestamp);
+          const shiftStartStr = dayShift?.start || settings?.shiftStart || "09:00";
+          const [startHour, startMin] = shiftStartStr.split(':').map(Number);
+          isLate = (firstInDate.getHours() > startHour) || (firstInDate.getHours() === startHour && firstInDate.getMinutes() > startMin);
+        }
+
+        if (outLogs.length === 0 && !isToday && !isOffDay) {
+            return 'lupa_pulang';
+        }
+
+        if (isLate) return 'telat';
+        return 'hadir'; 
+    }
+
+    return null;
+  }, [myHistory, settings, user]);
+
+  const pendingCount = myHistory.filter(log => log.status === 'pending_approval').length;
+
+  const isIzinActive = React.useMemo(() => {
+    return myHistory.some(log => isSameDay(new Date(log.timestamp), new Date()) && ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type));
+  }, [myHistory]);
+  
+  const hasInApproved = React.useMemo(() => {
+     return myHistory.some(log => isSameDay(new Date(log.timestamp), new Date()) && log.type === 'in' && log.status === 'approved');
+  }, [myHistory]);
+
+  const hasOutApproved = React.useMemo(() => {
+     return myHistory.some(log => isSameDay(new Date(log.timestamp), new Date()) && log.type === 'out' && log.status === 'approved');
+  }, [myHistory]);
+
+  const isTodayHolidayOrWeekend = React.useMemo(() => {
+     const today = new Date();
+     return isWeekend(today) || isHoliday(today);
+  }, []);
+
+  const canEnableOvertime = React.useMemo(() => {
+     const outLog = myHistory.find(log => isSameDay(new Date(log.timestamp), new Date()) && log.type === 'out' && log.status === 'approved');
+     if (!outLog) return false;
+     
+     const outTime = new Date(outLog.timestamp);
+     const now = new Date();
+     const minutesSinceOut = (now.getTime() - outTime.getTime()) / (1000 * 60);
+     
+     // Check shift end time
+     const shift = resolvedShifts[user?.shiftId || ''];
+     const dayOfWeek = new Date().getDay();
+     const shiftDay = shift?.workDays?.[dayOfWeek];
+     
+     if (shiftDay) {
+         const [endHour, endMinute] = shiftDay.end.split(':').map(Number);
+         const shiftEnd = new Date();
+         shiftEnd.setHours(endHour, endMinute, 0, 0);
+         
+         // If shift ends tomorrow morning, adjust shiftEnd
+         if (endHour < 12) { // Extremely crude check for overnight shift
+             shiftEnd.setDate(shiftEnd.getDate() + 1);
+         }
+         if (now < shiftEnd) return false;
+     }
+     
+     return minutesSinceOut >= 0 && minutesSinceOut <= 30;
+  }, [myHistory, resolvedShifts, user]);
+
+  
+  const summary = React.useMemo(() => {
+     let telatCount = 0;
+     let ijinCount = 0;
+     let alpaCount = 0;
+     let lemburHours = 0;
+     let hadirCount = 0;
+     
+     const now = new Date();
+     for (let i = 1; i <= now.getDate(); i++) {
+        const date = new Date(now.getFullYear(), now.getMonth(), i);
+        const status = getStatusForDate(date);
+        
+        if (status === 'telat') telatCount++;
+        if (status === 'sick' || status === 'permit') ijinCount++;
+        if (status === 'alpa') alpaCount++;
+        if (status === 'hadir') hadirCount++;
+        
+        const dayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), date));
+        const lemburIn = dayLogs.filter(l => l.type === 'overtime_in').sort((a,b) => a.timestamp - b.timestamp);
+        const lemburOut = dayLogs.filter(l => l.type === 'overtime_out').sort((a,b) => b.timestamp - a.timestamp);
+        
+        if (lemburIn.length > 0 && lemburOut.length > 0) {
+            const mSecs = lemburOut[0].timestamp - lemburIn[0].timestamp;
+            if (mSecs > 0) {
+               lemburHours += mSecs / (1000 * 60 * 60);
+            }
+        }
+     }
+     
+     return { telatCount, ijinCount, alpaCount, lemburHours, hadirCount };
+  }, [myHistory, getStatusForDate]);
+
+  const todayStatusText = React.useMemo(() => {
+    const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
+    if (todayLogs.length === 0) return "Belum Absen Hari Ini";
+    
+    const hasOut = todayLogs.some(log => log.type === 'out');
+    if (hasOut) return "Sudah Absen Pulang";
+    
+    const hasLemburOut = todayLogs.some(log => log.type === 'overtime_out');
+    if (hasLemburOut) return "Sudah Lembur Pulang";
+
+    const hasLemburIn = todayLogs.some(log => log.type === 'overtime_in');
+    if (hasLemburIn) return "Sedang Lembur Masuk";
+
+    const hasIn = todayLogs.some(log => log.type === 'in');
+    
+    const sickOrPermit = todayLogs.find(log => ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type));
+    if (sickOrPermit) {
+       if (sickOrPermit.type === 'sick') return "Status: Sakit";
+       if (sickOrPermit.type === 'cuti') return "Status: Cuti";
+       if (sickOrPermit.type === 'melahirkan') return "Status: Melahirkan";
+       if (sickOrPermit.type === 'meninggal') return "Status: Berduka";
+       return "Status: Izin";
+    }
+
+    if (hasIn) return "Sudah Absen Masuk";
+    
+    return "Sudah Absen";
+  }, [myHistory]);
+
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour >= 5 && hour < 12) return "Selamat Pagi";
+    if (hour >= 12 && hour < 15) return "Selamat Siang";
+    if (hour >= 15 && hour < 18) return "Selamat Sore";
+    return "Selamat Malam";
+  };
+
+  useEffect(() => {
+    if (user && profileTab === 'edit-profile') {
+      setEditName(user.name || "");
+      setEditPhone(user.waNumber || "");
+      setEditFaceBase64(null);
+      setShowFaceUpdateCam(false);
+    }
+  }, [user, profileTab]);
+
+  useEffect(() => {
+    let timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (isDocumentCapture) {
+      setActiveAbsenTab("selfie");
+    }
+  }, [isDocumentCapture]);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    // Fetch notifications
+    const qNotif = query(collection(db, "notifications"), where("userId", "in", [user.uid, "all"]));
+    const unsubNotif = onSnapshot(qNotif, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      data.sort((a: any, b: any) => b.createdAt - a.createdAt);
+      setAppNotifications(data);
+    });
+
+    // Fetch announcements
+    const qAnnouncements = query(collection(db, "announcements"));
+    const unsubAnnouncements = onSnapshot(qAnnouncements, (snapshot) => {
+      setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+
+    // Fetch leave requests
+    const qLeave = query(collection(db, "leaveRequests"), where("userId", "==", user.uid));
+    const unsubLeave = onSnapshot(qLeave, (snapshot) => {
+      setLeaveRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    
+    // Fetch payroll
+    const qPayroll = query(collection(db, "payroll"), where("userId", "==", user.uid));
+    const unsubPayroll = onSnapshot(qPayroll, (snapshot) => {
+      setPayroll(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error("Error fetching payroll data", error);
+    });
+    
+    // Fetch attendance
+    const q = query(collection(db, "attendance"), where("userId", "==", user.uid));
+    const unsubAttendance = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        isPending: doc.metadata.hasPendingWrites 
+      }));
+      data.sort((a: any, b: any) => b.timestamp - a.timestamp);
+      setMyHistory(data);
+    }, (error) => {
+      console.error("Error fetching personal data", error);
+    });
+
+    return () => { unsubLeave(); unsubPayroll(); unsubAttendance(); unsubAnnouncements(); unsubNotif(); };
+  }, [user]);
+
+  useEffect(() => {
+    if (!settings) return;
+
+    if (!settings.geofenceEnabled) {
+      setIsWithinRadius(true);
+      // We can still try to get the location, but it's not strictly required for within radius
+    }
+
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setLocationError(false);
+          const { latitude, longitude } = position.coords;
+          const now = Date.now();
+          
+          if (lastPosRef.current) {
+            const dist = calculateDistance(latitude, longitude, lastPosRef.current.lat, lastPosRef.current.lng);
+            const timeDiff = (now - lastPosRef.current.time) / 1000; // seconds
+            if (timeDiff > 0) {
+              const speed = dist / timeDiff; // m/s
+              // If speed > 100 m/s (~360 km/h), suspicious.
+              if (speed > 100) {
+                  setIsFakeGPS(true);
+                  toast.error("Aktivitas mencurigakan terdeteksi (Fake GPS).");
+              } else {
+                  setIsFakeGPS(false);
+              }
+            }
+          }
+          lastPosRef.current = { lat: latitude, lng: longitude, time: now };
+          
+          setLocation({ lat: latitude, lng: longitude });
+          
+          let targetLat = settings.officeLat;
+          let targetLng = settings.officeLng;
+          let targetRadius = settings.radiusMeters;
+          
+          if (user?.areaId && settings.areas && settings.areas[user.areaId]) {
+             const areaConfig = settings.areas[user.areaId];
+             targetLat = areaConfig.lat;
+             targetLng = areaConfig.lng;
+             targetRadius = areaConfig.radius;
+          } else if (settings.areas && Object.keys(settings.areas).length > 0) {
+             const firstArea = Object.values(settings.areas)[0] as any;
+             targetLat = firstArea.lat;
+             targetLng = firstArea.lng;
+             targetRadius = firstArea.radius;
+          }
+          
+          const dist = calculateDistance(latitude, longitude, targetLat, targetLng);
+          setDistance(dist);
+          if (settings.geofenceEnabled) {
+             setIsWithinRadius(dist <= targetRadius);
+          }
+        },
+        (err) => {
+          let errorMessage = "Unknown error";
+          switch (err.code) {
+            case err.PERMISSION_DENIED:
+              errorMessage = "Izin lokasi ditolak oleh pengguna.";
+              break;
+            case err.POSITION_UNAVAILABLE:
+              errorMessage = "Informasi lokasi tidak tersedia.";
+              break;
+            case err.TIMEOUT:
+              errorMessage = "Waktu permintaan lokasi habis.";
+              break;
+          }
+          console.error(`Geolocation error (${err.code}): ${err.message}`, { code: err.code, message: err.message });
+          setLocationError(true);
+          if (settings.geofenceEnabled) {
+            setIsWithinRadius(false);
+          }
+          // Only show toast if it hasn't been shown recently or if it's a critical error
+          // For now, just log more clearly to fix the "{} " issue
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+      return () => navigator.geolocation.clearWatch(watchId);
+    } else {
+      setLocationError(true);
+      if (settings.geofenceEnabled) {
+         setIsWithinRadius(false);
+      }
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    let ht5Qrcode: Html5Qrcode | null = null;
+    let isMounted = true;
+    let timer: any;
+    
+    if (view === "absen" && activeAbsenTab === "qr") {
+      const startScanner = async () => {
+        try {
+          ht5Qrcode = new Html5Qrcode("qr-reader");
+          await ht5Qrcode.start(
+            { facingMode: "environment" },
+            {
+               fps: 10,
+               qrbox: { width: 250, height: 250 }
+            },
+            (decodedText) => {
+               if (ht5Qrcode && ht5Qrcode.isScanning) {
+                  ht5Qrcode.stop().then(() => {
+                      ht5Qrcode?.clear();
+                      if (isMounted) checkPendingAndStartAttendance("qr", decodedText);
+                  }).catch(console.error);
+               }
+            },
+            () => {} // ignore scan failures
+          );
+          
+          // If component unmounted while starting camera
+          if (!isMounted && ht5Qrcode && ht5Qrcode.isScanning) {
+             ht5Qrcode.stop().then(() => ht5Qrcode?.clear()).catch(console.error);
+          }
+        } catch (e) {
+          console.error("QR scanner start error: ", e);
+        }
+      };
+
+      // Delay start to allow Webcam component to release the camera fully
+      timer = setTimeout(() => {
+        if (isMounted) {
+          startScanner();
+        }
+      }, 500);
+
+      return () => { 
+        isMounted = false;
+        clearTimeout(timer);
+        if (ht5Qrcode && ht5Qrcode.isScanning) {
+           ht5Qrcode.stop().then(() => {
+              ht5Qrcode?.clear();
+           }).catch(console.error);
+        }
+      };
+    }
+  }, [view, activeAbsenTab, type]);
+
+  useEffect(() => {
+    const loadModels = async () => {
+      try {
+        const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+        ]);
+        setIsModelsLoaded(true);
+      } catch (e) {
+        console.error("Failed to load faceapi models", e);
+      }
+    };
+    loadModels();
+  }, []);
+
+  useEffect(() => {
+    let interval: any;
+    if (view === "absen" && activeAbsenTab === "selfie" && isModelsLoaded && !loading) {
+      interval = setInterval(async () => {
+        if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
+          const video = webcamRef.current.video;
+          const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+          
+          const hasFace = !!detections;
+          setIsFaceDetected(hasFace);
+          
+          if (hasFace && !autoCaptureActive && !loading) {
+             // Auto-capture logic could go here if we want it ultra-responsive
+             // For now, just visual feedback
+          }
+        }
+      }, 500); // Check every 500ms
+    } else {
+      setIsFaceDetected(false);
+    }
+    return () => clearInterval(interval);
+  }, [view, activeAbsenTab, isModelsLoaded, loading, autoCaptureActive]);
+
+  const checkPendingAndStartAttendance = async (method: "selfie" | "qr" | "rfid", extraData?: string) => {
+    if (!user) return;
+
+    // Check for pending approval of the same type today
+    const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
+    const hasPendingThisType = todayLogs.some(log => log.type === type && log.status === 'pending_approval');
+    const hasApprovedThisType = todayLogs.some(log => log.type === type && log.status === 'approved');
+    
+    if (hasPendingThisType || hasApprovedThisType) {
+      toast.error(`Anda sudah melakukan absensi ${type === 'in' ? 'masuk' : type === 'out' ? 'pulang' : type.replace('_', ' ')} hari ini.`);
+      return;
+    }
+    
+    const isDocumentCapture = ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type);
+
+    if (settings?.geofenceEnabled && !isWithinRadius && !isDocumentCapture) {
+      toast.error("Anda berada di luar radius kantor!");
+      return;
+    }
+
+    if (isFakeGPS) {
+      toast.error("Aktivitas mencurigakan terdeteksi, mohon matikan Fake GPS.");
+      return;
+    }
+
+    setLoading(true);
+    let photoBase64 = null;
+    try {
+      if (method === "selfie") {
+        photoBase64 = webcamRef.current?.getScreenshot();
+        if (!photoBase64) {
+          toast.error("Gagal mengambil foto. Pastikan kamera diizinkan dan siap digunakan.");
+          setLoading(false);
+          return;
+        }
+        
+        if (!isDocumentCapture) {
+          if (user.avatarUrl) {
+            try {
+               if (!isOnline) {
+                 toast.info("Sedang offline, verifikasi wajah dilewati. Absen disimpan secara lokal.");
+               } else {
+                 toast.info("Memverifikasi wajah...");
+                 const result = await verifyFace(photoBase64, user.avatarUrl);
+                 if (result === 'NO_MATCH') {
+                    toast.error("Verifikasi Wajah Gagal. Wajah tidak cocok dengan profil Anda.");
+                    setLoading(false);
+                    return;
+                 } else if (result === 'UNAVAILABLE') {
+                    toast.info("Verifikasi wajah tidak dapat dilakukan saat ini. Melanjutkan absen...");
+                 }
+               }
+            } catch (e) {
+               console.error("Verification failed", e);
+               toast.error("Gagal verifikasi wajah, melanjutkan dengan absen biasa.");
+            }
+          } else {
+             toast.error("Profil Anda tidak memiliki foto. Tidak dapat memverifikasi wajah.");
+             setLoading(false);
+             return;
+          }
+        }
+      }
+
+      let extraDataToConfirm = extraData;
+      if (isDocumentCapture && type === 'cuti') {
+         extraDataToConfirm = `${permitStartDate ? format(permitStartDate, "yyyy-MM-dd") : ""}|${permitEndDate ? format(permitEndDate, "yyyy-MM-dd") : ""}`;
+      }
+
+      setConfirmData({ method, photoBase64, extraData: extraDataToConfirm });
+    } catch (error) {
+       console.error("Error preparing attendance:", error);
+       toast.error("Terjadi kesalahan saat memproses absensi.");
+    } finally {
+       setLoading(false);
+    }
+  };
+
+  const submitAttendance = async () => {
+    if (!user || !confirmData) return;
+    
+    setLoading(true);
+    try {
+      const now = new Date();
+      let status = "approved"; // default OK
+      
+      const shiftId = user.shiftId || "shift1";
+      const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
+      const todayWork = shift?.workDays[now.getDay()];
+
+      // Logic check for telat (late) / early leave based on shift
+      if (type === "in" && todayWork) {
+        const [startHour, startMin] = todayWork.start.split(':').map(Number);
+        const isLate = (now.getHours() > startHour) || (now.getHours() === startHour && now.getMinutes() > startMin);
+        if (isLate) {
+          status = "pending_approval";
+          toast.warning(`Anda terlambat untuk ${shift.name}. Absensi memerlukan approval.`);
+        }
+      } else if (type === "out" && todayWork) {
+        const [endHour, endMin] = todayWork.end.split(':').map(Number);
+        const isEarlyLeave = (now.getHours() < endHour) || (now.getHours() === endHour && now.getMinutes() < endMin);
+        if (isEarlyLeave) {
+          status = "pending_approval";
+          toast.warning(`Anda pulang lebih awal dari jadwal ${shift.name}.`);
+        }
+      } else if (type === "overtime_in" || type === "overtime_out") {
+        status = "pending_approval"; // Lembur perlu approval admin
+      } else if (['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type)) {
+        status = "pending_approval"; // Document captures selalu perlu approval admin
+      }
+
+      if (confirmData.method === "qr") {
+        status = "pending_approval"; // QR code attendance always requires approval
+      }
+
+      const attendanceId = `att_${Date.now()}_${user.uid}`;
+      
+      let finalPhotoData = confirmData.photoBase64 || "";
+      if (finalPhotoData.startsWith('data:image')) {
+          finalPhotoData = await uploadBase64Image(finalPhotoData, `attendance/${attendanceId}`);
+      }
+      
+      await setDoc(doc(db, "attendance", attendanceId), {
+        userId: user.uid,
+        timestamp: Date.now(),
+        type,
+        method: confirmData.method,
+        photoBase64: finalPhotoData,
+        location: location || { lat: 0, lng: 0 },
+        withinRadius: isWithinRadius,
+        extraData: confirmData.extraData || "",
+        status
+      });
+
+      const formatTypeRaw = (t: string) => {
+        if (t === 'in') return 'Masuk';
+        if (t === 'out') return 'Pulang';
+        if (t === 'overtime_in') return 'Lembur Masuk';
+        if (t === 'overtime_out') return 'Lembur Pulang';
+        if (t === 'sick') return 'Sakit';
+        if (t === 'permit') return 'Izin Biasa';
+        if (t === 'cuti') return 'Cuti';
+        if (t === 'melahirkan') return 'Cuti Melahirkan';
+        if (t === 'meninggal') return 'Izin Berduka';
+        return 'Lainnya';
+      };
+
+      toast.success(`Berhasil Absen ${formatTypeRaw(type)}${status === "pending_approval" ? " (Menunggu Approval Admin)" : ""}`);
+      if (confirmData.method === 'rfid') setRfidInput("");
+      setConfirmData(null);
+      if (view === 'absen') setView('home');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `attendance`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadIDCard = async () => {
+    if (!idCardRef.current) return;
+    try {
+      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.png`;
+      a.click();
+    } catch (e) {
+      console.error("Failed to download ID Card", e);
+      toast.error("Gagal mengunduh kartu ID");
+    }
+  };
+
+  const handleShareIDCard = async () => {
+    if (!idCardRef.current) return;
+    try {
+      const blob = await toBlob(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+      if (!blob) return;
+      const file = new File([blob], `IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `ID Card - ${user?.name}`,
+          text: "Kartu QR Code Karyawan",
+          files: [file]
+        });
+      } else {
+         handleDownloadIDCard(); // fallback
+      }
+    } catch (e) {
+      console.error("Failed to share ID Card", e);
+      toast.error("Gagal membagikan kartu ID");
+    }
+  };
+
+  const handlePrintIDCard = async () => {
+    if (!idCardRef.current) return;
+    toast.loading("Menyiapkan dokumen PDF...");
+    try {
+      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [54, 86]
+      });
+      pdf.addImage(url, 'PNG', 0, 0, 54, 86);
+      pdf.save(`IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.pdf`);
+      toast.dismiss();
+      toast.success("PDF berhasil diunduh");
+    } catch (e) {
+      toast.dismiss();
+      console.error("Failed to print/save PDF ID Card", e);
+      toast.error("Gagal membuat dokumen PDF");
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    if (!editName.trim()) {
+      toast.error("Nama tidak boleh kosong");
+      return;
+    }
+    if (user?.role === "demo" || user?.role === "demouser") {
+      toast.error("Akun demo tidak diizinkan untuk mengubah data.");
+      return;
+    }
+    
+    setIsEditSaving(true);
+    try {
+      const updateData: any = {
+        name: editName,
+        waNumber: editPhone
+      };
+      
+      if (editFaceBase64) {
+         if (editFaceBase64.startsWith('data:image')) {
+            const uploadedUrl = await uploadBase64Image(editFaceBase64, `avatars/${user.uid}`);
+            updateData.avatarUrl = uploadedUrl;
+            
+            // Try to delete old avatar if it's stored in Firebase Storage
+            if (user.avatarUrl && typeof user.avatarUrl === 'string' && user.avatarUrl.includes('firebasestorage.googleapis.com')) {
+               try {
+                  const { deleteFileFromStorage } = await import('../lib/storage');
+                  await deleteFileFromStorage(user.avatarUrl);
+               } catch (e) {
+                  console.error("Failed to delete old avatar", e);
+               }
+            }
+         } else {
+            updateData.avatarUrl = editFaceBase64;
+         }
+      }
+      
+      await setDoc(doc(db, "users", user.uid), updateData, { merge: true });
+      toast.success("Profil berhasil diperbarui");
+      setProfileTab("menu");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "users");
+    } finally {
+      setIsEditSaving(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!user || !user.email) {
+      toast.error("Email tidak ditemukan");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, user.email);
+      toast.success(`Tautan reset password telah dikirim ke ${user.email}`);
+    } catch (error) {
+      console.error("Reset password error", error);
+      toast.error("Gagal mengirim tautan reset password");
+    }
+  };
+
+  const captureEditFace = () => {
+    if (editWebcamRef.current) {
+      const src = editWebcamRef.current.getScreenshot();
+      if (src) {
+        setEditFaceBase64(src);
+        setShowFaceUpdateCam(false);
+      } else {
+        toast.error("Gagal mengambil foto");
+      }
+    }
+  };
+
+  return (
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
+      <div className="flex-1 overflow-y-auto pb-24 relative">
+        {/* Header */}
+        <div className="relative bg-teal-500 pb-20 pt-8 px-6 dark:bg-teal-800 shrink-0">
+          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px]">
+            <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-16" preserveAspectRatio="none">
+              <path fill="currentColor" className="text-gray-50 dark:text-gray-900" d="M0,192L48,208C96,224,192,256,288,245.3C384,235,480,181,576,176C672,171,768,213,864,229.3C960,245,1056,235,1152,208C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+            </svg>
+          </div>
+          <div className="relative z-10 flex justify-between items-center text-white max-w-5xl mx-auto md:px-4">
+             <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                   <p className="text-teal-100 dark:text-teal-200 text-[10px] uppercase tracking-wider font-bold">{getGreeting()},</p>
+                   {!isOnline && (
+                     <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/30 text-[8px] uppercase font-black text-white border border-amber-500/50 backdrop-blur-sm animate-pulse">
+                       <WifiOff className="w-2 h-2" /> Offline
+                     </div>
+                   )}
+                </div>
+                <h1 className="text-2xl font-bold tracking-tight mb-1.5">{user?.name}</h1>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-white text-[9px] uppercase font-bold tracking-wider shadow-sm">
+                   <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${todayStatusText.includes('Belum') ? 'bg-rose-400' : 'bg-teal-300'}`}></div>
+                   {todayStatusText}
+                </div>
+             </div>
+             {user?.avatarUrl ? (
+                <img src={user.avatarUrl} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm bg-teal-600" />
+             ) : (
+                <div className="w-12 h-12 rounded-full bg-teal-600 border-2 border-white flex items-center justify-center font-bold shadow-sm">{user?.name?.[0]}</div>
+             )}
+          </div>
+        </div>
+
+        {/* Content Area overlapped */}
+        <div className="relative z-20 px-4 -mt-12 space-y-6 w-full mx-auto">
+           {view === "home" && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
+                {pendingCount > 0 && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 px-4 py-3 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse shrink-0 drop-shadow-sm"></div>
+                      <span className="text-xs font-medium">Anda memiliki <b>{pendingCount} absen menuggu approval.</b></span>
+                    </div>
+                  </div>
+                )}
+                
+                {announcements.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {announcements.slice(0, 2).map((ann, idx) => (
+                        <div key={ann.id || idx} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-teal-50 dark:border-teal-900/50 flex gap-3">
+                           <div className={`mt-1 w-2 h-full rounded-full shrink-0 ${ann.type === 'danger' ? 'bg-rose-500' : ann.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                           <div>
+                             <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className={`text-[8px] uppercase font-black uppercase px-1.5 py-0 border-0 ${ann.type === 'danger' ? 'bg-rose-100 text-rose-700' : ann.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {ann.type === 'danger' ? 'PENTING' : ann.type === 'success' ? 'BERITA BAIK' : 'INFO'}
+                                </Badge>
+                                <span className="text-[9px] text-slate-400 font-bold">{format(new Date(ann.createdAt), 'dd MMM yyyy')}</span>
+                             </div>
+                             <h4 className="font-bold text-teal-900 dark:text-white text-sm capitalize leading-tight mb-1">{ann.title}</h4>
+                             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{ann.content}</p>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                  <Card style={{ backgroundImage: WAVE_SVG, backgroundSize: 'cover', backgroundPosition: 'bottom' }} className="relative overflow-hidden border-0 shadow-xl group rounded-3xl bg-white/90 dark:bg-gray-800/90 text-center p-6 w-full">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-5" />
+                  <div className="relative">
+                    <h2 className="text-4xl font-black text-gray-800 dark:text-gray-100 tracking-tighter leading-none mb-1">
+                      {format(currentTime, "HH:mm:ss")}
+                    </h2>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium text-sm mt-1">
+                      {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                    </p>
+                    
+                    {/* Shift Info */}
+                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col items-center">
+                      {(() => {
+                         const shiftId = user?.shiftId || "shift1";
+                         const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
+                         const todayWork = shift?.workDays[currentTime.getDay()];
+                         
+                         return (
+                           <>
+                             <div className="flex items-center gap-2 mb-1">
+                               <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase tracking-wider rounded-md">
+                                 {shift?.name || "Shift 1"}
+                               </span>
+                               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Jadwal Hari Ini:</span>
+                             </div>
+                             <p className="text-lg font-black text-slate-800 dark:text-white">
+                               {todayWork ? `${todayWork.start} - ${todayWork.end}` : "LIBUR"}
+                             </p>
+                           </>
+                         )
+                      })()}
+                    </div>
+                    
+                    <div className="mt-6 flex flex-col items-center">
+                      <div className={`flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-600 ${ (settings?.geofenceEnabled && !isWithinRadius) ? 'bg-red-50' : 'bg-green-50' }`}>
+                        <MapPin className={`w-4 h-4 ${(settings?.geofenceEnabled && !isWithinRadius) ? 'text-red-500' : 'text-green-500'}`} />
+                        <span className={`text-xs font-bold uppercase tracking-wider ${(settings?.geofenceEnabled && !isWithinRadius) ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                          {!settings?.geofenceEnabled 
+                            ? (location && distance !== null ? `Jarak: ${Math.round(distance)}m (Bebas)` : "Geofence Nonaktif")
+                            : (locationError ? "Gagal Mendapatkan Lokasi" : (location ? (distance !== null ? `Jarak: ${Math.round(distance)}m` : "Menghitung...") : "Mencari lokasi..."))}
+                        </span>
+                      </div>
+                      {location && (
+                        <div className="mt-3 text-[10px] text-slate-400 font-mono tracking-widest text-center">
+                          <p>LAT: {location.lat.toFixed(6)} | LNG: {location.lng.toFixed(6)}</p>
+                          {settings?.geofenceEnabled && (
+                             <p className="mt-1 text-slate-500 font-medium font-sans">
+                               Max Radius: {
+                                (() => {
+                                  let targetRadius = settings.radiusMeters;
+                                  if (user?.areaId && settings.areas && settings.areas[user.areaId]) {
+                                    targetRadius = settings.areas[user.areaId].radius;
+                                  } else if (!user?.areaId && settings.areas && Object.keys(settings.areas).length > 0) {
+                                    targetRadius = (Object.values(settings.areas)[0] as any).radius;
+                                  }
+                                  return targetRadius;
+                                })()
+                               } meters
+                             </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Button 
+                    onClick={() => { setType("in"); setView("absen"); }}
+                    className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-teal-500 to-emerald-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
+                  >
+                    <div className="absolute top-0 right-0 p-3 opacity-20">
+                      <AlarmClock className="w-16 h-16" />
+                    </div>
+                    <AlarmClock className="w-8 h-8 mb-2 opacity-80" />
+                    <span className="text-sm">Absen Masuk</span>
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
+                      const inLog = todayLogs.find(log => log.type === 'in');
+                      
+                      if (!inLog) {
+                        toast.error("Anda belum Absen Masuk. Tidak bisa Absen Pulang. Silakan hubungi Admin.");
+                        return;
+                      }
+                      if (inLog.status === 'pending_approval') {
+                        toast.error("Absen Masuk Anda masih menunggu Approval Admin. Tidak bisa Absen Pulang.");
+                        return;
+                      }
+                      
+                      setType("out"); 
+                      setView("absen"); 
+                    }}
+                    className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-purple-500 to-violet-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
+                  >
+                    <div className="absolute top-0 right-0 p-3 opacity-20">
+                      <DoorOpen className="w-16 h-16" />
+                    </div>
+                    <DoorOpen className="w-8 h-8 mb-2 opacity-80" />
+                    <span className="text-sm">Absen Pulang</span>
+                  </Button>
+                  <button 
+                    disabled={!canEnableOvertime}
+                    onClick={() => { setType("overtime_in"); setView("absen"); }}
+                    className="p-6 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <TrendingUp className="w-8 h-8 mb-2 opacity-80" />
+                    <span className="text-sm">Lembur Masuk</span>
+                  </button>
+                  <button 
+                    disabled={!canEnableOvertime}
+                    onClick={() => { setType("overtime_out"); setView("absen"); }}
+                    className="p-6 bg-rose-500 hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <TrendingDown className="w-8 h-8 mb-2 opacity-80" />
+                    <span className="text-sm">Lembur Pulang</span>
+                  </button>
+                  <button 
+                    onClick={() => { setView("izin_menu"); }}
+                    className="p-6 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 col-span-2"
+                  >
+                    <CalendarDays className="w-8 h-8 mb-2 opacity-80" />
+                    <span className="text-sm">Lapor Izin / Sakit / Cuti</span>
+                  </button>
+                </div>
+                </div>
+             </div>
+           )}
+
+           {view === "izin_menu" && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto">
+                <div className="flex items-center mb-6 px-2">
+                   <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                      <ArrowLeft className="w-5 h-5" />
+                   </button>
+                   <h2 className="text-xl font-bold ml-2 dark:text-gray-100">Pilih Jenis Laporan</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-4">
+                  <button 
+                    onClick={() => { setType("sick"); setView("absen"); setActiveAbsenTab("selfie"); }}
+                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
+                        <UserSquare2 className="w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-gray-900 dark:text-gray-100 font-bold">Sakit</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">Wajib lapirkan surat dokter</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+
+                  <button 
+                    onClick={() => { setType("permit"); setView("absen"); setActiveAbsenTab("selfie"); }}
+                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 rounded-xl flex items-center justify-center">
+                        <CalendarDays className="w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-gray-900 dark:text-gray-100 font-bold">Izin Biasa</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">Keperluan pribadi / mendesak</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+
+                  <button 
+                    onClick={() => { setType("cuti"); setView("absen"); setActiveAbsenTab("selfie"); }}
+                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
+                        <CalendarDays className="w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-gray-900 dark:text-gray-100 font-bold">Cuti Tahunan</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">Libur terencana tahunan</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+
+                  <button 
+                    onClick={() => { setType("melahirkan"); setView("absen"); setActiveAbsenTab("selfie"); }}
+                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400 rounded-xl flex items-center justify-center">
+                        <UserSquare2 className="w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-gray-900 dark:text-gray-100 font-bold">Cuti Melahirkan</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">Wajib lampirkan surat RS</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+
+                  <button 
+                    onClick={() => { setType("meninggal"); setView("absen"); setActiveAbsenTab("selfie"); }}
+                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl flex items-center justify-center">
+                        <UserSquare2 className="w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-gray-900 dark:text-gray-100 font-bold">Izin Berduka / Meninggal</p>
+                        <p className="text-xs text-gray-500 font-medium mt-0.5">Keluarga inti meninggal</p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  </button>
+                </div>
+             </div>
+           )}
+
+           {view === "absen" && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto">
+                <div className="flex items-center mb-2 px-2">
+                   <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                      <ArrowLeft className="w-5 h-5" />
+                   </button>
+                   <h2 className="text-xl font-bold ml-2 dark:text-gray-100">
+                      Proses Absen {type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type === 'overtime_in' ? 'Lembur Masuk' : type === 'overtime_out' ? 'Lembur Pulang' : type === 'sick' ? 'Sakit' : 'Izin'}
+                   </h2>
+                </div>
+
+                <Card className="bg-white dark:bg-gray-800 shadow-md rounded-2xl border-0">
+                  <CardContent className="p-4">
+                    <Tabs value={activeAbsenTab} onValueChange={setActiveAbsenTab} className="w-full">
+                      {!isDocumentCapture && (
+                        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg h-auto">
+                          <TabsTrigger value="selfie" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><UserSquare2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>Selfie</span></TabsTrigger>
+                          <TabsTrigger value="qr" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>QR Scan</span></TabsTrigger>
+                          <TabsTrigger value="rfid" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><Fingerprint className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>RFID</span></TabsTrigger>
+                        </TabsList>
+                      )}
+                      
+                      <TabsContent value="selfie" className="space-y-4">
+                        {isDocumentCapture && type === 'cuti' && (
+                          <div className="grid grid-cols-2 gap-2 mb-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase">Mulai</label>
+                              <Input type="date" value={permitStartDate ? format(permitStartDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitStartDate(new Date(e.target.value))} className="h-10 text-sm" />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-gray-500 uppercase">Akhir</label>
+                              <Input type="date" value={permitEndDate ? format(permitEndDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitEndDate(new Date(e.target.value))} className="h-10 text-sm" />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="aspect-square sm:aspect-video bg-gray-900 rounded-2xl overflow-hidden relative shadow-2xl border-4 border-white dark:border-gray-800">
+                          {activeAbsenTab === 'selfie' && (
+                            <Webcam
+                              key={isDocumentCapture ? 'env' : 'user'}
+                              audio={false}
+                              ref={webcamRef}
+                              screenshotFormat="image/jpeg"
+                              className={`w-full h-full object-cover ${isDocumentCapture ? '' : 'scale-x-[-1]'}`}
+                              videoConstraints={{ facingMode: isDocumentCapture ? "environment" : "user" }}
+                            />
+                          )}
+                          
+                          {/* Face Guide Overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type) ? (
+                              <div className="w-64 h-80 sm:w-80 sm:h-96 rounded-xl border-4 transition-colors duration-300 border-teal-400 border-dashed bg-white/5 flex items-center justify-center relative shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]">
+                                 <div className="absolute bottom-6 left-0 right-0 text-center mx-auto w-[90%]">
+                                     <p className="text-white text-[11px] font-bold drop-shadow-md bg-black/60 py-2 px-4 rounded-full inline-block">
+                                        Posisikan dokumen dalam bingkai
+                                     </p>
+                                 </div>
+                              </div>
+                            ) : (
+                              <div className={`w-64 h-64 sm:w-48 sm:h-48 rounded-full border-2 transition-colors duration-300 ${isFaceDetected ? 'border-teal-400 bg-teal-400/10' : 'border-white/30'} shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] flex items-center justify-center`}>
+                               {isFaceDetected ? (
+                                 <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-full h-full rounded-full border-4 border-teal-400 animate-ping opacity-30"></div>
+                                    <div className="bg-teal-500 text-white p-2 rounded-full shadow-lg">
+                                       <Check className="w-8 h-8" />
+                                    </div>
+                                 </div>
+                               ) : (
+                                 <div className="absolute inset-0 animate-[pulse_2s_infinite]">
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[105%] h-[105%] rounded-full border border-teal-400/30"></div>
+                                 </div>
+                               )}
+                               
+                               <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full backdrop-blur-md transform translate-y-32 sm:translate-y-28 transition-all duration-300 ${isFaceDetected ? 'bg-teal-500 text-white' : 'bg-gray-900/60 text-white/70'}`}>
+                                  {isFaceDetected ? "WAJAH TERDETEKSI" : "POSISIKAN WAJAH"}
+                               </div>
+                            </div>
+                            )}
+                            
+                            {/* Scanning Line only when no face detected */}
+                            {!isDocumentCapture && !isFaceDetected && (
+                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 sm:w-56 sm:h-56 pointer-events-none overflow-hidden rounded-full">
+                                <div className="absolute left-0 w-full h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_15px_rgba(45,212,191,0.5)] animate-[scan_3s_linear_infinite]" style={{ top: '-10%' }}></div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <style>{`
+                          @keyframes scan {
+                            0% { top: -10%; opacity: 0; }
+                            10% { opacity: 1; }
+                            90% { opacity: 1; }
+                            100% { top: 110%; opacity: 0; }
+                          }
+                        `}</style>
+
+                        <Button 
+                          className={`w-full text-xs font-black uppercase tracking-[0.2em] h-12 shadow-xl rounded-2xl text-white transform active:scale-95 transition-all ${type === 'in' ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/20' : type === 'overtime_in' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20' : type === 'overtime_out' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' : type === 'sick' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : type === 'permit' ? 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/20' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20'}`} 
+                          onClick={() => checkPendingAndStartAttendance("selfie")} 
+                          disabled={loading || (settings?.geofenceEnabled && !isWithinRadius && !['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type))}
+                        >
+                          {loading ? (
+                            <span className="flex items-center gap-2">
+                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                              PROSES VERIFIKASI...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type) ? <Check className="w-4 h-4" /> : isFaceDetected ? <Check className="w-4 h-4" /> : <UserSquare2 className="w-4 h-4" />}
+                              {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type) ? 'KIRIM DOKUMEN & LAPOR' : `ABSEN & ${type.includes('in') ? 'MASUK' : type.includes('out') ? 'PULANG' : 'LAPOR'}`}
+                            </span>
+                          )}
+                        </Button>
+                      </TabsContent>
+
+                      <TabsContent value="qr" className="space-y-4">
+                        <style>{`
+                          @keyframes qr-scan {
+                            0% { top: 0%; opacity: 0; }
+                            10% { opacity: 1; }
+                            90% { opacity: 1; }
+                            100% { top: 100%; opacity: 0; }
+                          }
+                        `}</style>
+                        <div className="relative w-full max-w-sm mx-auto rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 aspect-square flex flex-col items-center justify-center">
+                          <div className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-2 text-gray-400">
+                             <Code className="w-10 h-10 animate-pulse" />
+                             <span className="text-xs font-medium">Menyalakan kamera...</span>
+                          </div>
+                          
+                          <div id="qr-reader" className="w-full h-full relative z-10 [&>video]:object-cover [&>video]:w-full [&>video]:h-full border-none"></div>
+                          
+                          <div className="absolute inset-8 border-2 border-teal-500/50 rounded-lg pointer-events-none z-20 overflow-hidden shadow-[inset_0_0_0_999px_rgba(0,0,0,0.3)]">
+                            <div className="absolute left-0 w-full h-0.5 bg-teal-400 shadow-[0_0_8px_2px_rgba(45,212,191,0.7)]" style={{ animation: 'qr-scan 2.5s ease-in-out infinite' }}></div>
+                          </div>
+                        </div>
+                        <p className="text-center text-xs text-gray-500 dark:text-gray-400">Posisikan QR Code persis di dalam kotak pindaian.</p>
+                      </TabsContent>
+
+                      <TabsContent value="rfid" className="space-y-4 py-8">
+                        <div className="text-center space-y-4 max-w-[250px] mx-auto">
+                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Fingerprint className="w-8 h-8 text-gray-400 animate-pulse" />
+                          </div>
+                          <h3 className="font-medium text-gray-700 dark:text-gray-200 text-sm">Scan Kartu RFID Anda</h3>
+                          <Input 
+                            autoFocus 
+                            type="password" 
+                            placeholder="Tap kartu ke reader..." 
+                            value={rfidInput}
+                            className="text-center bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
+                            onChange={(e) => setRfidInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") checkPendingAndStartAttendance("rfid", rfidInput);
+                            }}
+                          />
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+             </div>
+           )}
+
+           {view === "history" && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-3xl mx-auto">
+                <h2 className="text-xl font-bold px-2 flex items-center gap-2 dark:text-gray-100">
+                  <CalendarDays className="w-5 h-5 text-teal-600 dark:text-teal-400" /> Rekap Kehadiran
+                </h2>
+                
+                <h2 className="text-xl font-bold px-2 flex items-center gap-2 dark:text-gray-100 mb-2 mt-4">
+                  <CalendarDays className="w-5 h-5 text-teal-600 dark:text-teal-400" /> Ringkasan Bulan Ini
+                </h2>
+                <div className="grid grid-cols-5 gap-2 mb-4">
+                   <div className="bg-teal-50 dark:bg-teal-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                      <span className="text-lg font-bold text-teal-600 dark:text-teal-400">{summary.hadirCount}</span>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-teal-700/60 dark:text-teal-500">Hadir</span>
+                   </div>
+                   <div className="bg-yellow-50 dark:bg-yellow-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                      <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{summary.telatCount}</span>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-yellow-700/60 dark:text-yellow-500">Telat</span>
+                   </div>
+                   <div className="bg-blue-50 dark:bg-blue-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{summary.ijinCount}</span>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-blue-700/60 dark:text-blue-500">Ijin</span>
+                   </div>
+                   <div className="bg-red-50 dark:bg-red-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                      <span className="text-lg font-bold text-red-600 dark:text-red-400">{summary.alpaCount}</span>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-red-700/60 dark:text-red-500">Alpa</span>
+                   </div>
+                   <div className="bg-amber-50 dark:bg-amber-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                      <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{summary.lemburHours.toFixed(1)}</span>
+                      <span className="text-[9px] uppercase tracking-wider font-bold text-amber-700/60 dark:text-amber-500">Jam Lmbr</span>
+                   </div>
+                </div>
+
+                <div className="flex overflow-x-auto gap-3 py-4 px-2 -mx-2 mb-4 scrollbar-hide snap-x">
+                    {eachDayOfInterval({ start: subDays(new Date(), 14), end: new Date() }).reverse().map(date => {
+                       const isSelected = isSameDay(date, selectedDate);
+                       const holiday = isHoliday(date);
+                       const sunday = isSunday(date);
+                       const saturday = isSaturday(date);
+                       
+                       let baseClass = 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300';
+                       if (holiday) baseClass = 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400';
+                       else if (sunday) baseClass = 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400';
+                       else if (saturday) baseClass = 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400';
+                       
+                       let selectedClass = 'bg-teal-500 text-white shadow-lg shadow-teal-500/30';
+                       if (holiday) selectedClass = 'bg-purple-500 text-white shadow-lg shadow-purple-500/30';
+                       else if (sunday) selectedClass = 'bg-red-500 text-white shadow-lg shadow-red-500/30';
+                       else if (saturday) selectedClass = 'bg-blue-500 text-white shadow-lg shadow-blue-500/30';
+
+                       return (
+                          <button
+                              key={date.toString()}
+                              onClick={() => setSelectedDate(date)}
+                              className={`flex flex-col items-center justify-center p-2 rounded-[2rem] min-w-[65px] transition-all duration-300 snap-center relative focus:outline-none ${isSelected ? 'min-h-[90px] scale-110 z-10 ' + selectedClass : 'min-h-[75px] scale-100 opacity-90 hover:opacity-100 ' + baseClass}`}
+                          >
+                              <span className={`text-[10px] font-bold uppercase mb-1 ${isSelected ? 'opacity-90' : 'opacity-70'}`}>{format(date, "EEE", { locale: id })}</span>
+                              <span className={`text-xl font-black ${isSelected ? 'scale-110' : ''}`}>{format(date, "dd")}</span>
+                          </button>
+                       );
+                    })}
+                </div>
+
+                {((): any => {
+                   const filteredHistory = myHistory.filter(log => isSameDay(new Date(log.timestamp), selectedDate));
+                   if (filteredHistory.length === 0) {
+                      return (
+                        <Card className="bg-white dark:bg-gray-800 shadow-sm border-0">
+                          <CardContent className="p-8 text-center text-gray-500 dark:text-gray-400">
+                             Tidak ada riwayat absensi di tanggal {format(selectedDate, "dd MMM yyyy", { locale: id })}.
+                          </CardContent>
+                        </Card>
+                      );
+                   }
+                   return (
+                      <div className="space-y-3 pb-8">
+                        {filteredHistory.map((log) => (
+                          <Card key={log.id} className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden">
+                            <div className="flex p-4 items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${log.type === 'in' ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400' : log.type === 'overtime_in' ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : log.type === 'overtime_out' ? 'bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400' : ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? 'bg-cyan-50 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400' : 'bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400'}`}>
+                                  {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? <UserSquare2 className="w-5 h-5"/> : (log.type === 'in' || log.type === 'overtime_in') ? <Briefcase className="w-5 h-5"/> : <LogOut className="w-5 h-5"/>}
+                                </div>
+                                <div>
+                                   <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
+                                     {log.type === 'in' ? 'Masuk' : log.type === 'out' ? 'Pulang' : log.type === 'overtime_in' ? 'Lembur Msk' : log.type === 'overtime_out' ? 'Lembur Plg' : log.type === 'sick' ? 'Sakit' : log.type === 'permit' ? 'Izin Biasa' : log.type === 'cuti' ? 'Cuti' : log.type === 'melahirkan' ? 'Cuti Hamil' : log.type === 'meninggal' ? 'Berduka' : log.type}
+                                   </p>
+                                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">{format(new Date(log.timestamp), "dd MMM yyyy")}</p>
+                                </div>
+                              </div>
+                              <div className="text-right flex flex-col items-end">
+                                 <p className="text-lg font-bold text-gray-800 dark:text-gray-100 tracking-tight">{format(new Date(log.timestamp), "HH:mm")}</p>
+                                 <div className="flex items-center gap-1 mt-1">
+                                   {log.isPending && (
+                                     <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 text-[8px] uppercase font-bold animate-pulse">
+                                       <Activity className="w-2 h-2" /> Syncing
+                                     </span>
+                                   )}
+                                   {log.status === "pending_approval" && <span className="inline-block px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 text-[8px] uppercase font-bold">Pending</span>}
+                                   {log.status === "rejected" && <span className="inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[8px] uppercase font-bold">Ditolak</span>}
+                                   <span className="inline-block px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-[9px] uppercase font-bold text-gray-600 dark:text-gray-300">
+                                      {log.method}
+                                   </span>
+                                 </div>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                   );
+                })()}
+
+             </div>
+           )}
+
+           {view === "notifications" && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-xl mx-auto mb-24">
+                <div className="flex items-center justify-between px-2 mb-4">
+                   <h2 className="text-xl font-bold dark:text-gray-100 flex items-center gap-2">
+                     <Bell className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                     Notifikasi In-App & Push
+                   </h2>
+                </div>
+                
+                <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-white/50 dark:border-gray-700 shadow-xl overflow-hidden rounded-3xl p-6 relative">
+                   <div className="space-y-3">
+                      <p className="text-sm font-bold text-teal-700 dark:text-teal-300 uppercase tracking-widest">Notifikasi Terbaru</p>
+                      {appNotifications.length === 0 ? (
+                         <div className="text-center py-10 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                           <Bell className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                           <p className="text-xs font-bold text-slate-400">Belum ada notifikasi.</p>
+                         </div>
+                      ) : (
+                         appNotifications.map((notif: any) => (
+                           <div key={notif.id} onClick={async () => {
+                             if (!notif.read) {
+                               try {
+                                  await updateDoc(doc(db, "notifications", notif.id), { read: true });
+                               } catch (e) {
+                                  console.error("Gagal update notifikasi", e);
+                               }
+                             }
+                           }} className={`p-4 rounded-2xl border transition-all cursor-pointer ${notif.read ? 'bg-gray-50/50 dark:bg-gray-800/30 border-transparent opacity-70' : 'bg-white dark:bg-gray-800 border-teal-100 dark:border-teal-900/50 shadow-sm'}`}>
+                              <div className="flex justify-between items-start mb-1">
+                                <h4 className={`text-sm ${notif.read ? 'font-medium' : 'font-bold'} text-gray-900 dark:text-white`}>{notif.title}</h4>
+                                <span className="text-[9px] text-slate-400 font-bold ml-2 shrink-0">{format(new Date(notif.createdAt), "dd MMM HH:mm")}</span>
+                              </div>
+                              <p className={`text-xs ${notif.read ? 'text-slate-500' : 'text-slate-600 dark:text-slate-300'}`}>{notif.body}</p>
+                           </div>
+                         ))
+                      )}
+                   </div>
+                </Card>
+             </div>
+           )}
+
+           {view === "profile" && (
+             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-xl mx-auto">
+                {profileTab === "menu" && (
+                  <>
+                    <h2 className="text-xl font-bold px-2 dark:text-gray-100 flex items-center gap-2">
+                      <User className="w-5 h-5 text-teal-600 dark:text-teal-400" /> Profil Saya
+                    </h2>
+
+                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50">
+                       <button 
+                         onClick={() => setProfileTab('edit-profile')}
+                         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                       >
+                         <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                            <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-900/40 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                               <Edit className="w-4 h-4" />
+                            </div>
+                            Edit Profil & Wajah
+                         </div>
+                         <ChevronRight className="w-4 h-4 text-gray-400" />
+                       </button>
+
+                       <button 
+                         onClick={() => setProfileTab('id-card')}
+                         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                       >
+                         <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                            <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/40 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                               <IdCard className="w-4 h-4" />
+                            </div>
+                            ID Card Karyawan
+                         </div>
+                         <ChevronRight className="w-4 h-4 text-gray-400" />
+                       </button>
+                    </Card>
+
+                    <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 py-1 mt-4">Pengaturan</div>
+                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50">
+                       <button 
+                         onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                       >
+                         <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4 text-indigo-500" />}
+                            </div>
+                            {theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
+                         </div>
+                       </button>
+
+                       {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'demo') && (
+                         <button 
+                           onClick={() => navigate('/dashboard')}
+                           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                         >
+                           <div className="flex items-center gap-3 text-sm font-semibold text-teal-600 dark:text-teal-400">
+                              <div className="w-8 h-8 rounded-full bg-teal-50 dark:bg-teal-900/40 flex items-center justify-center">
+                                 <SettingsIcon className="w-4 h-4" />
+                              </div>
+                              Admin Dashboard
+                           </div>
+                         </button>
+                       )}
+
+                       <button 
+                         onClick={() => auth.signOut()}
+                         className="w-full flex items-center justify-between p-4 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                       >
+                         <div className="flex items-center gap-3 text-sm font-semibold text-red-500">
+                            <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500">
+                               <LogOut className="w-4 h-4" />
+                            </div>
+                            Keluar
+                         </div>
+                       </button>
+                    </Card>
+
+                    <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 py-1 mt-4">Sistem</div>
+                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50 p-4">
+                        <button 
+                          onClick={async () => {
+                             if (!settings?.fcmVapidKey) {
+                               toast.error("VAPID Key belum dikonfigurasi oleh Admin di Dashboard.");
+                               return;
+                             }
+                             toast.loading("Meminta izin push notification...");
+                             const token = await requestFCMPermission(settings.fcmVapidKey);
+                             toast.dismiss();
+                             if (token) {
+                                try {
+                                  await updateDoc(doc(db, "users", user.uid), { fcmToken: token });
+                                  toast.success("FCM Berhasil dikonfigurasi!", { description: "Notifikasi telah aktif." });
+                                } catch (e) {
+                                  toast.error("Gagal menyimpan token FCM ke database.");
+                                }
+                             } else {
+                                toast.error("Gagal meminta izin FCM. Pastikan browser mendukung push, tidak diblokir, dan Anda tidak berada di dalam iFrame (gunakan new tab/PWA).");
+                             }
+                          }}
+                          className="w-full flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
+                             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                <Bell className="w-4 h-4" />
+                             </div>
+                             <div className="text-left py-2">
+                               <div>Aktifkan Notifikasi</div>
+                               <div className="text-xs text-gray-400 font-normal">Push notification (FCM)</div>
+                             </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                        </button>
+                    </Card>
+                  </>
+                )}
+
+                {profileTab === "id-card" && (
+                  <div className="space-y-4 animate-in fade-in">
+                    <div className="flex items-center justify-between mb-4 px-2">
+                       <div className="flex items-center">
+                          <button onClick={() => setProfileTab('menu')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                             <ArrowLeft className="w-5 h-5" />
+                          </button>
+                          <h2 className="text-xl font-bold ml-2 dark:text-gray-100">ID Card Karyawan</h2>
+                       </div>
+                       <Button variant="ghost" size="sm" className="text-teal-600 font-bold" onClick={() => setIdCardSide(idCardSide === 'front' ? 'back' : 'front')}>
+                          {idCardSide === 'front' ? 'Lihat Belakang' : 'Lihat Depan'}
+                       </Button>
+                    </div>
+
+                    {/* Portrait Name Tag ID Card */}
+                    <div 
+                      className="relative mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl bg-white w-full max-w-[320px] aspect-[1/1.75] border-2 border-slate-100 dark:border-gray-800 transition-all duration-500 transform" 
+                      ref={idCardRef}
+                      onClick={() => setIdCardSide(idCardSide === 'front' ? 'back' : 'front')}
+                    >
+                      {/* Dominant Tosca Abstract Wave Background */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-teal-500 to-teal-800"></div>
+                      
+                      {/* Decorative Circles */}
+                      <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                      <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-teal-300/10 rounded-full blur-3xl"></div>
+
+                      <div className="relative z-10 w-full h-full flex flex-col items-center px-6 pt-6 pb-10 text-center">
+                         {idCardSide === 'front' ? (
+                            <div className="flex flex-col items-center w-full h-full animate-in slide-in-from-right-2 duration-300">
+                               {/* Header Logo */}
+                               <div className="mb-8 flex flex-col items-center justify-center gap-3 mt-4">
+                                 {settings?.appLogoUrl ? (
+                                    <img src={settings.appLogoUrl} alt="Logo" className="w-14 h-14 object-contain shadow-md filter brightness-0 invert" />
+                                 ) : (
+                                    <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner">
+                                       <Activity className="w-8 h-8 text-white drop-shadow-md" />
+                                    </div>
+                                 )}
+                                 <span className="text-2xl font-black text-white tracking-[0.1em] uppercase drop-shadow-sm">{settings?.appName || "FMI"}</span>
+                               </div>
+
+                               {/* Photo Section */}
+                               <div className="relative mb-8 group">
+                                  <div className="absolute inset-0 bg-white/30 rounded-[3rem] blur-2xl opacity-60 transform scale-110"></div>
+                                  <div className="relative w-44 h-44 rounded-[3rem] bg-white border-4 border-white/40 shadow-2xl overflow-hidden flex items-center justify-center">
+                                     {user?.avatarUrl ? (
+                                        <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                     ) : (
+                                        <span className="font-black text-teal-400 text-8xl">{user?.name?.[0]}</span>
+                                      )}
+                                  </div>
+                               </div>
+
+                               {/* Info Section */}
+                               <div className="mt-2 space-y-3 w-full">
+                                  <div className="space-y-1">
+                                    <h2 className="text-3xl font-black text-white uppercase tracking-tight leading-tight drop-shadow-md">{user?.name}</h2>
+                                    <div className="h-1 w-12 bg-teal-300 mx-auto rounded-full opacity-60"></div>
+                                  </div>
+                                  
+                                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20 shadow-lg">
+                                    <p className="text-[14px] font-black text-teal-50 uppercase tracking-[0.3em] mb-1">{user?.role}</p>
+                                    <div className="flex items-center justify-center gap-2">
+                                       <span className="text-[11px] font-bold text-teal-200/80 uppercase tracking-widest">ID: {user?.uniqueId}</span>
+                                       <span className="text-teal-400/50">•</span>
+                                       <div className="flex items-center gap-1.5">
+                                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: user?.shiftId ? resolvedShifts[user.shiftId]?.color || '#fff' : '#fff' }}></div>
+                                          <p className="text-[11px] font-bold text-teal-200/80 uppercase tracking-widest">
+                                            {user?.shiftId ? resolvedShifts[user.shiftId]?.name || "CUSTOM" : "NO SHIFT"}
+                                          </p>
+                                       </div>
+                                    </div>
+                                  </div>
+                               </div>
+
+                               <div className="mt-auto pb-4">
+                                  <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.5em]">EMPLOYEE IDENTIFICATION</p>
+                               </div>
+                            </div>
+                         ) : (
+                            <div className="flex flex-col items-center w-full h-full py-8 animate-in slide-in-from-left-2 duration-300">
+                               <div className="mb-8">
+                                  <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4"></div>
+                                  <h3 className="text-xl font-black text-white uppercase tracking-widest">VERIFIKASI</h3>
+                               </div>
+
+                               {/* Large QR Code */}
+                               <div className="bg-white p-6 rounded-[3rem] shadow-2xl border-8 border-teal-400/20 flex flex-col items-center mb-8 transform hover:scale-105 transition-transform duration-300">
+                                  <QRCodeCanvas value={user?.uid || "unknown"} size={180} level="H" className="mb-4" includeMargin={false} />
+                                  <div className="flex items-center gap-2 px-4 py-1 bg-teal-50 rounded-full">
+                                    <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></div>
+                                    <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest">VALID IDENTITY</p>
+                                  </div>
+                               </div>
+
+                               {/* Instructions */}
+                               <div className="mt-4 px-4 space-y-4">
+                                  <div className="p-4 bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 text-center">
+                                    <p className="text-[11px] font-bold text-teal-50 leading-relaxed uppercase tracking-wider">
+                                       Scan kode QR di atas menggunakan aplikasi Scanner di POS Kehadiran untuk melakukan absensi secara otomatis.
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="pt-4 border-t border-white/10">
+                                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.3em] leading-loose">
+                                       KARTU INI MERUPAKAN PROPERTI PERUSAHAAN.<br/>
+                                       JIKA MENEMUKAN KARTU INI, MOHON KEMBALIKAN KE HRD {settings?.appName || "FMI"}.
+                                    </p>
+                                  </div>
+                               </div>
+
+                               <div className="mt-auto pb-2">
+                                  <div className="flex items-center gap-2 opacity-30">
+                                    <Activity className="w-4 h-4 text-white" />
+                                    <span className="text-[10px] font-black text-white tracking-tighter uppercase">{settings?.appName || "FMI"} SYSTEM</span>
+                                  </div>
+                               </div>
+                            </div>
+                         )}
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-2 pt-4 px-2">
+                       <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-teal-100 text-teal-700 bg-teal-50 hover:bg-teal-100 dark:bg-gray-800 dark:border-gray-700 dark:text-teal-400" onClick={handleShareIDCard}>
+                          <Share2 className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Bagikan</span>
+                       </Button>
+                       <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-purple-100 text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-gray-800 dark:border-gray-700 dark:text-purple-400" onClick={handleDownloadIDCard}>
+                          <Download className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Unduh</span>
+                       </Button>
+                       <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-blue-100 text-blue-700 bg-blue-50 hover:bg-blue-100 dark:bg-gray-800 dark:border-gray-700 dark:text-blue-400" onClick={handlePrintIDCard}>
+                          <Printer className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Cetak PDF</span>
+                       </Button>
+                    </div>
+                  </div>
+                )}
+
+                {profileTab === "edit-profile" && (
+                  <div className="space-y-6 animate-in fade-in">
+                    <div className="flex items-center mb-2 px-2">
+                       <button onClick={() => setProfileTab('menu')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                          <ArrowLeft className="w-5 h-5" />
+                       </button>
+                       <h2 className="text-xl font-bold ml-2 dark:text-gray-100">Edit Profilku</h2>
+                    </div>
+
+                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-2xl p-5 space-y-5">
+                       {/* Face / Avatar Update */}
+                       <div className="flex flex-col items-center">
+                          {showFaceUpdateCam ? (
+                            <div className="w-full flex flex-col items-center gap-3">
+                               <div className="w-48 h-48 rounded-full overflow-hidden border-4 border-teal-500 relative">
+                                  <Webcam
+                                    audio={false}
+                                    ref={editWebcamRef}
+                                    screenshotFormat="image/jpeg"
+                                    className="w-full h-full object-cover scale-x-[-1]"
+                                    videoConstraints={{ facingMode: "user" }}
+                                  />
+                               </div>
+                               <div className="flex gap-2 w-full">
+                                  <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowFaceUpdateCam(false)}>Batal</Button>
+                                  <Button className="flex-1 rounded-xl bg-teal-600 hover:bg-teal-700 text-white" onClick={captureEditFace}>Ambil Foto</Button>
+                               </div>
+                            </div>
+                          ) : (
+                            <div className="relative group cursor-pointer" onClick={() => setShowFaceUpdateCam(true)}>
+                               <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-xl bg-teal-100 flex items-center justify-center">
+                                  {editFaceBase64 ? (
+                                    <img src={editFaceBase64} alt="New Avatar" className="w-full h-full object-cover" />
+                                  ) : user?.avatarUrl ? (
+                                    <img src={user.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="font-black text-teal-400 text-3xl">{user?.name?.[0]}</span>
+                                  )}
+                               </div>
+                               <div className="absolute bottom-0 right-0 w-8 h-8 bg-teal-500 text-white rounded-full flex items-center justify-center shadow-lg border-2 border-white pointer-events-none">
+                                  <Camera className="w-4 h-4" />
+                               </div>
+                            </div>
+                          )}
+                          {!showFaceUpdateCam && <p className="text-xs text-gray-500 font-medium mt-3 text-center">Ketuk foto untuk memperbarui<br/>verifikasi wajah Anda.</p>}
+                       </div>
+
+                       <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                          <div className="space-y-1.5">
+                             <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1">Nama Lengkap</label>
+                             <Input 
+                               value={editName}
+                               onChange={(e) => setEditName(e.target.value)}
+                               className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
+                               placeholder="Masukkan nama"
+                             />
+                          </div>
+
+                          <div className="space-y-1.5">
+                             <label className="text-xs font-bold text-gray-500 uppercase tracking-widest pl-1 flex items-center gap-1.5">
+                                <Phone className="w-3.5 h-3.5" /> Nomor WhatsApp
+                             </label>
+                             <Input 
+                               value={editPhone}
+                               onChange={(e) => setEditPhone(e.target.value)}
+                               className="h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
+                               placeholder="081234567890"
+                               type="tel"
+                             />
+                          </div>
+                          
+                          <div className="pt-2">
+                             <Button 
+                               variant="outline" 
+                               onClick={handleResetPassword}
+                               className="w-full h-12 rounded-xl border-dashed border-orange-200 text-orange-600 hover:bg-orange-50 hover:text-orange-700 items-center justify-start gap-3 px-4 font-semibold"
+                             >
+                                <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                                   <Key className="w-3 h-3" />
+                                </div>
+                                Reset Password
+                             </Button>
+                             <p className="text-[10px] text-gray-400 mt-1.5 pl-1 leading-tight text-center">Tautan untuk membuat ulang password akan dikirimkan ke email <b>{user?.email}</b></p>
+                          </div>
+                       </div>
+
+                       <Button 
+                         className="w-full h-14 rounded-2xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-xl shadow-teal-500/20 mt-6"
+                         onClick={handleSaveProfile}
+                         disabled={isEditSaving}
+                       >
+                         {isEditSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+                       </Button>
+                    </Card>
+                  </div>
+                )}
+             </div>
+           )}
+        </div>
+      </div>
+
+      {confirmData && (
+        <div className="absolute inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+           <Card className="w-full max-w-sm bg-white dark:bg-gray-800 shadow-2xl rounded-3xl overflow-hidden border-0 animate-in slide-in-from-bottom-8 zoom-in-95 duration-300">
+              <div className="p-6 text-center">
+                 <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/40 rounded-full flex items-center justify-center mx-auto mb-4 text-teal-600 dark:text-teal-400">
+                    <UserSquare2 className="w-8 h-8" />
+                 </div>
+                 <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">Konfirmasi Absen</h3>
+                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">Apakah Anda yakin ingin mengirim absen {type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type.replace('_', ' ')} ini ke server?</p>
+                 
+                 {confirmData.photoBase64 && (
+                   <div className="mb-6 rounded-xl overflow-hidden border-2 border-gray-100 dark:border-gray-700 shadow-inner">
+                      <img src={confirmData.photoBase64} alt="Captured Selfie" className="w-full h-auto" />
+                   </div>
+                 )}
+
+                 <div className="flex gap-3">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 rounded-xl h-12 text-sm font-bold bg-white dark:bg-gray-800"
+                      onClick={() => setConfirmData(null)}
+                      disabled={loading}
+                    >
+                      Batal
+                    </Button>
+                    <Button 
+                      className="flex-1 rounded-xl h-12 text-sm font-bold bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-lg shadow-teal-500/30"
+                      onClick={submitAttendance}
+                      disabled={loading}
+                    >
+                      {loading ? 'Mengirim...' : 'Kirim Absen'}
+                    </Button>
+                 </div>
+              </div>
+           </Card>
+        </div>
+      )}
+
+      <FloatingNav view={view} setView={setView} setProfileTab={setProfileTab} unreadCount={appNotifications.filter(n => !n.read).length} />
+    </div>
+  );
+}

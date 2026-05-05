@@ -1,0 +1,166 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function isDemo() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "demo"; }
+    function isSuperAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "superadmin"; }
+    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["superadmin", "admin"]; }
+    function isAdminOrDemo() { return isAdmin() || isDemo(); }
+    function isBanned() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("isBanned", false) == true; }
+    function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Validation Helpers
+    function isValidUser(data) {
+      return data.uid is string && data.uid.size() <= 128 &&
+             data.email is string && data.email.size() <= 256 &&
+             data.name is string && data.name.size() <= 256 &&
+             data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"] && 
+             data.createdAt is number && 
+             data.avatarUrl is string && data.avatarUrl.size() <= 2048 &&
+             data.shiftId is string && data.shiftId.size() <= 128 &&
+             data.uniqueId is string && data.uniqueId.size() <= 128 &&
+             (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
+             (!('isBanned' in data) || data.isBanned is bool) &&
+             (!('rfid' in data) || data.rfid == null || (data.rfid is string && data.rfid.size() <= 128)) &&
+             (!('fcmToken' in data) || data.fcmToken is string) &&
+             (!('waNumber' in data) || data.waNumber == null || (data.waNumber is string && data.waNumber.size() <= 20));
+    }
+
+    function isValidAttendance(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.timestamp is number &&
+             data.type is string && data.type in ["in", "out", "overtime_in", "overtime_out", "sick", "permit", "cuti", "melahirkan", "meninggal"] &&
+             data.method is string && data.method in ["selfie", "qr", "rfid", "admin"] &&
+             data.status is string && data.status in ["approved", "pending_approval", "rejected"] &&
+             data.photoBase64 is string && data.photoBase64.size() <= 2000000 &&
+             (!('extraData' in data) || data.extraData == null || (data.extraData is string && data.extraData.size() <= 256)) &&
+             (!('location' in data) || data.location == null || (data.location is map)) &&
+             (!('withinRadius' in data) || data.withinRadius == null || data.withinRadius is bool);
+    }
+
+    function isValidLeaveRequest(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.startDate is number &&
+             data.endDate is number &&
+             data.type is string && data.type.size() <= 128 &&
+             data.status is string && data.status in ["pending", "approved", "rejected"] &&
+             data.notes is string && data.notes.size() <= 2048;
+    }
+
+    function isValidPayrollRecord(data) {
+      return data.userId is string && data.userId.size() <= 128 &&
+             data.month is number &&
+             data.year is number &&
+             data.salaryAmount is number &&
+             data.status is string && data.status.size() <= 64;
+    }
+    
+    function isValidSettings(data) {
+      return (!('geofenceEnabled' in data) || data.geofenceEnabled is bool) &&
+             (!('officeLat' in data) || data.officeLat is number) &&
+             (!('officeLng' in data) || data.officeLng is number) &&
+             (!('radiusMeters' in data) || data.radiusMeters is number) &&
+             (!('shiftStart' in data) || (data.shiftStart is string && data.shiftStart.size() <= 16)) &&
+             (!('shiftEnd' in data) || (data.shiftEnd is string && data.shiftEnd.size() <= 16));
+    }
+
+    function isValidIdRef(data) {
+      return data.used is bool &&
+             (!('usedBy' in data) || data.usedBy == null || (data.usedBy is string && data.usedBy.size() <= 128)) &&
+             (!('usedAt' in data) || data.usedAt == null || data.usedAt is number) &&
+             (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"])) &&
+             (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
+             (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128));
+    }
+
+    // Default Deny All
+    match /{document=**} { allow read, write: if false; }
+
+    // Users Collection
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdminOrDemo());
+      allow list: if isAdminOrDemo();
+      allow create: if isValidId(userId) && isOwner(userId) && isValidUser(incoming()) && incoming().uid == userId;
+      allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
+                    (
+                      (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken']) && incoming().uid == existing().uid) ||
+                      (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'isBanned', 'rfid', 'fcmToken']) && incoming().uid == existing().uid)
+                    );
+      allow delete: if isValidId(userId) && isSuperAdmin();
+    }
+
+    // Attendance Collection
+    match /attendance/{attendanceId} {
+      allow get: if isValidId(attendanceId) && (isOwner(resource.data.userId) || isAdminOrDemo());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
+      allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && incoming().userId == request.auth.uid &&
+                    exists(/databases/$(database)/documents/users/$(incoming().userId));
+      allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+    }
+
+    // LeaveRequests Collection
+    match /leaveRequests/{requestId} {
+      allow get: if isValidId(requestId) && (isOwner(resource.data.userId) || isAdminOrDemo());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
+      allow create: if isValidId(requestId) && isSignedIn() && !isBanned() && isValidLeaveRequest(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if isValidId(requestId) && isAdmin() && isValidLeaveRequest(incoming());
+    }
+
+    // Payroll Collection
+    match /payroll/{payrollId} {
+      allow get: if isValidId(payrollId) && (isOwner(resource.data.userId) || isAdminOrDemo());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
+      allow write: if isValidId(payrollId) && isAdmin() && isValidPayrollRecord(incoming());
+    }
+
+    // Settings Collection
+    match /settings/global {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSettings(incoming());
+    }
+
+    // Admins Collection
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && isAdminOrDemo();
+      allow list: if isAdminOrDemo();
+      allow write: if false; // Manually added
+    }
+
+    // Announcements Collection
+    match /announcements/{announcementId} {
+      allow get: if isValidId(announcementId) && isSignedIn();
+      allow list: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Notifications Collection
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all");
+      allow list: if isSignedIn() && resource.data.userId in [request.auth.uid, "all"];
+      allow create: if isAdmin() && isValidId(notificationId);
+      allow update: if isValidId(notificationId) && isSignedIn() && resource.data.userId in [request.auth.uid, "all"] && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin() && isValidId(notificationId);
+    }
+
+
+    // IdRefs Collection
+    match /idRefs/{refId} {
+      allow get: if isValidId(refId); 
+      allow list: if isAdminOrDemo();
+      allow create: if isValidId(refId) && isAdmin() && isValidIdRef(incoming());
+      allow delete: if isValidId(refId) && isAdmin();
+      allow update: if isValidId(refId) && isSignedIn() && isValidIdRef(incoming()) &&
+                    (
+                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'shiftId', 'areaId'])) ||
+                       (!existing().used && incoming().used == true && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt']))
+                    );
+    }
+  }
+}

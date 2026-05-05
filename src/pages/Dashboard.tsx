@@ -1,0 +1,1530 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { useAuth } from "../contexts/AuthContext";
+import { useSettings } from "../lib/settingsObject";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Switch } from "../components/ui/switch";
+import { Label } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "../components/ui/dialog";
+import { toast } from "sonner";
+import { toPng } from "html-to-image";
+import { format } from "date-fns";
+import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban } from "lucide-react";
+
+import { QRCodeSVG } from 'qrcode.react';
+import { WaveBackground } from "../components/WaveBackground";
+import { SHIFTS } from "../constants";
+import { PerformanceAnalytics } from "../components/Analytics";
+import { MapPicker } from "../components/MapPicker";
+import { BankingStyleDashboardCards } from "../components/BankingStyleDashboardCards";
+import { uploadFileToStorage, deleteFileFromStorage } from "../lib/storage";
+
+export default function Dashboard() {
+  const { user } = useAuth();
+  const settings = useSettings();
+  const navigate = useNavigate();
+
+  const [attendances, setAttendances] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<any[]>([]);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+
+  // Print context
+  const [selectedUserForCard, setSelectedUserForCard] = useState<any | null>(null);
+
+  // Filter based on area 
+  const filteredUsersList = user?.role === 'superadmin' 
+    ? usersList 
+    : usersList.filter(u => u.areaId === user?.areaId || (!u.areaId && !user?.areaId));
+  
+  const filteredUsersRecordIds = new Set(filteredUsersList.map(u => u.uid || u.id));
+  const filteredAttendances = user?.role === 'superadmin'
+    ? attendances
+    : attendances.filter(a => filteredUsersRecordIds.has(a.userId));
+
+  const pendingApprovalsCount = filteredAttendances.filter(log => log.status === 'pending_approval').length;
+
+  useEffect(() => {
+    if (pendingApprovalsCount > 0) {
+      toast.info(`Terdapat ${pendingApprovalsCount} absensi yang menunggu persetujuan.`, { 
+        id: 'pending-approvals',
+        duration: 20000,
+      });
+    } else {
+      toast.dismiss('pending-approvals');
+    }
+  }, [pendingApprovalsCount]);
+
+  // Settings forms
+  const [radiusInput, setRadiusInput] = useState(100);
+  const [latInput, setLatInput] = useState(-6.2088);
+  const [lngInput, setLngInput] = useState(106.8456);
+  const [shiftStartInput, setShiftStartInput] = useState("09:00");
+  const [shiftEndInput, setShiftEndInput] = useState("17:00");
+  const [appNameInput, setAppNameInput] = useState("ABSENKU");
+  const [appLogoUrlInput, setAppLogoUrlInput] = useState("");
+  const [fcmVapidKeyInput, setFcmVapidKeyInput] = useState("");
+  const [shiftsInput, setShiftsInput] = useState<any>({});
+  const [holidaysInput, setHolidaysInput] = useState<string[]>([]);
+  const [areasInput, setAreasInput] = useState<any>({});
+  const [newAreaLatInput, setNewAreaLatInput] = useState("-6.2088");
+  const [newAreaLngInput, setNewAreaLngInput] = useState("106.8456");
+  const [newArea, setNewArea] = useState({ name: "", radius: 100 });
+  const [newHoliday, setNewHoliday] = useState("");
+  const [idRefsList, setIdRefsList] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.role === "superadmin" || user?.role === "admin" || user?.role === "demo") {
+      const q = query(collection(db, "idRefs"), orderBy("createdAt", "desc"));
+      const unsub = onSnapshot(q, (snapshot) => {
+        setIdRefsList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+
+      const q2 = query(collection(db, "announcements"), orderBy("createdAt", "desc"));
+      const unsub2 = onSnapshot(q2, (snapshot) => {
+        setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      });
+
+      return () => {
+         unsub();
+         unsub2();
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (settings) {
+      setRadiusInput(settings.radiusMeters);
+      setLatInput(settings.officeLat);
+      setLngInput(settings.officeLng);
+      setShiftStartInput(settings.shiftStart || "09:00");
+      setShiftEndInput(settings.shiftEnd || "17:00");
+      setAppNameInput(settings.appName || "ABSENKU");
+      setAppLogoUrlInput(settings.appLogoUrl || "");
+      setFcmVapidKeyInput(settings.fcmVapidKey || "");
+      setShiftsInput(settings.shifts && Object.keys(settings.shifts).length > 0 ? settings.shifts : SHIFTS);
+      setHolidaysInput(settings.holidays || []);
+      setAreasInput(settings.areas || {});
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    const q = query(collection(db, "attendance"), orderBy("timestamp", "desc"), limit(50));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAttendances(data);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, "attendance");
+    });
+    
+    // Admin list user roles
+    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+      const uData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsersList(uData);
+    }, (error) => {
+       console.log('Cant list users', error);
+    });
+
+    return () => { unsub(); unsubUsers(); };
+  }, []);
+
+  const toggleGeofence = async (checked: boolean) => {
+    if (user?.role === "demo") {
+      toast.error("Akun demo tidak diizinkan untuk mengubah geofence.");
+      return;
+    }
+    try {
+      setLoadingConfig(true);
+      await setDoc(doc(db, "settings", "global"), {
+        ...settings,
+        geofenceEnabled: checked
+      }, { merge: true });
+      toast.success(`Geofence ${checked ? 'Diaktifkan' : 'Dimatikan'}`);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "settings/global");
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    if (user?.role === "demo") {
+      toast.error("Akun demo tidak diizinkan untuk menyimpan pengaturan.");
+      return;
+    }
+    try {
+      setLoadingConfig(true);
+      await setDoc(doc(db, "settings", "global"), {
+        ...settings,
+        radiusMeters: Number(radiusInput),
+        officeLat: Number(latInput),
+        officeLng: Number(lngInput),
+        shiftStart: shiftStartInput,
+        shiftEnd: shiftEndInput,
+        appName: appNameInput,
+        appLogoUrl: appLogoUrlInput,
+        fcmVapidKey: fcmVapidKeyInput,
+        shifts: shiftsInput,
+        areas: areasInput,
+        holidays: holidaysInput,
+      }, { merge: true });
+      toast.success("Pengaturan berhasil disimpan");
+    } catch (error) {
+       handleFirestoreError(error, OperationType.UPDATE, "settings/global");
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState<any>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState("");
+  const [editShift, setEditShift] = useState("");
+  const [editUniqueId, setEditUniqueId] = useState("");
+  const [editArea, setEditArea] = useState("");
+  const [editIsBanned, setEditIsBanned] = useState(false);
+
+  const handleEditUser = (user: any) => {
+    setSelectedUserForEdit(user);
+    setEditName(user.name || "");
+    setEditRole(user.role || "");
+    setEditShift(user.shiftId || "shift1");
+    setEditUniqueId(user.uniqueId || "");
+    setEditArea(user.areaId || "global");
+    setEditIsBanned(user.isBanned || false);
+  };
+   
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementContent, setAnnouncementContent] = useState("");
+  const [announcementType, setAnnouncementType] = useState("info"); // info, danger, success
+
+  const publishAnnouncement = async () => {
+    if (!announcementTitle || !announcementContent) return toast.error("Semua field harus diisi");
+    if (user?.role === "demo") return toast.error("Demo role tidak bisa mempublikasikan pengumuman");
+    try {
+       setLoadingConfig(true);
+       await setDoc(doc(db, "announcements", `ann_${Date.now()}`), {
+          title: announcementTitle,
+          content: announcementContent,
+          type: announcementType,
+          createdAt: Date.now(),
+          createdBy: user?.name,
+       });
+
+       await setDoc(doc(db, "notifications", `notif_${Date.now()}_all`), {
+          userId: "all",
+          title: `Pengumuman: ${announcementTitle}`,
+          body: announcementContent.length > 50 ? announcementContent.substring(0, 50) + "..." : announcementContent,
+          createdAt: Date.now(),
+          read: false,
+          type: announcementType
+       });
+
+       toast.success("Pengumuman berhasil dipublikasikan");
+       setAnnouncementTitle("");
+       setAnnouncementContent("");
+    } catch (e) {
+       toast.error("Gagal mempublikasikan pengumuman");
+    } finally {
+       setLoadingConfig(false);
+    }
+  };
+
+  const deleteAnnouncement = async (id: string) => {
+    if (user?.role === "demo") return toast.error("Demo role tidak bisa menghapus pengumuman");
+    try {
+       await deleteDoc(doc(db, "announcements", id));
+       toast.success("Pengumuman berhasil dihapus");
+    } catch (e) {
+       toast.error("Gagal menghapus pengumuman");
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!selectedUserForEdit) return;
+    if (user?.role !== "superadmin") {
+      toast.error("Hanya Superadmin yang bisa menghapus user.");
+      return;
+    }
+    if (!window.confirm("Apakah Anda yakin ingin menghapus user ini secara permanen? Seluruh data absensi akan tetap ada namun identitas user akan hilang.")) return;
+    try {
+      if (selectedUserForEdit.avatarUrl) {
+        await deleteFileFromStorage(selectedUserForEdit.avatarUrl);
+      }
+      await deleteDoc(doc(db, "users", selectedUserForEdit.id));
+      toast.success("User berhasil dihapus.");
+      setSelectedUserForEdit(null);
+    } catch (e) {
+      toast.error("Gagal menghapus user.");
+    }
+  };
+
+  const saveUserChanges = async () => {
+    if (!selectedUserForEdit) return;
+    if (user?.role === "demo") {
+      toast.error("Akun demo tidak diizinkan untuk mengubah data karyawan.");
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "users", selectedUserForEdit.id), {
+        name: editName,
+        role: editRole,
+        shiftId: editShift,
+        uniqueId: editUniqueId,
+        areaId: editArea === "global" ? null : editArea,
+        isBanned: editIsBanned
+      });
+      toast.success("Data user diperbarui successfully");
+      setSelectedUserForEdit(null);
+    } catch (err) {
+      toast.error("Gagal memperbarui data user");
+      console.error(err);
+    }
+  };
+
+  const [showOvertimeModal, setShowOvertimeModal] = useState(false);
+  const [overtimeUser, setOvertimeUser] = useState<any>(null);
+  const [overtimeDate, setOvertimeDate] = useState("");
+  const [overtimeStartTime, setOvertimeStartTime] = useState("");
+  const [overtimeEndTime, setOvertimeEndTime] = useState("");
+  const [overtimeNotes, setOvertimeNotes] = useState("");
+
+  const handleAddManualOvertime = (user: any) => {
+    setOvertimeUser(user);
+    setOvertimeDate(format(new Date(), "yyyy-MM-dd"));
+    setOvertimeStartTime("17:00");
+    setOvertimeEndTime("19:00");
+    setOvertimeNotes("Lembur tambahan dari admin");
+    setShowOvertimeModal(true);
+  };
+
+  const saveManualOvertime = async () => {
+    if (user?.role === "demo") {
+      toast.error("Akun demo tidak diizinkan untuk menambah data lembur.");
+      return;
+    }
+    if (!overtimeUser || !overtimeDate || !overtimeStartTime || !overtimeEndTime) {
+      toast.error("Mohon lengkapi semua data lembur");
+      return;
+    }
+
+    try {
+      const [startHour, startMin] = overtimeStartTime.split(":").map(Number);
+      const [endHour, endMin] = overtimeEndTime.split(":").map(Number);
+      
+      const startDate = new Date(overtimeDate);
+      startDate.setHours(startHour, startMin, 0, 0);
+
+      const endDate = new Date(overtimeDate);
+      endDate.setHours(endHour, endMin, 0, 0);
+
+      if (endDate < startDate) {
+         endDate.setDate(endDate.getDate() + 1);
+      }
+
+      const uId = overtimeUser.uid || overtimeUser.id;
+      const inId = `att_${Date.now()}_in_${uId}`;
+      const outId = `att_${Date.now() + 100}_out_${uId}`;
+
+      const basePayload = {
+        userId: uId,
+        method: "admin",
+        photoBase64: "", 
+        location: { latitude: 0, longitude: 0, address: "Manual Entry by Admin" },
+        status: "approved",
+        extraData: overtimeNotes,
+        withinRadius: true
+      };
+
+      await setDoc(doc(db, "attendance", inId), {
+         ...basePayload,
+         timestamp: startDate.getTime(),
+         type: "overtime_in",
+      });
+
+      await setDoc(doc(db, "attendance", outId), {
+         ...basePayload,
+         timestamp: endDate.getTime(),
+         type: "overtime_out",
+      });
+
+      toast.success("Lembur ditambahkan dan tersimpan di riwayat user");
+      setShowOvertimeModal(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error("Gagal menambahkan lembur");
+    }
+  };
+
+  return (
+    <WaveBackground>
+      <div className="py-4 sm:py-8 px-4 max-w-7xl mx-auto space-y-6 sm:space-y-8">
+        {/* Header */}
+        <header className="relative h-auto sm:h-32 bg-teal-600 dark:bg-teal-800 overflow-hidden shrink-0 rounded-2xl shadow-lg mb-6 pb-6 sm:pb-0">
+          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px] opacity-30">
+            <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-20" preserveAspectRatio="none">
+              <path fill="currentColor" className="text-teal-50 dark:text-gray-900" d="M0,192L48,208C96,224,192,256,288,245.3C384,235,480,181,576,176C672,171,768,213,864,229.3C960,245,1056,235,1152,208C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+            </svg>
+          </div>
+          <div className="relative z-10 p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start text-white gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-3 drop-shadow-md">
+                {settings?.appLogoUrl ? (
+                  <img src={settings.appLogoUrl} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
+                ) : (
+                  <Activity className="w-8 h-8" />
+                )}
+                {settings?.appName || "ABSENKU"} <span className="font-light opacity-80 font-sans tracking-widest text-sm ml-1 uppercase">Admin</span>
+              </h1>
+              <p className="text-teal-50/80 text-xs sm:text-sm font-medium tracking-wide">Monitoring real-time presence and cloud sync status</p>
+            </div>
+            <div className="flex gap-4 text-right items-center">
+               <div className="flex flex-col justify-center text-right mr-1">
+                <span className="font-bold text-sm tracking-tight">{user?.name}</span>
+                <span className="text-[10px] text-teal-100/70 uppercase tracking-widest font-black">{user?.role}</span>
+               </div>
+               
+               <div className="flex gap-2">
+                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 rounded-xl backdrop-blur-md" onClick={() => navigate('/app')}>
+                    Aplikasi 
+                 </Button>
+
+                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 w-10 p-0 rounded-xl backdrop-blur-md" onClick={() => auth.signOut()} title="Keluar">
+                    <LogOut className="w-5 h-5" />
+                 </Button>
+               </div>
+            </div>
+          </div>
+        </header>
+
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="w-full mx-auto p-1 bg-gray-100 dark:bg-gray-800 rounded-xl grid grid-cols-5 items-center">
+            <TabsTrigger value="overview" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 relative py-2.5 px-3 transition-all flex justify-center">
+              <Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Overview</span>
+              {pendingApprovalsCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 text-[9px] text-white items-center justify-center font-black shadow-sm">
+                    {pendingApprovalsCount}
+                  </span>
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Users className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">User</span></TabsTrigger>
+            <TabsTrigger value="announcements" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Briefcase className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Portal</span></TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Performance</span></TabsTrigger>
+            <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Settings className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Pengaturan</span></TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="overview" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <BankingStyleDashboardCards attendances={filteredAttendances} usersList={filteredUsersList} />
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0">
+              <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div>
+                  <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">Real-Time Live Logs</CardTitle>
+                  <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Daftar absensi terbaru dari seluruh user</CardDescription>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                <Button variant="outline" size="sm" className="bg-white dark:bg-gray-700 border-teal-100 dark:border-teal-900 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900 h-10 w-full sm:w-auto transition-all" onClick={() => {
+                  const header = [
+                    "Nama Karyawan", 
+                    "Role", 
+                    "Shift", 
+                    "ID Karyawan (RFID/NFC)", 
+                    "Tanggal Transaksi", 
+                    "Jam Transaksi", 
+                    "Tipe Transaksi", 
+                    "Metode", 
+                    "Status Validasi Radius", 
+                    "Catatan Laporan Tambahan", 
+                    "Status Approval"
+                  ].map(h => `"${h}"`).join(',');
+
+                  let allRecords: string[] = [];
+                  filteredUsersList.forEach(usr => {
+                    const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
+                    if (userAttendances.length === 0) {
+                      allRecords.push([
+                        usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A",
+                        "-", "-", "-", "-", "-", "-", "-"
+                      ].map(v => `"${v}"`).join(','));
+                    } else {
+                      userAttendances.forEach(log => {
+                        allRecords.push([
+                          usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A",
+                          format(new Date(log.timestamp), "yyyy-MM-dd"),
+                          format(new Date(log.timestamp), "HH:mm:ss"),
+                          log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual",
+                          log.extraData ? log.extraData.replace(/,/g, ' ') : "-",
+                          log.status || "APPROVED"
+                        ].map(v => `"${v}"`).join(','));
+                      });
+                    }
+                  });
+
+                  const blob = new Blob([`${header}\n${allRecords.join('\n')}`], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `Laporan_Lengkap_Karyawan_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
+                  a.click();
+                }}>
+                  <Activity className="w-4 h-4 mr-2" /> Export Laporan Lengkap
+                </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table className="w-full text-left">
+                    <TableHeader className="bg-teal-50/50 dark:bg-teal-900/20 text-teal-900 dark:text-teal-100">
+                      <TableRow className="border-b border-teal-100 dark:border-teal-900 hover:bg-transparent">
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 w-[200px]">Waktu</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">User</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Tipe</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Metode</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Status Geofence</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 text-center">Foto</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 text-center">Tindakan</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="text-xs divide-y divide-teal-50 dark:divide-teal-900/50">
+                      {filteredAttendances.map((log: any) => (
+                        <TableRow key={log.id} className="hover:bg-teal-50/50 dark:hover:bg-teal-900/10 border-0 transition-colors">
+                          <TableCell className="px-6 py-4 font-bold text-slate-600 dark:text-gray-300">
+                            {format(new Date(log.timestamp), "dd MMM, HH:mm:ss")}
+                          </TableCell>
+                          <TableCell className="px-6 py-4 font-black text-teal-800 dark:text-teal-200">
+                            {filteredUsersList.find(u => u.uid === log.userId || u.id === log.userId)?.name || log.userId}
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.type === 'in' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' : log.type === 'out' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : log.type === 'overtime_in' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : log.type === 'overtime_out' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300' : log.type === 'sick' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : ['permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
+                              {log.type === 'in' ? 'MASUK' : log.type === 'out' ? 'PULANG' : log.type === 'overtime_in' ? 'LEMBUR MSK' : log.type === 'overtime_out' ? 'LEMBUR PLG' : log.type === 'sick' ? 'SAKIT' : log.type === 'permit' ? 'IZIN' : log.type === 'cuti' ? 'CUTI' : log.type === 'melahirkan' ? 'HAMIL' : log.type === 'meninggal' ? 'BERDUKA' : log.type}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-6 py-4 uppercase text-[10px] font-black text-slate-600 dark:text-gray-400 tracking-widest">
+                            <span className={`${log.method === 'rfid' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800' : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300 border-slate-200 dark:border-gray-600'} px-2.5 py-1 rounded-lg border inline-block`}>{log.method}</span>
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            {log.withinRadius ? (
+                              <span className="text-teal-600 dark:text-teal-400 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Di Lokasi</span>
+                            ) : (
+                              <span className="text-rose-500 font-bold flex items-center gap-1 underline underline-offset-4 decoration-rose-500/30 font-mono">LUAR RADIUS</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-center">
+                            {log.photoBase64 ? (
+                              <div className="flex justify-center">
+                                <a href={log.photoBase64} target="_blank" rel="noreferrer" className="block hover:opacity-80 transition-opacity">
+                                  <img src={log.photoBase64} alt="Foto Bukti" className="w-12 h-12 object-cover rounded-md border border-slate-200 shadow-sm" />
+                                </a>
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-center">
+                            <div className="flex justify-center items-center gap-2">
+                              {log.status === "pending_approval" ? (
+                                <div className="flex justify-center gap-2">
+                                  <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-teal-50 text-teal-600 border-teal-200 hover:bg-teal-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
+                                    if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                                    try {
+                                      await updateDoc(doc(db, "attendance", log.id), { status: "approved" });
+                                      await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
+                                        userId: log.userId,
+                                        title: "Absensi Disetujui",
+                                        body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} telah disetujui.`,
+                                        createdAt: Date.now(),
+                                        read: false,
+                                        type: "success"
+                                      });
+                                      toast.success("Absensi disetujui");
+                                    } catch (e) {
+                                      toast.error("Gagal menyetujui");
+                                    }
+                                  }}>OK</Button>
+                                  <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
+                                    if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                                    try {
+                                      await updateDoc(doc(db, "attendance", log.id), { status: "rejected" });
+                                      await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
+                                        userId: log.userId,
+                                        title: "Absensi Ditolak",
+                                        body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} ditolak oleh Admin.`,
+                                        createdAt: Date.now(),
+                                        read: false,
+                                        type: "danger"
+                                      });
+                                      toast.success("Absensi ditolak");
+                                    } catch (e) {
+                                      toast.error("Gagal menolak");
+                                    }
+                                  }}>NO</Button>
+                                </div>
+                              ) : (
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.status === 'rejected' ? 'bg-rose-500 text-white' : log.status === 'approved' ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-300'}`}>
+                                  {log.status || 'APPROVED'}
+                                </span>
+                              )}
+                              {user?.role === "superadmin" && (
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg ml-2" 
+                                  onClick={async () => {
+                                    if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                                    if (!window.confirm("Hapus log absensi ini permanen?")) return;
+                                    try {
+                                      if (log.photoBase64) {
+                                        await deleteFileFromStorage(log.photoBase64);
+                                      }
+                                      await deleteDoc(doc(db, "attendance", log.id));
+                                      toast.success("Log absensi dihapus");
+                                    } catch (e) {
+                                      toast.error("Gagal menghapus log");
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 ml-1" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {attendances.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-12 text-slate-400 italic">
+                            Belum ada riwayat aktivitas absensi hari ini.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="users" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0">
+              <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent flex flex-col space-y-1">
+                <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">User Directory</CardTitle>
+                <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Manajemen data akun, peran, dan kartu akses digital user.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table className="w-full text-left">
+                    <TableHeader className="bg-teal-50/50 dark:bg-teal-900/20 text-teal-900 dark:text-teal-100">
+                      <TableRow className="border-b border-teal-100 dark:border-teal-900 hover:bg-transparent">
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Nama User</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Kontak Email</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Jabatan</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 px-6">Bergabung</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Shift</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Unique ID</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 text-right px-6">Navigasi</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="text-xs divide-y divide-teal-50 dark:divide-teal-900/50">
+                      {filteredUsersList.map((usr) => (
+                        <TableRow key={usr.id} className="hover:bg-teal-50/50 dark:hover:bg-teal-900/10 border-0 transition-colors">
+                          <TableCell className="px-6 py-4 font-bold text-teal-900 dark:text-teal-50 flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-teal-100 dark:bg-teal-900 border-2 border-white dark:border-teal-800 flex items-center justify-center font-black text-teal-700 dark:text-teal-300 overflow-hidden shrink-0 shadow-sm">
+                              {usr.avatarUrl ? <img src={usr.avatarUrl} className="w-full h-full object-cover" /> : usr.name?.[0]}
+                            </div>
+                            <span className="tracking-tight">{usr.name}</span>
+                            {usr.isBanned && (
+                              <Badge variant="destructive" className="ml-2 h-5 text-[8px] font-black uppercase tracking-widest px-2 bg-rose-600">BANNED</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">{usr.email}</TableCell>
+                          <TableCell className="px-6 py-4">
+                            <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${usr.role === 'superadmin' ? 'bg-rose-500/20 text-rose-600' : usr.role === 'admin' ? 'bg-teal-500/20 text-teal-600' : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300'}`}>{usr.role}</span>
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <span 
+                              className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase text-white shadow-sm"
+                              style={{ backgroundColor: usr.shiftId ? shiftsInput[usr.shiftId]?.color || '#64748b' : '#64748b' }}
+                            >
+                              {usr.shiftId ? shiftsInput[usr.shiftId]?.name || usr.shiftId : "NO SHIFT"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">{usr.createdAt ? format(new Date(usr.createdAt), "dd MMM yyyy") : "-"}</TableCell>
+                          <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-black font-mono">{usr.uniqueId || "-"}</TableCell>
+                          <TableCell className="px-6 py-4 text-right px-6 flex items-center justify-end gap-2">
+                             <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black tracking-widest uppercase rounded-xl border-amber-100 dark:border-amber-900 text-amber-600 dark:text-amber-400 hover:bg-amber-50 shadow-sm" onClick={() => handleAddManualOvertime(usr)}>Lembur</Button>
+                             <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black tracking-widest uppercase rounded-xl border-teal-100 dark:border-teal-900 text-teal-600 dark:text-teal-400 hover:bg-teal-50 shadow-sm" onClick={() => handleEditUser(usr)}>Edit</Button>
+                             <Button 
+                               variant="outline" 
+                               size="sm" 
+                               className="h-9 px-3 text-[10px] font-black tracking-widest uppercase rounded-xl border-teal-100 dark:border-teal-900 text-teal-600 dark:text-teal-400 hover:bg-teal-600 hover:text-white transition-all shadow-sm flex items-center gap-2" 
+                               onClick={() => setSelectedUserForCard(usr)}
+                             >
+                                <Printer className="w-3.5 h-3.5" /> ID Card
+                             </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredUsersList.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12 text-slate-400">
+                            Sedang sinkronisasi data user...
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="announcements" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0">
+               <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent">
+                  <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">Portal Pengumuman</CardTitle>
+                  <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Buat dan kelola pengumuman untuk ditampilkan kepada seluruh pengguna aplikasi.</CardDescription>
+               </CardHeader>
+               <CardContent className="p-6">
+                 <div className="space-y-6">
+                    <div className="bg-white dark:bg-gray-900 border border-teal-100 dark:border-teal-900/50 p-6 rounded-2xl shadow-sm space-y-4">
+                       <h3 className="text-xs font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Buat Pengumuman Baru</h3>
+                       <div className="space-y-4">
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black tracking-widest uppercase text-slate-500">Judul Pengumuman</Label>
+                            <Input placeholder="Contoh: Jadwal Libur Lebaran" value={announcementTitle} onChange={e => setAnnouncementTitle(e.target.value)} className="border-teal-100 rounded-xl" />
+                         </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black tracking-widest uppercase text-slate-500">Tipe Pengumuman</Label>
+                            <select value={announcementType} onChange={e => setAnnouncementType(e.target.value)} className="w-full h-10 items-center justify-between rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-slate-500 font-bold outline-none">
+                              <option value="info">Info / Umum</option>
+                              <option value="danger">Penting / Darurat</option>
+                              <option value="success">Prestasi / Meriah</option>
+                            </select>
+                         </div>
+                         <div className="space-y-1.5">
+                            <Label className="text-[10px] font-black tracking-widest uppercase text-slate-500">Konten Pengumuman</Label>
+                            <textarea 
+                              className="w-full min-h-[120px] rounded-xl border border-teal-100 p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-600 bg-white" 
+                              placeholder="Tulis pesan lengkap..."
+                              value={announcementContent}
+                              onChange={e => setAnnouncementContent(e.target.value)}
+                            />
+                         </div>
+                         <Button onClick={publishAnnouncement} disabled={loadingConfig} className="bg-teal-600 hover:bg-teal-700 text-white rounded-xl uppercase font-black tracking-widest text-xs h-12 w-full">Publikasi Pengumuman</Button>
+                       </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-xs font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Riwayat Pengumuman ({announcements.length})</h3>
+                      <div className="grid gap-4">
+                         {announcements.map((ann) => (
+                            <div key={ann.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-4 border border-teal-50 dark:border-teal-900/50 flex flex-col sm:flex-row justify-between items-start gap-4">
+                               <div>
+                                 <div className="flex items-center gap-2 mb-2">
+                                   <Badge variant="outline" className={`text-[9px] uppercase font-black uppercase px-2 py-0.5 border-0 ${ann.type === 'danger' ? 'bg-rose-100 text-rose-700' : ann.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                      {ann.type === 'danger' ? 'PENTING' : ann.type === 'success' ? 'BERITA BAIK' : 'INFO'}
+                                   </Badge>
+                                   <span className="text-[10px] text-slate-400 font-bold">{format(new Date(ann.createdAt), 'dd MMM yyyy, HH:mm')}</span>
+                                 </div>
+                                 <h4 className="font-bold text-teal-900 dark:text-white capitalize">{ann.title}</h4>
+                                 <p className="text-xs text-slate-500 mt-1 whitespace-pre-wrap">{ann.content}</p>
+                                 <p className="text-[10px] text-slate-400 mt-2 italic flex items-center">- Ditulis oleh {ann.createdBy || 'Admin'}</p>
+                               </div>
+                               <Button variant="ghost" onClick={() => deleteAnnouncement(ann.id)} className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl h-8 text-[10px] uppercase font-black tracking-widest px-3 shrink-0">Hapus</Button>
+                            </div>
+                         ))}
+                         {announcements.length === 0 && (
+                            <div className="text-center py-10 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                               <Briefcase className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                               <p className="text-sm font-bold text-slate-500">Belum ada pengumuman</p>
+                               <p className="text-xs text-slate-400 mt-1">Pengumuman Anda akan muncul di layar utama aplikasi user.</p>
+                            </div>
+                         )}
+                      </div>
+                    </div>
+                 </div>
+               </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+             <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Geofence Configuration
+                </div>
+                <div className="space-y-8">
+                  <div className="flex items-center justify-between p-5 bg-teal-50/50 dark:bg-teal-900/20 rounded-2xl border border-teal-100 dark:border-teal-900/50 shadow-inner">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-black text-teal-900 dark:text-teal-50 tracking-tight uppercase">GEOFENCE RADIUS: {settings?.geofenceEnabled ? <span className="text-teal-600">AKTIF</span> : <span className="text-rose-500">NON-AKTIF</span>}</Label>
+                      <p className="text-[10px] text-teal-600/70 dark:text-teal-400 font-bold tracking-wider">Aktifkan untuk membatasi lokasi absensi user berdasarkan area/cabang</p>
+                    </div>
+                    <Switch 
+                      checked={settings?.geofenceEnabled || false} 
+                      onCheckedChange={toggleGeofence} 
+                      disabled={loadingConfig}
+                      className="data-[state=checked]:bg-teal-600"
+                    />
+                  </div>
+                </div>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Manajemen Area / Cabang
+                </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-1.5 md:col-span-4">
+                       <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nama Area</Label>
+                       <Input value={newArea.name} onChange={e => setNewArea({...newArea, name: e.target.value})} className="border-teal-100 rounded-xl bg-white" placeholder="Contoh: Cabang Jakarta" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-4 mt-2">
+                       <MapPicker 
+                         center={{ lat: isNaN(parseFloat(newAreaLatInput)) ? -6.2088 : parseFloat(newAreaLatInput), lng: isNaN(parseFloat(newAreaLngInput)) ? 106.8456 : parseFloat(newAreaLngInput) }} 
+                         radius={newArea.radius}
+                         onLocationSelect={(lat, lng) => {
+                           setNewAreaLatInput(lat.toString());
+                           setNewAreaLngInput(lng.toString());
+                         }} 
+                       />
+                       <p className="text-[10px] text-slate-400 font-medium italic mt-1 text-center w-full block">Ketuk pada peta untuk memilih lokasi cabang/area baru</p>
+                    </div>
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Latitude</Label>
+                       <Input type="text" value={newAreaLatInput} onChange={e => setNewAreaLatInput(e.target.value.replace(/,/g, '.'))} className="border-teal-100 rounded-xl bg-white font-mono text-sm" />
+                    </div>
+                    <div className="space-y-1.5">
+                       <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Longitude</Label>
+                       <Input type="text" value={newAreaLngInput} onChange={e => setNewAreaLngInput(e.target.value.replace(/,/g, '.'))} className="border-teal-100 rounded-xl bg-white font-mono text-sm" />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2 flex items-end">
+                       <div className="space-y-1.5 flex-1 pr-2">
+                         <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Radius (Meter)</Label>
+                         <Input type="number" value={newArea.radius} onChange={e => setNewArea({...newArea, radius: Number(e.target.value)})} className="border-teal-100 rounded-xl bg-white" />
+                       </div>
+                       <Button onClick={() => {
+                          if (newArea.name) {
+                            const areaId = "area_" + Date.now();
+                            const parsedLat = parseFloat(newAreaLatInput);
+                            const parsedLng = parseFloat(newAreaLngInput);
+                            setAreasInput({ ...areasInput, [areaId]: { ...newArea, lat: isNaN(parsedLat) ? 0 : parsedLat, lng: isNaN(parsedLng) ? 0 : parsedLng } });
+                            setNewArea({ name: "", radius: 100 });
+                            setNewAreaLatInput("-6.2088");
+                            setNewAreaLngInput("106.8456");
+                          }
+                       }} className="bg-teal-500 hover:bg-teal-600 h-10 px-6 rounded-xl font-bold uppercase text-[10px] text-white whitespace-nowrap">TAMBAH</Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 mt-4">
+                    {Object.entries(areasInput || {}).map(([id, a]: [string, any]) => (
+                      <div key={id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 dark:bg-gray-800/50 dark:border-gray-700/50 rounded-2xl">
+                         <div>
+                            <div className="font-bold text-sm text-teal-900 dark:text-teal-50">{a.name}</div>
+                            <div className="text-[11px] text-slate-500 font-mono mt-0.5 font-medium">
+                               Lat: {a.lat}, Lng: {a.lng} | Radius: <span className="font-bold text-teal-600">{a.radius}m</span>
+                            </div>
+                         </div>
+                         <Button variant="ghost" className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/40 rounded-xl text-xs font-bold" onClick={() => {
+                            const newObj = {...areasInput};
+                            delete newObj[id];
+                            setAreasInput(newObj);
+                         }}>Hapus</Button>
+                      </div>
+                    ))}
+                    {Object.keys(areasInput || {}).length === 0 && <p className="text-xs text-slate-400 italic text-center py-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200">Belum ada area yang ditambahkan.</p>}
+                  </div>
+                  
+                  <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-8 transition-all active:scale-95">
+                    SIMPAN MANAJEMEN AREA
+                  </Button>
+                </div>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 flex flex-col">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                   <Activity className="w-4 h-4" /> Attendance Shift Hours
+                </div>
+                <div className="space-y-6 flex-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Start Shift / Late Gate</Label>
+                      <Input 
+                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
+                        type="time" 
+                        value={shiftStartInput} 
+                        onChange={(e) => setShiftStartInput(e.target.value)} 
+                      />
+                      <p className="text-[9px] text-slate-400 font-medium">Batas terakhir absen masuk tepat waktu</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">End Shift / Early Gate</Label>
+                      <Input 
+                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
+                        type="time" 
+                        value={shiftEndInput} 
+                        onChange={(e) => setShiftEndInput(e.target.value)} 
+                      />
+                      <p className="text-[9px] text-slate-400 font-medium">Batas tercepat absen pulang standar</p>
+                    </div>
+                  </div>
+                </div>
+                <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-8 transition-all active:scale-95">
+                  SIMPAN PENGATURAN GEOLOKASI
+                </Button>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 flex flex-col md:col-span-2">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                   <Briefcase className="w-4 h-4" /> Shift & Working Days Management
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {Object.entries(shiftsInput).map(([id, shift]: [string, any]) => (
+                    <div key={id} className="bg-teal-50/50 dark:bg-teal-900/20 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/50 space-y-4">
+                      <div className="flex justify-between items-center text-teal-700 dark:text-teal-300">
+                        <Input 
+                          value={shift.name} 
+                          onChange={(e) => {
+                            const newShifts = {...shiftsInput};
+                            newShifts[id].name = e.target.value;
+                            setShiftsInput(newShifts);
+                          }}
+                          className="bg-transparent border-0 font-black uppercase p-0 h-auto focus-visible:ring-0 text-sm w-32"
+                        />
+                        <div className="flex gap-2 items-center">
+                          <Input 
+                            type="color" 
+                            value={shift.color} 
+                            onChange={(e) => {
+                              const newShifts = {...shiftsInput};
+                              newShifts[id].color = e.target.value;
+                              setShiftsInput(newShifts);
+                            }}
+                            className="w-8 h-8 rounded-full border-0 p-0 pointer cursor-pointer"
+                          />
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                            onClick={() => {
+                              const newShifts = {...shiftsInput};
+                              delete newShifts[id];
+                              setShiftsInput(newShifts);
+                            }}
+                          >
+                            <LogOut className="w-4 h-4 rotate-45" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"].map((dayName, idx) => {
+                          const workDay = shift.workDays[idx];
+                          return (
+                            <div key={idx} className="flex items-center justify-between text-[11px]">
+                              <span className="font-bold text-slate-500 w-16">{dayName}</span>
+                              <div className="flex gap-2 items-center flex-1 justify-end">
+                                {workDay ? (
+                                  <>
+                                    <Input 
+                                      type="time" 
+                                      value={workDay.start} 
+                                      onChange={(e) => {
+                                        const newShifts = {...shiftsInput};
+                                        newShifts[id].workDays[idx].start = e.target.value;
+                                        setShiftsInput(newShifts);
+                                      }}
+                                      className="h-7 py-1 text-[10px] w-20 px-2 rounded-lg"
+                                    />
+                                    <span>-</span>
+                                    <Input 
+                                      type="time" 
+                                      value={workDay.end} 
+                                      onChange={(e) => {
+                                        const newShifts = {...shiftsInput};
+                                        newShifts[id].workDays[idx].end = e.target.value;
+                                        setShiftsInput(newShifts);
+                                      }}
+                                      className="h-7 py-1 text-[10px] w-20 px-2 rounded-lg"
+                                    />
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost" 
+                                      className="h-6 w-6 p-0 text-rose-500"
+                                      onClick={() => {
+                                        const newShifts = {...shiftsInput};
+                                        newShifts[id].workDays[idx] = null;
+                                        setShiftsInput(newShifts);
+                                      }}
+                                    ><LogOut className="w-3 h-3"/></Button>
+                                  </>
+                                ) : (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    className="h-7 text-[10px] uppercase font-black px-4 rounded-lg bg-white"
+                                    onClick={() => {
+                                      const newShifts = {...shiftsInput};
+                                      newShifts[id].workDays[idx] = { start: "08:00", end: "16:00" };
+                                      setShiftsInput(newShifts);
+                                    }}
+                                  >SET LIBUR</Button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => {
+                      const newId = `shift_${Date.now()}`;
+                      setShiftsInput({
+                        ...shiftsInput,
+                        [newId]: {
+                          name: "New Shift",
+                          label: "Custom",
+                          color: "#64748b",
+                          workDays: {
+                            0: null,
+                            1: { start: "08:00", end: "16:00" },
+                            2: { start: "08:00", end: "16:00" },
+                            3: { start: "08:00", end: "16:00" },
+                            4: { start: "08:00", end: "16:00" },
+                            5: { start: "08:00", end: "16:00" },
+                            6: null
+                          }
+                        }
+                      });
+                    }}
+                    className="border-2 border-dashed border-teal-200 dark:border-teal-900/50 rounded-2xl flex flex-col items-center justify-center p-8 text-teal-600 hover:bg-teal-50 dark:hover:bg-teal-900/10 transition-all gap-2"
+                  >
+                    <Briefcase className="w-6 h-6" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Tambah Shift Baru</span>
+                  </button>
+                </div>
+                <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-8 transition-all active:scale-95">
+                  SIMPAN PENGATURAN SHIFT
+                </Button>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 md:col-span-2">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                   <CalendarDays className="w-4 h-4" /> Manual Holiday Table (Overwrites Automatic)
+                </div>
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    <Input 
+                      type="date" 
+                      value={newHoliday} 
+                      onChange={(e) => setNewHoliday(e.target.value)}
+                      className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl"
+                    />
+                    <Button 
+                      onClick={() => {
+                        if (newHoliday && !holidaysInput.includes(newHoliday)) {
+                          setHolidaysInput([...holidaysInput, newHoliday].sort());
+                          setNewHoliday("");
+                        }
+                      }}
+                      className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-6"
+                    >TAMBAH LIBUR</Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {holidaysInput.map(h => (
+                      <div key={h} className="bg-rose-50 border border-rose-100 text-rose-600 px-3 py-1 rounded-full text-[10px] font-black flex items-center gap-2">
+                        {format(new Date(h), "dd MMM yyyy")}
+                        <button onClick={() => setHolidaysInput(holidaysInput.filter(d => d !== h))} className="hover:text-rose-800">
+                          <LogOut className="w-3 h-3 rotate-45" />
+                        </button>
+                      </div>
+                    ))}
+                    {holidaysInput.length === 0 && <p className="text-xs text-slate-400 italic">Belum ada hari libur manual yang ditambahkan.</p>}
+                  </div>
+                  <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-4 transition-all active:scale-95">
+                    SIMPAN DAFTAR LIBUR
+                  </Button>
+                </div>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 md:col-span-2">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                   <Settings className="w-4 h-4" /> Brand Identity Config
+                </div>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Nama Platform Kerja</Label>
+                      <Input 
+                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
+                        placeholder="NUSAWORK / ABSENKU"
+                        value={appNameInput} 
+                        onChange={(e) => setAppNameInput(e.target.value)} 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">URL Logo Branding (PNG Transparent Recommended)</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          className="flex-1 border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
+                          placeholder="https://yourdomain.com/logo.png"
+                          value={appLogoUrlInput} 
+                          onChange={(e) => setAppLogoUrlInput(e.target.value)} 
+                        />
+                        <div className="relative">
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            onChange={async (e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                toast.loading("Mengunggah logo...", { id: "upload-logo" });
+                                try {
+                                  const url = await uploadFileToStorage(e.target.files[0], 'branding');
+                                  setAppLogoUrlInput(url);
+                                  toast.success("Berhasil mengunggah logo", { id: "upload-logo" });
+                                } catch (error) {
+                                  toast.error("Gagal mengunggah logo", { id: "upload-logo" });
+                                }
+                              }
+                            }}
+                          />
+                          <Button type="button" variant="outline" className="h-10 px-4 rounded-xl font-bold">
+                            Upload File
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-2 transition-all active:scale-95">
+                    PERBARUI IDENTITAS APLIKASI
+                  </Button>
+                </div>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 md:col-span-2">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                   <Settings className="w-4 h-4" /> Firebase Cloud Messaging Config
+                </div>
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 border flex flex-col gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Web Push VAPID Key</Label>
+                      <Input 
+                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
+                        placeholder="Misal: BMTxxxxxxxxxxxx..."
+                        value={fcmVapidKeyInput} 
+                        onChange={(e) => setFcmVapidKeyInput(e.target.value)} 
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Dapatkan VAPID Key dari Firebase Console {'->'} Project Settings {'->'} Cloud Messaging {'->'} Web Push certificates. 
+                        Hal ini digunakan user agar bisa login dan menerima notifikasi.
+                      </p>
+                    </div>
+                  </div>
+                  <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-2 transition-all active:scale-95">
+                    SIMPAN PENGATURAN FCM
+                  </Button>
+                </div>
+              </Card>
+
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 md:col-span-2">
+                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+                   <UserPlus className="w-4 h-4" /> Registration ID REF Manager
+                </div>
+                <div className="space-y-6">
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={async () => {
+                         if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                         const role = "crew";
+                         const refId = `USER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                         await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                      }}
+                      className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+                    >Generate Crew REF</Button>
+                    <Button 
+                      onClick={async () => {
+                         if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                         const role = "staff";
+                         const refId = `STAFF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                         await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                      }}
+                      className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+                    >Generate Staff REF</Button>
+                    <Button 
+                      onClick={async () => {
+                         if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                         const role = "admin";
+                         const refId = `ADMIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                         await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                      }}
+                      className="bg-rose-500 hover:bg-rose-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+                    >Generate Admin REF</Button>
+                    <Button 
+                      onClick={async () => {
+                         if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                         const role = "demo";
+                         const refId = `DEMO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                         await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                      }}
+                      className="bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+                    >Generate Demo REF</Button>
+                    <Button 
+                      onClick={async () => {
+                         if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                         const role = "demouser";
+                         const refId = `DEMOUSER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                         await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                      }}
+                      className="bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+                    >Generate DemoUser REF</Button>
+                  </div>
+                  
+                  <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-1">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-gray-100 dark:border-gray-800">
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500">ID REF</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500">Dibuat</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500">Role</TableHead>
+                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500">Status</TableHead>
+                          <TableHead className="text-right"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {idRefsList.map((refData) => (
+                          <TableRow key={refData.id} className="border-gray-100 dark:border-gray-800">
+                            <TableCell className="font-mono font-bold text-teal-600">{refData.id}</TableCell>
+                            <TableCell className="text-xs text-slate-500">{format(new Date(refData.createdAt), "dd MMM yyyy, HH:mm")}</TableCell>
+                            <TableCell>
+                               <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${refData.role === 'admin' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
+                                 {refData.role}
+                               </span>
+                            </TableCell>
+                            <TableCell>
+                               {refData.used ? 
+                                 <span className="text-[10px] font-black tracking-widest uppercase text-slate-400">Terpakai</span> : 
+                                 <span className="text-[10px] font-black tracking-widest uppercase text-teal-500">Tersedia</span>
+                               }
+                            </TableCell>
+                            <TableCell className="text-right">
+                               <Button 
+                                 variant="ghost" 
+                                 size="sm" 
+                                 className="h-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                 onClick={async () => {
+                                   if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                                   await deleteDoc(doc(db, "idRefs", refData.id));
+                                 }}
+                               >
+                                 <LogOut className="w-4 h-4 rotate-45" />
+                               </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {idRefsList.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-xs text-slate-400 italic">Belum ada ID REF yang dibuat.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </Card>
+
+            </TabsContent>
+          
+        </Tabs>
+
+        {/* Member Card Creation Dialog */}
+        <Dialog open={!!selectedUserForCard} onOpenChange={(open) => !open && setSelectedUserForCard(null)}>
+          <DialogContent className="sm:max-w-2xl bg-white dark:bg-gray-900 border-0 rounded-[2.5rem] shadow-2xl p-0 overflow-hidden outline-none ring-0">
+            {selectedUserForCard && (
+              <div className="flex flex-col items-center p-8">
+                <div 
+                  id="member-card-print"
+                  className="bg-white border border-slate-200 overflow-hidden relative shadow-2xl flex"
+                  style={{ 
+                    width: '85.6mm', 
+                    height: '54mm', 
+                    borderRadius: '4mm',
+                    fontFamily: 'system-ui, sans-serif'
+                  }}
+                >
+                   {/* Dominant Tosca Abstract Wave Background */}
+                   <div className="absolute inset-0 bg-gradient-to-br from-teal-400 to-teal-700 pointer-events-none"></div>
+                   <svg viewBox="0 0 1440 320" className="absolute top-0 left-0 w-full z-0 opacity-30 pointer-events-none text-teal-100" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="currentColor" d="M0,224L48,202.7C96,181,192,139,288,144C384,149,480,203,576,197.3C672,192,768,128,864,122.7C960,117,1056,171,1152,192C1248,213,1344,203,1392,197.3L1440,192L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+                   </svg>
+                   <svg viewBox="0 0 1440 320" className="absolute bottom-0 left-0 w-full z-0 opacity-20 pointer-events-none text-teal-200 rotate-180" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="currentColor" d="M0,96L48,112C96,128,192,160,288,160C384,160,480,128,576,122.7C672,117,768,139,864,138.7C960,139,1056,117,1152,112C1248,107,1344,117,1392,122.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                   </svg>
+                   
+                   {/* Left Side: Photo & Info */}
+                   <div className="w-[60%] h-full p-4 flex flex-col justify-between relative">
+                      <div className="flex items-center gap-3">
+                         <div className="w-12 h-12 rounded-lg bg-teal-100 border-2 border-white shadow-md overflow-hidden">
+                           {selectedUserForCard.avatarUrl ? (
+                              <img src={selectedUserForCard.avatarUrl} className="w-full h-full object-cover" alt="Avatar" />
+                           ) : (
+                              <div className="w-full h-full flex items-center justify-center font-black text-teal-300 text-xl">
+                                {selectedUserForCard.name ? selectedUserForCard.name[0] : "P"}
+                              </div>
+                           )}
+                         </div>
+                         <div>
+                            <h2 className="text-[12px] font-black text-teal-950 uppercase tracking-tighter leading-none mb-0.5">{selectedUserForCard.name}</h2>
+                            <p className="text-[6px] font-bold text-slate-500 uppercase tracking-wider">{selectedUserForCard.role}</p>
+                         </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-1">
+                         <div className="space-y-0.5">
+                            <p className="text-[5px] font-black text-slate-400 uppercase tracking-[0.2em]">KODE UNIK</p>
+                            <p className="text-[8px] font-black text-teal-800 uppercase">{selectedUserForCard.uniqueId}</p>
+                         </div>
+                         <div className="space-y-0.5">
+                            <p className="text-[5px] font-black text-slate-400 uppercase tracking-[0.2em]">SHIFT</p>
+                            <p className="text-[8px] font-black text-teal-800 uppercase">
+                                 {selectedUserForCard.shiftId ? shiftsInput[selectedUserForCard.shiftId]?.name || "CUSTOM" : "NO SHIFT"}
+                            </p>
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* Right Side: QR Code (Dominant) */}
+                   <div className="w-[40%] h-full flex flex-col items-center justify-center p-3 bg-teal-50/30 border-l border-teal-100/50">
+                      <div className="bg-white p-1 rounded-lg shadow-sm border border-teal-100">
+                         <QRCodeSVG value={selectedUserForCard.id} size={110} level="H" />
+                      </div>
+                      <p className="text-[5px] font-black text-teal-800/40 uppercase mt-2 tracking-widest text-center">ID: {selectedUserForCard.id.slice(0, 8)}...</p>
+                   </div>
+                </div>
+
+                <div className="flex justify-between gap-4 w-full mt-8 max-w-[85.6mm]">
+                  <Button variant="ghost" className="flex-1 text-slate-400 dark:text-gray-500 font-bold tracking-widest uppercase text-xs hover:text-rose-500 transition-colors h-12 rounded-2xl" onClick={() => setSelectedUserForCard(null)}>Batal</Button>
+                  <Button onClick={async () => {
+                    const el = document.getElementById("member-card-print");
+                    if (!el) return;
+                    toast.info("Menyiapkan dokumen cetak...");
+                    try {
+                      // Slight delay for renders
+                      await new Promise(r => setTimeout(r, 250));
+                      const url = await toPng(el, { cacheBust: true, pixelRatio: 3 });
+                      const printWindow = window.open('', '_blank');
+                      if (printWindow) {
+                        printWindow.document.write(`
+                          <html>
+                            <head>
+                              <title>Print Card - ${selectedUserForCard.name}</title>
+                              <style>
+                                @media print {
+                                  @page { size: landscape; margin: 0; }
+                                  body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: white; }
+                                  img { max-width: 100%; max-height: 100%; object-fit: contain; }
+                                }
+                                body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #f1f5f9; }
+                                img { box-shadow: 0 10px 40px rgba(0,0,0,0.1); border-radius: 4mm; width: 85.6mm; }
+                              </style>
+                            </head>
+                            <body onload="setTimeout(() => { window.print(); window.close(); }, 500)">
+                              <img src="${url}" />
+                            </body>
+                          </html>
+                        `);
+                        printWindow.document.close();
+                      }
+                    } catch (e) {
+                      console.error("Print error", e);
+                      toast.error("Gagal cetak kartu");
+                    }
+                  }} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-teal-600/20 rounded-2xl active:scale-95 transition-all">CETAK KARTU (85.6x54mm)</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Manual Overtime Dialog */}
+        <Dialog open={showOvertimeModal} onOpenChange={(open) => !open && setShowOvertimeModal(false)}>
+          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem]">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-xl font-black text-amber-900 dark:text-amber-50 uppercase tracking-tighter">Tambah Lembur Manual</DialogTitle>
+              <CardDescription className="text-xs font-bold text-slate-500 uppercase tracking-widest">Atur waktu lembur user dari sistem</CardDescription>
+            </DialogHeader>
+            {overtimeUser && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Nama User</Label>
+                  <Input 
+                    disabled
+                    value={overtimeUser.name} 
+                    className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50 opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Tanggal</Label>
+                  <Input 
+                    type="date"
+                    value={overtimeDate} 
+                    onChange={(e) => setOvertimeDate(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Mulai</Label>
+                    <Input 
+                      type="time"
+                      value={overtimeStartTime} 
+                      onChange={(e) => setOvertimeStartTime(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Sampai</Label>
+                    <Input 
+                      type="time"
+                      value={overtimeEndTime} 
+                      onChange={(e) => setOvertimeEndTime(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Keterangan</Label>
+                  <Input 
+                    value={overtimeNotes} 
+                    onChange={(e) => setOvertimeNotes(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <Button variant="ghost" className="flex-1 text-slate-400 font-bold uppercase text-xs h-12 rounded-2xl" onClick={() => setShowOvertimeModal(false)}>Batal</Button>
+                  <Button onClick={saveManualOvertime} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-amber-600/20 rounded-2xl active:scale-95 transition-all">SIMPAN LEMBUR</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit User Dialog */}
+        <Dialog open={!!selectedUserForEdit} onOpenChange={(open) => !open && setSelectedUserForEdit(null)}>
+          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem]">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-xl font-black text-teal-900 dark:text-teal-50 uppercase tracking-tighter">Edit Data User</DialogTitle>
+              <CardDescription className="text-xs font-bold text-slate-500 uppercase tracking-widest">Update profile & shift information</CardDescription>
+            </DialogHeader>
+            {selectedUserForEdit && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Nama Lengkap</Label>
+                  <Input 
+                    value={editName} 
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Jabatan / Role</Label>
+                  <select 
+                    value={editRole}
+                    onChange={(e) => setEditRole(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    <option value="superadmin">SUPERADMIN</option>
+                    <option value="admin">ADMIN</option>
+                    <option value="staff">STAFF</option>
+                    <option value="crew">CREW</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Penempatan Shift</Label>
+                  <select 
+                    value={editShift}
+                    onChange={(e) => setEditShift(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    {Object.entries(shiftsInput).map(([id, s]: [string, any]) => (
+                      <option key={id} value={id}>{s.name} ({s.label})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Area / Cabang (Multi-Tenant)</Label>
+                  <select 
+                    value={editArea}
+                    onChange={(e) => setEditArea(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    <option value="">-- Pilih Area --</option>
+                    {Object.entries(areasInput || {}).map(([id, a]: [string, any]) => (
+                      <option key={id} value={id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">KODE UNIK</Label>
+                  <Input 
+                    value={editUniqueId} 
+                    onChange={(e) => setEditUniqueId(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
+                  />
+                </div>
+
+                {user?.role === "superadmin" && (
+                  <div className="flex flex-col gap-4 p-4 bg-rose-50 dark:bg-rose-900/20 rounded-[1.5rem] border border-rose-100 dark:border-rose-900/30">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-widest">Banned User</Label>
+                        <p className="text-[9px] text-rose-600/70 dark:text-rose-500/70">Wajibkan user untuk tidak bisa absen.</p>
+                      </div>
+                      <Switch 
+                        checked={editIsBanned}
+                        onCheckedChange={setEditIsBanned}
+                      />
+                    </div>
+                    
+                    <Button 
+                      variant="destructive" 
+                      onClick={deleteUser}
+                      className="bg-rose-600 hover:bg-rose-700 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-rose-600/20"
+                    >
+                      <Trash2 className="w-3 h-3 mr-2" /> Hapus Akun Permanen
+                    </Button>
+                  </div>
+                )}
+
+                <div className="flex gap-4 pt-4">
+                  <Button variant="ghost" className="flex-1 text-slate-400 font-bold uppercase text-xs h-12 rounded-2xl" onClick={() => setSelectedUserForEdit(null)}>Batal</Button>
+                  <Button onClick={saveUserChanges} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-teal-600/20 rounded-2xl active:scale-95 transition-all">SIMPAN PERUBAHAN</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
+    </WaveBackground>
+  );
+}

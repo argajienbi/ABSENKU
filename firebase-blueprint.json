@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["superadmin", "admin", "staff", "crew"] },
+        "avatarUrl": { "type": "string" },
+        "rfid": { "type": "string" },
+        "shiftId": { "type": "string" },
+        "uniqueId": { "type": "string" },
+        "waNumber": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "email", "name", "role", "createdAt", "uniqueId"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Attendance log record",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "type": { "type": "string", "enum": ["in", "out", "overtime_in", "overtime_out", "sick", "permit", "cuti", "melahirkan", "meninggal"] },
+        "method": { "type": "string", "enum": ["selfie", "qr", "rfid"] },
+        "photoBase64": { "type": "string" },
+        "location": { "type": "object" },
+        "withinRadius": { "type": "boolean" },
+        "extraData": { "type": "string" },
+        "status": { "type": "string", "enum": ["approved", "pending_approval", "rejected"] }
+      },
+      "required": ["userId", "timestamp", "type", "method", "status"]
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "System-wide application settings",
+      "type": "object",
+      "properties": {
+        "geofenceEnabled": { "type": "boolean" },
+        "officeLat": { "type": "number" },
+        "officeLng": { "type": "number" },
+        "radiusMeters": { "type": "number" },
+        "shiftStart": { "type": "string" },
+        "shiftEnd": { "type": "string" }
+      }
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "System administrator",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "LeaveRequest": {
+      "title": "LeaveRequest",
+      "description": "User leave or permit requests",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "startDate": { "type": "number" },
+        "endDate": { "type": "number" },
+        "type": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["userId", "startDate", "endDate", "type", "status"]
+    },
+    "PayrollRecord": {
+      "title": "PayrollRecord",
+      "description": "User payroll information",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "month": { "type": "number" },
+        "year": { "type": "number" },
+        "salaryAmount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["userId", "month", "year", "salaryAmount", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Individual user profiles"
+    },
+    "/attendance/{attendanceId}": {
+      "schema": "Attendance",
+      "description": "Records of attendance entries"
+    },
+    "/leaveRequests/{requestId}": {
+      "schema": "LeaveRequest",
+      "description": "User leave/permit requests"
+    },
+    "/payroll/{payrollId}": {
+      "schema": "PayrollRecord",
+      "description": "User payroll records"
+    },
+    "/settings/global": {
+      "schema": "Settings",
+      "description": "Global application configuration"
+    },
+    "/admins/{uid}": {
+      "schema": "Admin",
+      "description": "System administrators by UID"
+    }
+  }
+}
