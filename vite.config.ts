@@ -8,14 +8,30 @@ export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), tailwindcss(), VitePWA({
-        registerType: 'autoUpdate',
-        workbox: {
-            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        },
+        registerType: 'prompt',
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
             name: 'REMIX ABSEN V3',
             short_name: 'RemixAbsen',
-            theme_color: '#0d9488'
+            description: 'Aplikasi Absensi Karyawan Terpadu',
+            theme_color: '#0d9488',
+            background_color: '#ffffff',
+            display: 'standalone',
+            icons: [
+              {
+                src: 'https://cdn-icons-png.flaticon.com/512/3204/3204361.png',
+                sizes: '192x192',
+                type: 'image/png'
+              },
+              {
+                src: 'https://cdn-icons-png.flaticon.com/512/3204/3204361.png',
+                sizes: '512x512',
+                type: 'image/png'
+              }
+            ]
+        },
+        workbox: {
+            maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         }
     })],
     define: {

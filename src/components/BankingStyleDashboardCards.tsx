@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from "@/components/ui/card";
 import { Clock, Calendar, MapPin, Briefcase } from "lucide-react";
 import { format } from "date-fns";
-import { useSettings } from "@/lib/settingsObject";
+import { useSettings } from "../settingsObject";
 
 export const BankingStyleDashboardCards = ({ attendances = [], usersList = [] }: { attendances?: any[], usersList?: any[] }) => {
   const settings = useSettings();

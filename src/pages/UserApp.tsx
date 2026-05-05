@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
-import { useSettings, calculateDistance } from "../lib/settingsObject";
+import { useSettings, calculateDistance } from "../settingsObject";
 import { collection, query, where, onSnapshot, doc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db, handleFirestoreError, OperationType, requestFCMPermission } from "../lib/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { format, isSameDay, isWeekend, eachDayOfInterval, subDays, isSaturday, isSunday } from "date-fns";
 import { id } from "date-fns/locale";
+import { MapPicker } from "../components/MapPicker";
 import { isHoliday, setCustomHolidays } from "../lib/dateUtils";
 import Webcam from "react-webcam";
 import { Html5Qrcode } from "html5-qrcode";
@@ -1174,6 +1175,22 @@ export default function UserApp() {
                               <label className="text-[10px] font-bold text-gray-500 uppercase">Akhir</label>
                               <Input type="date" value={permitEndDate ? format(permitEndDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitEndDate(new Date(e.target.value))} className="h-10 text-sm" />
                             </div>
+                          </div>
+                        )}
+
+                        {!isDocumentCapture && location && (
+                          <div className="mb-4 hidden sm:block">
+                             <div className="flex justify-between items-center mb-2">
+                                <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Peta Visual (GPS)</span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
+                                  {isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence'}
+                                </span>
+                             </div>
+                             <MapPicker 
+                               center={{ lat: location.latitude, lng: location.longitude }} 
+                               radius={settings?.radiusMeters || 100}
+                               readonly={true}
+                             />
                           </div>
                         )}
 

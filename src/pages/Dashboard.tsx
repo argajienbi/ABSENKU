@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
-import { useSettings } from "../lib/settingsObject";
+import { useSettings } from "../settingsObject";
+import { LiveMap } from "../components/LiveMap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -16,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from ".
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
 import { format } from "date-fns";
-import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban } from "lucide-react";
+import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle } from "lucide-react";
 
 import { QRCodeSVG } from 'qrcode.react';
 import { WaveBackground } from "../components/WaveBackground";
@@ -70,6 +71,7 @@ export default function Dashboard() {
   const [appNameInput, setAppNameInput] = useState("ABSENKU");
   const [appLogoUrlInput, setAppLogoUrlInput] = useState("");
   const [fcmVapidKeyInput, setFcmVapidKeyInput] = useState("");
+  const [googleMapsApiKeyInput, setGoogleMapsApiKeyInput] = useState("");
   const [shiftsInput, setShiftsInput] = useState<any>({});
   const [holidaysInput, setHolidaysInput] = useState<string[]>([]);
   const [areasInput, setAreasInput] = useState<any>({});
@@ -109,6 +111,7 @@ export default function Dashboard() {
       setAppNameInput(settings.appName || "ABSENKU");
       setAppLogoUrlInput(settings.appLogoUrl || "");
       setFcmVapidKeyInput(settings.fcmVapidKey || "");
+      setGoogleMapsApiKeyInput(settings.googleMapsApiKey || "");
       setShiftsInput(settings.shifts && Object.keys(settings.shifts).length > 0 ? settings.shifts : SHIFTS);
       setHolidaysInput(settings.holidays || []);
       setAreasInput(settings.areas || {});
@@ -171,6 +174,7 @@ export default function Dashboard() {
         appName: appNameInput,
         appLogoUrl: appLogoUrlInput,
         fcmVapidKey: fcmVapidKeyInput,
+        googleMapsApiKey: googleMapsApiKeyInput,
         shifts: shiftsInput,
         areas: areasInput,
         holidays: holidaysInput,
@@ -420,6 +424,7 @@ export default function Dashboard() {
             <TabsTrigger value="users" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Users className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">User</span></TabsTrigger>
             <TabsTrigger value="announcements" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Briefcase className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Portal</span></TabsTrigger>
             <TabsTrigger value="analytics" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Activity className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Performance</span></TabsTrigger>
+            <TabsTrigger value="live-map" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><MapPin className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Peta Live</span></TabsTrigger>
             <TabsTrigger value="settings" className="rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700 data-[state=active]:text-teal-700 dark:data-[state=active]:text-teal-300 data-[state=active]:shadow-sm text-sm font-bold text-slate-500 dark:text-gray-400 py-2.5 px-3 transition-all flex justify-center"><Settings className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Pengaturan</span></TabsTrigger>
           </TabsList>
 
@@ -758,6 +763,38 @@ export default function Dashboard() {
           
           <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
              <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
+          </TabsContent>
+
+          <TabsContent value="live-map" className="animate-in fade-in slide-in-from-bottom-4 duration-500 h-[700px]">
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden h-full flex flex-col">
+                <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-xl font-black tracking-tight">Peta Pantauan Langsung</CardTitle>
+                      <CardDescription className="text-blue-100 font-medium">Lokasi absen karyawan hari ini secara real-time</CardDescription>
+                    </div>
+                    <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                       <MapPin className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 relative">
+                     {(!settings?.googleMapsApiKey) ? (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
+                          <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
+                          <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">API Key Belum Diatur</h3>
+                          <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
+                        </div>
+                     ) : (
+                        <LiveMap 
+                          attendances={attendances} 
+                          users={usersList} 
+                          apiKey={settings.googleMapsApiKey}
+                          center={{ lat: settings?.officeLat || -6.2088, lng: settings?.officeLng || 106.8456 }}
+                        />
+                     )}
+                </CardContent>
+              </Card>
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -1132,6 +1169,19 @@ export default function Dashboard() {
                       <p className="text-[10px] text-gray-500 mt-1">
                         Dapatkan VAPID Key dari Firebase Console {'->'} Project Settings {'->'} Cloud Messaging {'->'} Web Push certificates. 
                         Hal ini digunakan user agar bisa login dan menerima notifikasi.
+                      </p>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Google Maps API Key</Label>
+                      <Input 
+                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
+                        placeholder="AIzaSy..."
+                        value={googleMapsApiKeyInput} 
+                        onChange={(e) => setGoogleMapsApiKeyInput(e.target.value)} 
+                      />
+                      <p className="text-[10px] text-gray-500 mt-1">
+                        Dapatkan dari Google Cloud Console. Pastikan Maps JavaScript API telah diaktifkan untuk key tersebut. Map tidak akan muncul sebelum diisi.
                       </p>
                     </div>
                   </div>

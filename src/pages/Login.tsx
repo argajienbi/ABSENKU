@@ -5,7 +5,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "fire
 import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { uploadBase64Image } from "../lib/storage";
 import { useAuth } from "../contexts/AuthContext";
-import { useSettings } from "../lib/settingsObject";
+import { useSettings } from "../settingsObject";
 import { Navigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Button } from "../components/ui/button";

@@ -59,12 +59,12 @@ export async function verifyFace(selfieBase64: string, avatarUrl: string): Promi
     const avatar = await urlToBase64(avatarUrl);
 
     const req = await ai.models.generateContent({
-      model: "gemini-3-flash-preview", 
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: "user",
           parts: [
-            { text: "Are the people in these two images the EXACT same person? Respond with ONLY 'YES' or 'NO'." },
+            { text: "Analyze the first image (selfie) and the second image (avatar). Rule 1 (Identity): Are the people in these two images the EXACT same person? Rule 2 (Liveness/Anti-Spoofing): Does the first image appear to be a real, live photo taken directly from a webcam/phone camera, and NOT a photo of a screen, NOT a printed photo, and NOT someone wearing a mask to trick the system? If BOTH rules are passed, respond with ONLY 'YES'. Otherwise, respond with 'NO'." },
             { inlineData: { mimeType: selfieMime, data: selfieBytes } },
             { inlineData: { mimeType: avatar.mimeType, data: avatar.data } }
           ]

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { db, handleFirestoreError, OperationType } from "./lib/firebase";
 
 export interface SystemSettings {
   geofenceEnabled: boolean;
@@ -12,6 +12,7 @@ export interface SystemSettings {
   appName?: string;
   appLogoUrl?: string;
   fcmVapidKey?: string;
+  googleMapsApiKey?: string;
   shifts?: {
     [key: string]: {
       name: string;
@@ -49,6 +50,7 @@ export function useSettings() {
             appName: data.appName || "ABSENKU",
             appLogoUrl: data.appLogoUrl || "",
             fcmVapidKey: data.fcmVapidKey || "",
+            googleMapsApiKey: data.googleMapsApiKey || "",
             shifts: data.shifts || {},
             areas: data.areas || {},
             holidays: data.holidays || []
@@ -65,6 +67,7 @@ export function useSettings() {
              appName: "ABSENKU",
              appLogoUrl: "",
              fcmVapidKey: "",
+             googleMapsApiKey: "",
              shifts: {},
              areas: {},
              holidays: []
