@@ -11,9 +11,9 @@ export default defineConfig(({mode}) => {
         registerType: 'prompt',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
         manifest: {
-            name: 'REMIX ABSEN V3',
-            short_name: 'RemixAbsen',
-            description: 'Aplikasi Absensi Karyawan Terpadu',
+            name: 'ABSENKU',
+            short_name: 'Absenku',
+            description: 'Sistem Absensi Karyawan',
             theme_color: '#0d9488',
             background_color: '#ffffff',
             display: 'standalone',

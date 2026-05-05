@@ -634,42 +634,48 @@ export default function Dashboard() {
                           </TableCell>
                           <TableCell className="px-6 py-4 text-center">
                             <div className="flex justify-center items-center gap-2">
-                              {log.status === "pending_approval" ? (
+                              {log.status === "pending_approval" || user?.role === "superadmin" ? (
                                 <div className="flex justify-center gap-2">
-                                  <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-teal-50 text-teal-600 border-teal-200 hover:bg-teal-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
-                                    if (user?.role === "demo") { toast.error("Akun demo."); return; }
-                                    try {
-                                      await updateDoc(doc(db, "attendance", log.id), { status: "approved" });
-                                      await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
-                                        userId: log.userId,
-                                        title: "Absensi Disetujui",
-                                        body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} telah disetujui.`,
-                                        createdAt: Date.now(),
-                                        read: false,
-                                        type: "success"
-                                      });
-                                      toast.success("Absensi disetujui");
-                                    } catch (e) {
-                                      toast.error("Gagal menyetujui");
-                                    }
-                                  }}>OK</Button>
-                                  <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
-                                    if (user?.role === "demo") { toast.error("Akun demo."); return; }
-                                    try {
-                                      await updateDoc(doc(db, "attendance", log.id), { status: "rejected" });
-                                      await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
-                                        userId: log.userId,
-                                        title: "Absensi Ditolak",
-                                        body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} ditolak oleh Admin.`,
-                                        createdAt: Date.now(),
-                                        read: false,
-                                        type: "danger"
-                                      });
-                                      toast.success("Absensi ditolak");
-                                    } catch (e) {
-                                      toast.error("Gagal menolak");
-                                    }
-                                  }}>NO</Button>
+                                  {log.status !== "approved" && (
+                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-teal-50 text-teal-600 border-teal-200 hover:bg-teal-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
+                                      if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                                      try {
+                                        await updateDoc(doc(db, "attendance", log.id), { status: "approved" });
+                                        await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
+                                          userId: log.userId,
+                                          title: "Absensi Disetujui",
+                                          body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} telah disetujui.`,
+                                          createdAt: Date.now(),
+                                          read: false,
+                                          type: "success"
+                                        });
+                                        toast.success("Absensi disetujui");
+                                      } catch (e) {
+                                        console.error("Approve error:", e);
+                                        toast.error("Gagal menyetujui");
+                                      }
+                                    }}>OK</Button>
+                                  )}
+                                  {log.status !== "rejected" && (
+                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
+                                      if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                                      try {
+                                        await updateDoc(doc(db, "attendance", log.id), { status: "rejected" });
+                                        await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
+                                          userId: log.userId,
+                                          title: "Absensi Ditolak",
+                                          body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} ditolak oleh Admin.`,
+                                          createdAt: Date.now(),
+                                          read: false,
+                                          type: "danger"
+                                        });
+                                        toast.success("Absensi ditolak");
+                                      } catch (e) {
+                                        console.error("Reject error:", e);
+                                        toast.error("Gagal menolak");
+                                      }
+                                    }}>NO</Button>
+                                  )}
                                 </div>
                               ) : (
                                 <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.status === 'rejected' ? 'bg-rose-500 text-white' : log.status === 'approved' ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-300'}`}>
@@ -1505,7 +1511,7 @@ export default function Dashboard() {
                     try {
                       // Slight delay for renders
                       await new Promise(r => setTimeout(r, 250));
-                      const url = await toPng(el, { cacheBust: true, pixelRatio: 3, useCORS: true });
+                      const url = await toPng(el, { cacheBust: true, pixelRatio: 3 });
                       const pdf = new jsPDF({
                         orientation: "landscape",
                         unit: "mm",

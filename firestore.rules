@@ -89,6 +89,7 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId && isValidUser(incoming());
       allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
                     (
+                      isSuperAdmin() ||
                       (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken']) && incoming().uid == existing().uid) ||
                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'isBanned', 'rfid', 'fcmToken']) && incoming().uid == existing().uid)
                     );
@@ -102,7 +103,10 @@ service cloud.firestore {
       allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && incoming().userId == request.auth.uid &&
                     exists(/databases/$(database)/documents/users/$(incoming().userId));
       allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['status']);
+                    (
+                      isSuperAdmin() ||
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status', 'photoBase64'])
+                    );
       allow delete: if isValidId(attendanceId) && isAdmin();
     }
 

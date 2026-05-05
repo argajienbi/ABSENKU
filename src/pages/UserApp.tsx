@@ -726,7 +726,7 @@ export default function UserApp() {
     if (!idCardRef.current) return;
     toast.loading("Menyiapkan dokumen...");
     try {
-      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3, useCORS: true });
+      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -746,7 +746,7 @@ export default function UserApp() {
   const handleShareIDCard = async () => {
     if (!idCardRef.current) return;
     try {
-      const blob = await toBlob(idCardRef.current, { cacheBust: true, pixelRatio: 3, useCORS: true });
+      const blob = await toBlob(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
       if (!blob) return;
       const file = new File([blob], `IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1796,11 +1796,18 @@ export default function UserApp() {
                             <h4 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                                <Code className="w-4 h-4" /> Log Perubahan (Changelog)
                             </h4>
-                            <div className="space-y-5">
-
-                               <div className="relative pl-4 border-l-2 border-teal-500/30">
+                            <div className="space-y-5">                                <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.5 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.6 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Hak Akses Superadmin: Memberikan akses penuh bagi Superadmin untuk melakukan edit dan hapus (termasuk override status absensi).</li>
+                                    <li>Perbaikan Hapus Foto: Memperbaiki kendala izin Firestore saat menghapus lampiran foto pada log absensi.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.5</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Perbaikan Tombol Hapus Log: Memperbaiki izin Firestore untuk penghapusan log absensi dan mengoptimalkan urutan penghapusan file agar tidak terjadi tautan gambar rusak.</li>
                                     <li>Fitur Hapus Foto: Menambahkan kemampuan bagi Admin/Superadmin untuk menghapus hanya foto lampiran pada log absensi tanpa menghapus seluruh record.</li>
@@ -1812,6 +1819,15 @@ export default function UserApp() {
                                  <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.4</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Peningkatan UI: Optimasi animasi transisi antar menu di halaman Dashboard Admin menjadi lebih mulus.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.2</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan Keamanan: Menyembunyikan dan menonaktifkan perubahan API Key (Google Maps & VAPID Key) dari tipe akun Demo di Dashboard Pengaturan.</li>
+                                    <li>Perbaikan Bug Akses Basis Data: Memperbaiki kendala "Missing or insufficient permissions" yang terjadi pada sinkronisasi data realtime Absensi, Izin, dan Penggajian untuk akun non-admin.</li>
                                  </ul>
                                </div>
 

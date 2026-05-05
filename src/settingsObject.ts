@@ -84,6 +84,54 @@ export function useSettings() {
   useEffect(() => {
     if (settings?.appName) {
       document.title = settings.appName;
+      
+      // Update metadata tags
+      const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+      if (metaTitle) metaTitle.setAttribute('content', settings.appName);
+      
+      const metaDescription = document.querySelector('meta[name="description"]');
+      if (metaDescription) metaDescription.setAttribute('content', `Aplikasi Absensi ${settings.appName}`);
+      
+      // Update or create dynamic manifest for PWA
+      const manifest = {
+        "name": settings.appName,
+        "short_name": settings.appName.substring(0, 12),
+        "description": `Aplikasi ${settings.appName}`,
+        "start_url": window.location.origin,
+        "display": "standalone",
+        "background_color": "#ffffff",
+        "theme_color": "#0d9488",
+        "icons": [
+          {
+            "src": "https://cdn-icons-png.flaticon.com/512/3204/3204361.png",
+            "sizes": "192x192",
+            "type": "image/png"
+          },
+          {
+            "src": "https://cdn-icons-png.flaticon.com/512/3204/3204361.png",
+            "sizes": "512x512",
+            "type": "image/png"
+          }
+        ]
+      };
+      
+      try {
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        
+        let link = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+        if (link) {
+          link.href = manifestURL;
+        } else {
+          link = document.createElement('link');
+          link.rel = 'manifest';
+          link.href = manifestURL;
+          document.head.appendChild(link);
+        }
+      } catch (err) {
+        console.error("Error updating manifest:", err);
+      }
     }
   }, [settings?.appName]);
 
