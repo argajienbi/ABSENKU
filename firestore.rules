@@ -86,7 +86,7 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isValidId(userId) && (isOwner(userId) || isAdminOrDemo());
       allow list: if isAdminOrDemo();
-      allow create: if isValidId(userId) && isOwner(userId) && isValidUser(incoming()) && incoming().uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId && isValidUser(incoming());
       allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
                     (
                       (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken']) && incoming().uid == existing().uid) ||

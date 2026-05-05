@@ -1257,7 +1257,7 @@ export default function Dashboard() {
                    <UserPlus className="w-4 h-4" /> Registration ID REF Manager
                 </div>
                 <div className="space-y-6">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                     <Button 
                       onClick={async () => {
                          if (user?.role === "demo") { toast.error("Akun demo."); return; }
@@ -1305,7 +1305,7 @@ export default function Dashboard() {
                     >Generate DemoUser REF</Button>
                   </div>
                   
-                  <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-1">
+                  <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-1 overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-gray-100 dark:border-gray-800">

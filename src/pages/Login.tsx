@@ -91,7 +91,7 @@ export default function Login() {
     try {
       setLoading(true);
 
-      // Validate ID REF and assign role
+      // Assign role based on ID Ref
       let assignedRole = "crew";
       const idRefUpper = idRef.trim().toUpperCase();
 
@@ -117,17 +117,6 @@ export default function Login() {
          
          assignedRole = refData.role;
       }
-      
-      // Limit demo accounts and demouser accounts to 2
-      if (assignedRole === "demo" || assignedRole === "demouser") {
-        const q = query(collection(db, "users"), where("role", "==", assignedRole));
-        const snapshot = await getDocs(q);
-        if (snapshot.docs.length >= 2) {
-          toast.error(`Pendaftaran gagal. Kuota akun ${assignedRole} sudah penuh (maksimal 2).`);
-          setLoading(false);
-          return;
-        }
-      }
 
       const res = await createUserWithEmailAndPassword(auth, email, password);
       const fbUser = res.user;
@@ -151,7 +140,11 @@ export default function Login() {
         uniqueId: Math.random().toString(36).substring(2, 8).toUpperCase(),
         areaId: "global"
       };
-      await setDoc(userRef, newUserData);
+      console.log("Attempting to create user with data:", newUserData);
+      await setDoc(userRef, newUserData).catch((e) => {
+          console.error("setDoc users failed", e);
+          throw e; // rethrow to be caught by outer catch
+      });
       
       // Mark ID REF as used if not a demo account
       if (assignedRole !== "demo" && assignedRole !== "demouser") {
@@ -159,6 +152,9 @@ export default function Login() {
            used: true,
            usedBy: fbUser.uid,
            usedAt: Date.now()
+        }).catch((e) => {
+           console.error("updateDoc idRefs failed", e);
+           throw e;
         });
       }
       
@@ -174,7 +170,9 @@ export default function Login() {
       }
 
       if (!error.code?.startsWith('auth/')) {
-        handleFirestoreError(error, OperationType.CREATE, "users");
+        // Find if it was idRefs or users that failed
+        console.error("Registration fail:", error);
+        handleFirestoreError(error, OperationType.CREATE, "registration_flow");
       }
     }
   };
@@ -297,7 +295,7 @@ export default function Login() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="reg-wa" className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">WhatsApp</Label>
-                    <Input id="reg-wa" type="tel" required placeholder="0812..." className="border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 h-10 text-sm rounded-lg px-3" value={waNumber} onChange={e => setWaNumber(e.target.value)} />
+                    <Input id="reg-wa" type="tel" maxLength={20} required placeholder="0812..." className="border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 h-10 text-sm rounded-lg px-3" value={waNumber} onChange={e => setWaNumber(e.target.value)} />
                   </div>
                 </div>
                 
