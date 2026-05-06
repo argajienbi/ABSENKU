@@ -63,7 +63,17 @@ service cloud.firestore {
     }
     
     function isValidSettings(data) {
-      return (!('geofenceEnabled' in data) || data.geofenceEnabled is bool);
+      return (!('geofenceEnabled' in data) || data.geofenceEnabled is bool) &&
+             (!('appName' in data) || data.appName is string) &&
+             (!('appLogoUrl' in data) || data.appLogoUrl is string) &&
+             (!('fcmVapidKey' in data) || data.fcmVapidKey is string) &&
+             (!('shifts' in data) || data.shifts is map) &&
+             (!('areas' in data) || data.areas is map) &&
+             (!('holidays' in data) || data.holidays is list);
+    }
+    
+    function isValidApiSettings(data) {
+      return (!('googleMapsApiKey' in data) || data.googleMapsApiKey is string);
     }
 
     function isValidIdRef(data) {
@@ -131,6 +141,13 @@ service cloud.firestore {
       allow get: if true;
       allow list: if true;
       allow write: if isAdmin() && isValidSettings(incoming());
+    }
+
+    // Protected API Settings Collection
+    match /settings_private/api {
+      allow get: if isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow write: if isSuperAdmin() && isValidApiSettings(incoming());
     }
 
     // Admins Collection
