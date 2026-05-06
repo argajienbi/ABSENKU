@@ -935,9 +935,13 @@ export default function UserApp() {
                     <h1 className="text-xl md:text-2xl font-bold tracking-tight">{user?.name}</h1>
                  </div>
              </div>
-             <div className="text-2xl font-black italic tracking-widest text-white/40">
-                 ABSEN<br/>KU
-             </div>
+             {settings?.appLogoUrl ? (
+                 <img src={settings.appLogoUrl} alt="Logo" className="h-12 w-auto object-contain" />
+             ) : (
+                 <div className="text-2xl font-black italic tracking-widest text-white/40">
+                     ABSEN<br/>KU
+                 </div>
+             )}
           </div>
         </div>
 
