@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
@@ -125,11 +125,32 @@ export default function Dashboard() {
     }
   }, [settings]);
 
+  const initialLoadRef = useRef(false);
+
   useEffect(() => {
     const q = query(collection(db, "attendance"), orderBy("timestamp", "desc"), limit(50));
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setAttendances(data);
+
+      if (initialLoadRef.current) {
+         snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+               const att = change.doc.data();
+               // Check if it's a cross-device QR scan
+               if (att.method === "qr" && att.deviceOwnerUid && att.deviceOwnerUid !== att.userId) {
+                  const scannnerName = att.deviceOwnerName || 'User Lain';
+                  // Show persistent explicit toast
+                  toast.error(`Perhatian: Barcode dipindai oleh device milik ${scannnerName}!`, {
+                    duration: 10000,
+                    description: `Sistem mendeteksi transaksi scan beda-perangkat pada jam ${format(new Date(att.timestamp), "HH:mm")}.`,
+                  });
+               }
+            }
+         });
+      } else {
+         initialLoadRef.current = true;
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "attendance");
     });
@@ -468,22 +489,30 @@ export default function Dashboard() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[200px] rounded-xl">
                     <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
-                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe", "Metode", "Status Radius", "Catatan", "Status Approval"];
+                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe", "Metode", "Status Radius", "Catatan", "Status Approval", "Pemindai (Scanner)"];
                       let allRecords: any[][] = [header];
                       
                       filteredUsersList.forEach(usr => {
                         const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
                         if (userAttendances.length === 0) {
-                          allRecords.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-", "-", "-", "-", "-", "-", "-", "-"]);
+                          allRecords.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
                         } else {
                           userAttendances.forEach(log => {
+                            let scanner = "-";
+                            if (log.method === "qr" && log.deviceOwnerUid && log.deviceOwnerUid !== log.userId) {
+                              scanner = log.deviceOwnerName || log.deviceOwnerUid;
+                            } else if (log.method === "qr") {
+                              scanner = "Diri Sendiri";
+                            }
+                            
                             allRecords.push([
                               usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-",
                               format(new Date(log.timestamp), "yyyy-MM-dd"),
                               format(new Date(log.timestamp), "HH:mm:ss"),
                               log.type, log.method, log.withinRadius ? "Ya" : "Tidak",
                               log.extraData ? log.extraData.replace(/,/g, ' ') : "-",
-                              log.status || "APPROVED"
+                              log.status || "APPROVED",
+                              scanner
                             ]);
                           });
                         }
@@ -500,21 +529,29 @@ export default function Dashboard() {
                     
                     <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
                       const doc = new jsPDF('landscape');
-                      const header = [["Nama", "Role", "Shift", "Tanggal", "Jam", "Tipe", "Metode", "Radius", "Status"]];
+                      const header = [["Nama", "Role", "Shift", "Tanggal", "Jam", "Tipe", "Metode", "Radius", "Status", "Scanner"]];
                       let rows: any[][] = [];
                       
                       filteredUsersList.forEach(usr => {
                         const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
                         if (userAttendances.length === 0) {
-                          rows.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", "-", "-", "-", "-", "-", "-"]);
+                          rows.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", "-", "-", "-", "-", "-", "-", "-"]);
                         } else {
                           userAttendances.forEach(log => {
+                            let scanner = "-";
+                            if (log.method === "qr" && log.deviceOwnerUid && log.deviceOwnerUid !== log.userId) {
+                              scanner = log.deviceOwnerName || "Other";
+                            } else if (log.method === "qr") {
+                              scanner = "Self";
+                            }
+
                             rows.push([
                               usr.name || "-", usr.role || "-", usr.shiftId || "-",
                               format(new Date(log.timestamp), "yyyy-MM-dd"),
                               format(new Date(log.timestamp), "HH:mm:ss"),
                               log.type, log.method, log.withinRadius ? "Ya" : "Tidak",
-                              log.status || "APPROVED"
+                              log.status || "APPROVED",
+                              scanner
                             ]);
                           });
                         }
@@ -535,15 +572,21 @@ export default function Dashboard() {
                     </DropdownMenuItem>
 
                     <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
-                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe Transaksi", "Metode", "Status Validasi Radius", "Catatan Laporan Tambahan", "Status Approval"].map(h => `"${h}"`).join(',');
+                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe Transaksi", "Metode", "Status Validasi Radius", "Catatan Laporan Tambahan", "Status Approval", "Pemindai (Scanner)"].map(h => `"${h}"`).join(',');
                       let allRecords: string[] = [];
                       filteredUsersList.forEach(usr => {
                         const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
                         if (userAttendances.length === 0) {
-                          allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", "-", "-", "-", "-", "-", "-", "-"].map(v => `"${v}"`).join(','));
+                          allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", "-", "-", "-", "-", "-", "-", "-", "-"].map(v => `"${v}"`).join(','));
                         } else {
                           userAttendances.forEach(log => {
-                            allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.status || "APPROVED"].map(v => `"${v}"`).join(','));
+                            let scanner = "-";
+                            if (log.method === "qr" && log.deviceOwnerUid && log.deviceOwnerUid !== log.userId) {
+                              scanner = log.deviceOwnerName || log.deviceOwnerUid;
+                            } else if (log.method === "qr") {
+                              scanner = "Diri Sendiri";
+                            }
+                            allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.status || "APPROVED", scanner].map(v => `"${v}"`).join(','));
                           });
                         }
                       });
@@ -590,7 +633,13 @@ export default function Dashboard() {
                             </span>
                           </TableCell>
                           <TableCell className="px-6 py-4 uppercase text-[10px] font-black text-slate-600 dark:text-gray-400 tracking-widest">
-                            <span className={`${log.method === 'rfid' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900 dark:text-blue-300 border-blue-200 dark:border-blue-800' : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300 border-slate-200 dark:border-gray-600'} px-2.5 py-1 rounded-lg border inline-block`}>{log.method}</span>
+                            <span className="bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300 border-slate-200 dark:border-gray-600 px-2.5 py-1 rounded-lg border inline-block">{log.method}</span>
+                            {log.deviceOwnerUid && log.deviceOwnerUid !== log.userId && log.method === "qr" && (
+                              <div className="mt-1 text-[8.5px] text-rose-600 dark:text-rose-400 font-bold bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded-md border border-rose-100 dark:border-rose-900 leading-tight">
+                                ⚠ BEDA DEVICE<br/>
+                                <span className="text-rose-500 dark:text-rose-300 font-medium">Scanned by: {log.deviceOwnerName || 'Unknown'}</span>
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="px-6 py-4">
                             {log.withinRadius ? (
@@ -1008,24 +1057,24 @@ export default function Dashboard() {
                 <div className="space-y-6 flex-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Start Shift / Late Gate</Label>
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Start Shift / Late Gate (Global Fallback)</Label>
                       <Input 
                         className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
                         type="time" 
                         value={shiftStartInput} 
                         onChange={(e) => setShiftStartInput(e.target.value)} 
                       />
-                      <p className="text-[9px] text-slate-400 font-medium">Batas terakhir absen masuk tepat waktu</p>
+                      <p className="text-[9px] text-slate-400 font-medium italic">Digunakan jika pengaturan jam masuk spesifik per-shift tidak diisi</p>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">End Shift / Early Gate</Label>
+                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">End Shift / Early Gate (Global Fallback)</Label>
                       <Input 
                         className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
                         type="time" 
                         value={shiftEndInput} 
                         onChange={(e) => setShiftEndInput(e.target.value)} 
                       />
-                      <p className="text-[9px] text-slate-400 font-medium">Batas tercepat absen pulang standar</p>
+                      <p className="text-[9px] text-slate-400 font-medium italic">Digunakan jika pengaturan jam pulang spesifik per-shift tidak diisi</p>
                     </div>
                   </div>
                 </div>
@@ -1076,7 +1125,50 @@ export default function Dashboard() {
                           </Button>
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[8px] font-black uppercase text-slate-500">Jam Masuk</Label>
+                          <Input 
+                            type="time" 
+                            value={shift.startTime || "08:00"} 
+                            onChange={(e) => {
+                              const newShifts = {...shiftsInput};
+                              newShifts[id].startTime = e.target.value;
+                              setShiftsInput(newShifts);
+                            }}
+                            className="h-8 py-1 text-[10px] px-2 rounded-lg"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[8px] font-black uppercase text-slate-500">Jam Pulang</Label>
+                          <Input 
+                            type="time" 
+                            value={shift.endTime || "17:00"} 
+                            onChange={(e) => {
+                              const newShifts = {...shiftsInput};
+                              newShifts[id].endTime = e.target.value;
+                              setShiftsInput(newShifts);
+                            }}
+                            className="h-8 py-1 text-[10px] px-2 rounded-lg"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[8px] font-black uppercase text-slate-500">Toleransi (M)</Label>
+                          <Input 
+                            type="number" 
+                            value={shift.gracePeriod || 0} 
+                            onChange={(e) => {
+                              const newShifts = {...shiftsInput};
+                              newShifts[id].gracePeriod = Number(e.target.value);
+                              setShiftsInput(newShifts);
+                            }}
+                            className="h-8 py-1 text-[10px] px-2 rounded-lg"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-2 border-t border-teal-100/50">
                         {["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"].map((dayName, idx) => {
                           const workDay = shift.workDays[idx];
                           return (
@@ -1145,6 +1237,9 @@ export default function Dashboard() {
                           name: "New Shift",
                           label: "Custom",
                           color: "#64748b",
+                          startTime: "08:00",
+                          endTime: "16:00",
+                          gracePeriod: 0,
                           workDays: {
                             0: null,
                             1: { start: "08:00", end: "16:00" },

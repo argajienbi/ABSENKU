@@ -9,7 +9,6 @@ interface AppUser {
   name: string;
   role: "superadmin" | "admin" | "staff" | "crew" | "demo" | "demouser";
   avatarUrl?: string;
-  rfid?: string;
   shiftId?: string;
   waNumber?: string;
   uniqueId: string;

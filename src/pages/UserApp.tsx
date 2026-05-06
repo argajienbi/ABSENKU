@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings, calculateDistance } from "../settingsObject";
-import { collection, query, where, onSnapshot, doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, setDoc, updateDoc, getDocs } from "firebase/firestore";
 import { auth, db, handleFirestoreError, OperationType, requestFCMPermission } from "../lib/firebase";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { toast } from "sonner";
@@ -125,7 +125,9 @@ export default function UserApp() {
   const [isFaceDetected, setIsFaceDetected] = useState(false);
   const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [autoCaptureActive, setAutoCaptureActive] = useState(false);
-  const [confirmData, setConfirmData] = useState<{ method: "selfie" | "qr" | "rfid"; photoBase64: string | null; extraData?: string } | null>(null);
+  const [confirmData, setConfirmData] = useState<{ method: "selfie" | "qr"; photoBase64: string | null; extraData?: string } | null>(null);
+  const [pendingQRData, setPendingQRData] = useState<string | null>(null);
+  const [qrUserIdentity, setQrUserIdentity] = useState<{ uid: string, name: string, shiftId: string } | null>(null);
   
   // Home states
   const [type, setType] = useState<"in" | "out" | "overtime_in" | "overtime_out" | "sick" | "permit" | "cuti" | "melahirkan" | "meninggal">("in");
@@ -133,7 +135,6 @@ export default function UserApp() {
   const [activeAbsenTab, setActiveAbsenTab] = useState("selfie"); // selfie for document upload too
   const webcamRef = useRef<Webcam>(null);
   const idCardRef = useRef<HTMLDivElement>(null);
-  const [rfidInput, setRfidInput] = useState("");
   const [permitProof, setPermitProof] = useState<string | null>(null);
   const [permitStartDate, setPermitStartDate] = useState<Date | undefined>(new Date());
   const [permitEndDate, setPermitEndDate] = useState<Date | undefined>(new Date());
@@ -184,9 +185,14 @@ export default function UserApp() {
           isLate = true; 
         } else if (!firstInLog.status || firstInLog.status === 'approved') {
           const firstInDate = new Date(firstInLog.timestamp);
-          const shiftStartStr = dayShift?.start || settings?.shiftStart || "09:00";
+          const shiftStartStr = dayShift?.start || shiftConfig?.startTime || settings?.shiftStart || "09:00";
+          const gracePeriod = shiftConfig?.gracePeriod || 0;
+          
           const [startHour, startMin] = shiftStartStr.split(':').map(Number);
-          isLate = (firstInDate.getHours() > startHour) || (firstInDate.getHours() === startHour && firstInDate.getMinutes() > startMin);
+          const shiftStartMinutes = (startHour * 60) + startMin + gracePeriod;
+          const userInMinutes = (firstInDate.getHours() * 60) + firstInDate.getMinutes();
+          
+          isLate = userInMinutes > shiftStartMinutes;
         }
 
         if (outLogs.length === 0 && !isToday && !isOffDay) {
@@ -489,9 +495,21 @@ export default function UserApp() {
             },
             (decodedText) => {
                if (ht5Qrcode && ht5Qrcode.isScanning) {
-                  ht5Qrcode.stop().then(() => {
+                  ht5Qrcode.stop().then(async () => {
                       ht5Qrcode?.clear();
-                      if (isMounted) checkPendingAndStartAttendance("qr", decodedText);
+                      if (isMounted) {
+                         toast.info("Barcode Terbaca. Mohon ambil foto untuk verifikasi.");
+                         setPendingQRData(decodedText);
+                         // QR Data strictly uses the uid value from the QR code
+                         const scannedUid = decodedText;
+                         setQrUserIdentity({ 
+                            uid: scannedUid, 
+                            name: "Pengguna (via Barcode)", 
+                            shiftId: user.shiftId || "shift1" 
+                         });
+                         toast.success(`Identitas Terbaca. Lanjutkan verifikasi wajah.`);
+                         setActiveAbsenTab("selfie"); // Switch to photo capture
+                      }
                   }).catch(console.error);
                }
             },
@@ -564,13 +582,24 @@ export default function UserApp() {
     return () => clearInterval(interval);
   }, [view, activeAbsenTab, isModelsLoaded, loading, autoCaptureActive]);
 
-  const checkPendingAndStartAttendance = async (method: "selfie" | "qr" | "rfid", extraData?: string) => {
+  const checkPendingAndStartAttendance = async (method: "selfie" | "qr", extraData?: string) => {
     if (!user) return;
 
-    // Check for pending approval of the same type today
+    let finalMethod = method;
+    let finalExtraData = extraData;
+
+    // 2-Step QR Verification Logic
+    if (method === "selfie" && pendingQRData) {
+       finalMethod = "qr";
+       finalExtraData = pendingQRData;
+    }
+
+    // Check for pending approval for the actual target user if we identified them
+    const targetUid = qrUserIdentity?.uid || user.uid;
+    
     const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
-    const hasPendingThisType = todayLogs.some(log => log.type === type && log.status === 'pending_approval');
-    const hasApprovedThisType = todayLogs.some(log => log.type === type && log.status === 'approved');
+    const hasPendingThisType = todayLogs.some(log => log.type === type && log.status === 'pending_approval' && log.userId === targetUid);
+    const hasApprovedThisType = todayLogs.some(log => log.type === type && log.status === 'approved' && log.userId === targetUid);
     
     if (hasPendingThisType || hasApprovedThisType) {
       toast.error(`Anda sudah melakukan absensi ${type === 'in' ? 'masuk' : type === 'out' ? 'pulang' : type.replace('_', ' ')} hari ini.`);
@@ -633,7 +662,7 @@ export default function UserApp() {
          extraDataToConfirm = `${permitStartDate ? format(permitStartDate, "yyyy-MM-dd") : ""}|${permitEndDate ? format(permitEndDate, "yyyy-MM-dd") : ""}`;
       }
 
-      setConfirmData({ method, photoBase64, extraData: extraDataToConfirm });
+      setConfirmData({ method: finalMethod, photoBase64, extraData: extraDataToConfirm });
     } catch (error) {
        console.error("Error preparing attendance:", error);
        toast.error("Terjadi kesalahan saat memproses absensi.");
@@ -650,7 +679,8 @@ export default function UserApp() {
       const now = new Date();
       let status = "approved"; // default OK
       
-      const shiftId = user.shiftId || "shift1";
+      const targetUid = qrUserIdentity?.uid || user.uid;
+      const shiftId = qrUserIdentity?.shiftId || user.shiftId || "shift1";
       const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
       const todayWork = shift?.workDays[now.getDay()];
 
@@ -679,15 +709,15 @@ export default function UserApp() {
         status = "pending_approval"; // QR code attendance always requires approval
       }
 
-      const attendanceId = `att_${Date.now()}_${user.uid}`;
+      const attendanceId = `att_${Date.now()}_${targetUid}`;
       
       let finalPhotoData = confirmData.photoBase64 || "";
       if (finalPhotoData.startsWith('data:image')) {
           finalPhotoData = await uploadBase64Image(finalPhotoData, `attendance/${attendanceId}`);
       }
       
-      await setDoc(doc(db, "attendance", attendanceId), {
-        userId: user.uid,
+      const attendancePayload: any = {
+        userId: targetUid,
         timestamp: Date.now(),
         type,
         method: confirmData.method,
@@ -696,7 +726,14 @@ export default function UserApp() {
         withinRadius: isWithinRadius,
         extraData: confirmData.extraData || "",
         status
-      });
+      };
+
+      if (targetUid !== user.uid) {
+        attendancePayload.deviceOwnerUid = user.uid;
+        attendancePayload.deviceOwnerName = user.name;
+      }
+
+      await setDoc(doc(db, "attendance", attendanceId), attendancePayload);
 
       const formatTypeRaw = (t: string) => {
         if (t === 'in') return 'Masuk';
@@ -711,9 +748,10 @@ export default function UserApp() {
         return 'Lainnya';
       };
 
-      toast.success(`Berhasil Absen ${formatTypeRaw(type)}${status === "pending_approval" ? " (Menunggu Approval Admin)" : ""}`);
-      if (confirmData.method === 'rfid') setRfidInput("");
+      toast.success(`Berhasil Absen ${formatTypeRaw(type)}${status === "pending_approval" ? " (Menunggu Approval Admin)" : ""}${qrUserIdentity ? ` untuk ${qrUserIdentity.name}` : ""}`);
       setConfirmData(null);
+      setPendingQRData(null);
+      setQrUserIdentity(null);
       if (view === 'absen') setView('home');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `attendance`);
@@ -931,8 +969,13 @@ export default function UserApp() {
                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Jadwal Hari Ini:</span>
                              </div>
                              <p className="text-lg font-black text-slate-800 dark:text-white">
-                               {todayWork ? `${todayWork.start} - ${todayWork.end}` : "LIBUR"}
+                               {todayWork ? `${todayWork.start} - ${todayWork.end}` : (shift?.startTime ? `${shift.startTime} - ${shift.endTime}` : "LIBUR")}
                              </p>
+                             {shift?.gracePeriod > 0 && (
+                               <p className="text-[9px] text-rose-500 font-bold uppercase tracking-widest mt-1">
+                                  Toleransi: {shift.gracePeriod} Menit
+                               </p>
+                             )}
                            </>
                          )
                       })()}
@@ -1141,12 +1184,15 @@ export default function UserApp() {
 
                 <Card className="bg-white dark:bg-gray-800 shadow-md rounded-2xl border-0">
                   <CardContent className="p-4">
-                    <Tabs value={activeAbsenTab} onValueChange={setActiveAbsenTab} className="w-full">
+                    <Tabs value={activeAbsenTab} onValueChange={(val) => {
+                       setActiveAbsenTab(val);
+                       setPendingQRData(null);
+                       setQrUserIdentity(null);
+                    }} className="w-full">
                       {!isDocumentCapture && (
-                        <TabsList className="grid w-full grid-cols-3 mb-6 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg h-auto">
+                        <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg h-auto">
                           <TabsTrigger value="selfie" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><UserSquare2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>Selfie</span></TabsTrigger>
                           <TabsTrigger value="qr" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>QR Scan</span></TabsTrigger>
-                          <TabsTrigger value="rfid" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><Fingerprint className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>RFID</span></TabsTrigger>
                         </TabsList>
                       )}
                       
@@ -1284,26 +1330,7 @@ export default function UserApp() {
                         <p className="text-center text-xs text-gray-500 dark:text-gray-400">Posisikan QR Code persis di dalam kotak pindaian.</p>
                       </TabsContent>
 
-                      <TabsContent value="rfid" className="space-y-4 py-8">
-                        <div className="text-center space-y-4 max-w-[250px] mx-auto">
-                          <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Fingerprint className="w-8 h-8 text-gray-400 animate-pulse" />
-                          </div>
-                          <h3 className="font-medium text-gray-700 dark:text-gray-200 text-sm">Scan Kartu RFID Anda</h3>
-                          <Input 
-                            autoFocus 
-                            type="password" 
-                            placeholder="Tap kartu ke reader..." 
-                            value={rfidInput}
-                            className="text-center bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700"
-                            onChange={(e) => setRfidInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") checkPendingAndStartAttendance("rfid", rfidInput);
-                            }}
-                          />
-                        </div>
-                      </TabsContent>
-                    </Tabs>
+                      </Tabs>
                   </CardContent>
                 </Card>
              </div>
@@ -1744,7 +1771,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Sistem Absensi Kehadiran</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.4.0 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -1796,9 +1823,36 @@ export default function UserApp() {
                             <h4 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-4 flex items-center gap-2">
                                <Code className="w-4 h-4" /> Log Perubahan (Changelog)
                             </h4>
-                            <div className="space-y-5">                                <div className="relative pl-4 border-l-2 border-teal-500/30">
+                            <div className="space-y-5">
+                                <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.6 <span className="text-xs font-normal text-gray-500 ml-2">Hari Ini</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.5.0 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan Kemananan Identitas Barcode: Memperbaiki lookup identitas scanner barcode agar dapat bekerja menggunakan Firestore langsung dari QR code secara aman tanpa mendelegasikan izin list.</li>
+                                    <li>Notifikasi Anomali Barcode: Notifikasi beda perangkat ditampilkan pada Admin Dashboard secara Real Time jika pengguna diabsenkan oleh perangkat orang lain.</li>
+                                 </ul>
+                               </div>
+
+                                <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.4.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Sekuritas Ganda Barcode: Mengimplementasikan verifikasi 2-langkah untuk fitur QR Scan. Setelah scan barcode, sistem akan mendeteksi identitas dan mewajibkan pengambilan foto verifikasi.</li>
+                                    <li>Auto-Identity Mapping: Absensi akan otomatis dicatat sesuai dengan akun user yang terdaftar dalam barcode tersebut, memungkinkan satu perangkat digunakan untuk verifikasi banyak user.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.3.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Pembersihan Sistem: Menghapus seluruh fitur dan referensi RFID untuk menyederhanakan antarmuka absen.</li>
+                                 </ul>
+                               </div>
+
+                               <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.2.6</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Hak Akses Superadmin: Memberikan akses penuh bagi Superadmin untuk melakukan edit dan hapus (termasuk override status absensi).</li>
                                     <li>Perbaikan Hapus Foto: Memperbaiki kendala izin Firestore saat menghapus lampiran foto pada log absensi.</li>

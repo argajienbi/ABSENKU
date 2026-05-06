@@ -18,6 +18,9 @@ export interface SystemSettings {
       name: string;
       label: string;
       color: string;
+      startTime?: string; // Default shift start
+      endTime?: string;   // Default shift end
+      gracePeriod?: number; // In minutes
       workDays: {
         [day: number]: { start: string; end: string } | null;
       };

@@ -40,7 +40,9 @@ service cloud.firestore {
              data.photoBase64 is string && data.photoBase64.size() <= 2000000 &&
              (!('extraData' in data) || data.extraData == null || (data.extraData is string && data.extraData.size() <= 256)) &&
              (!('location' in data) || data.location == null || (data.location is map)) &&
-             (!('withinRadius' in data) || data.withinRadius == null || data.withinRadius is bool);
+             (!('withinRadius' in data) || data.withinRadius == null || data.withinRadius is bool) &&
+             (!('deviceOwnerUid' in data) || data.deviceOwnerUid == null || (data.deviceOwnerUid is string && data.deviceOwnerUid.size() <= 128)) &&
+             (!('deviceOwnerName' in data) || data.deviceOwnerName == null || (data.deviceOwnerName is string && data.deviceOwnerName.size() <= 128));
     }
 
     function isValidLeaveRequest(data) {
@@ -98,7 +100,8 @@ service cloud.firestore {
     match /attendance/{attendanceId} {
       allow get: if isValidId(attendanceId) && (isOwner(resource.data.userId) || isAdminOrDemo());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
-      allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && incoming().userId == request.auth.uid &&
+      allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && 
+                    (incoming().userId == request.auth.uid || (incoming().method == 'qr' && incoming().deviceOwnerUid == request.auth.uid)) &&
                     exists(/databases/$(database)/documents/users/$(incoming().userId));
       allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['status']);
