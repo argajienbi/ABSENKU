@@ -4,11 +4,6 @@ import { db, handleFirestoreError, OperationType } from "./lib/firebase";
 
 export interface SystemSettings {
   geofenceEnabled: boolean;
-  officeLat: number;
-  officeLng: number;
-  radiusMeters: number;
-  shiftStart: string; // HH:mm format
-  shiftEnd: string; // HH:mm format
   appName?: string;
   appLogoUrl?: string;
   fcmVapidKey?: string;
@@ -48,8 +43,6 @@ export function useSettings() {
           const data = docSnap.data() as SystemSettings;
           setSettings({
             ...data,
-            shiftStart: data.shiftStart || "09:00",
-            shiftEnd: data.shiftEnd || "17:00",
             appName: data.appName || "ABSENKU",
             appLogoUrl: data.appLogoUrl || "",
             fcmVapidKey: data.fcmVapidKey || "",
@@ -62,11 +55,6 @@ export function useSettings() {
            // Provide safe defaults if no settings are configured yet
            setSettings({
              geofenceEnabled: false,
-             officeLat: -6.2088,
-             officeLng: 106.8456,
-             radiusMeters: 100,
-             shiftStart: "09:00",
-             shiftEnd: "17:00",
              appName: "ABSENKU",
              appLogoUrl: "",
              fcmVapidKey: "",

@@ -70,11 +70,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   // Settings forms
-  const [radiusInput, setRadiusInput] = useState(100);
-  const [latInput, setLatInput] = useState(-6.2088);
-  const [lngInput, setLngInput] = useState(106.8456);
-  const [shiftStartInput, setShiftStartInput] = useState("09:00");
-  const [shiftEndInput, setShiftEndInput] = useState("17:00");
   const [appNameInput, setAppNameInput] = useState("ABSENKU");
   const [appLogoUrlInput, setAppLogoUrlInput] = useState("");
   const [fcmVapidKeyInput, setFcmVapidKeyInput] = useState("");
@@ -85,6 +80,7 @@ export default function Dashboard() {
   const [newAreaLatInput, setNewAreaLatInput] = useState("-6.2088");
   const [newAreaLngInput, setNewAreaLngInput] = useState("106.8456");
   const [newArea, setNewArea] = useState({ name: "", radius: 100 });
+  const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
   const [newHoliday, setNewHoliday] = useState("");
   const [idRefsList, setIdRefsList] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -110,11 +106,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (settings) {
-      setRadiusInput(settings.radiusMeters);
-      setLatInput(settings.officeLat);
-      setLngInput(settings.officeLng);
-      setShiftStartInput(settings.shiftStart || "09:00");
-      setShiftEndInput(settings.shiftEnd || "17:00");
       setAppNameInput(settings.appName || "ABSENKU");
       setAppLogoUrlInput(settings.appLogoUrl || "");
       setFcmVapidKeyInput(settings.fcmVapidKey || "");
@@ -194,11 +185,6 @@ export default function Dashboard() {
       setLoadingConfig(true);
       await setDoc(doc(db, "settings", "global"), {
         ...settings,
-        radiusMeters: Number(radiusInput),
-        officeLat: Number(latInput),
-        officeLng: Number(lngInput),
-        shiftStart: shiftStartInput,
-        shiftEnd: shiftEndInput,
         appName: appNameInput,
         appLogoUrl: appLogoUrlInput,
         fcmVapidKey: fcmVapidKeyInput,
@@ -957,7 +943,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
+      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
                 <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
                   <MapPin className="w-4 h-4" /> Geofence Configuration
                 </div>
@@ -1013,15 +999,28 @@ export default function Dashboard() {
                        </div>
                        <Button onClick={() => {
                           if (newArea.name) {
-                            const areaId = "area_" + Date.now();
+                            const areaId = editingAreaId || ("area_" + Date.now());
                             const parsedLat = parseFloat(newAreaLatInput);
                             const parsedLng = parseFloat(newAreaLngInput);
                             setAreasInput({ ...areasInput, [areaId]: { ...newArea, lat: isNaN(parsedLat) ? 0 : parsedLat, lng: isNaN(parsedLng) ? 0 : parsedLng } });
                             setNewArea({ name: "", radius: 100 });
                             setNewAreaLatInput("-6.2088");
                             setNewAreaLngInput("106.8456");
+                            setEditingAreaId(null);
                           }
-                       }} className="bg-teal-500 hover:bg-teal-600 h-10 px-6 rounded-xl font-bold uppercase text-[10px] text-white whitespace-nowrap">TAMBAH</Button>
+                       }} className="bg-teal-500 hover:bg-teal-600 h-10 px-6 rounded-xl font-bold uppercase text-[10px] text-white whitespace-nowrap">
+                         {editingAreaId ? "SIMPAN" : "TAMBAH"}
+                       </Button>
+                       {editingAreaId && (
+                         <Button onClick={() => {
+                           setNewArea({ name: "", radius: 100 });
+                           setNewAreaLatInput("-6.2088");
+                           setNewAreaLngInput("106.8456");
+                           setEditingAreaId(null);
+                         }} variant="outline" className="h-10 px-4 rounded-xl font-bold uppercase text-[10px] text-slate-500">
+                           BATAL
+                         </Button>
+                       )}
                     </div>
                   </div>
 
@@ -1034,11 +1033,23 @@ export default function Dashboard() {
                                Lat: {a.lat}, Lng: {a.lng} | Radius: <span className="font-bold text-teal-600">{a.radius}m</span>
                             </div>
                          </div>
-                         <Button variant="ghost" className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/40 rounded-xl text-xs font-bold" onClick={() => {
-                            const newObj = {...areasInput};
-                            delete newObj[id];
-                            setAreasInput(newObj);
-                         }}>Hapus</Button>
+                         <div className="flex items-center gap-2">
+                           <Button variant="ghost" className="text-teal-600 hover:text-teal-800 hover:bg-teal-50 dark:hover:bg-teal-900/40 rounded-xl text-xs font-bold" onClick={() => {
+                              setEditingAreaId(id);
+                              setNewArea({ name: a.name, radius: a.radius || 100 });
+                              setNewAreaLatInput(a.lat?.toString() || "-6.2088");
+                              setNewAreaLngInput(a.lng?.toString() || "106.8456");
+                           }}>Edit</Button>
+                           <Button variant="ghost" className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/40 rounded-xl text-xs font-bold" onClick={() => {
+                              const newObj = {...areasInput};
+                              delete newObj[id];
+                              setAreasInput(newObj);
+                              if (editingAreaId === id) {
+                                setEditingAreaId(null);
+                                setNewArea({ name: "", radius: 100 });
+                              }
+                           }}>Hapus</Button>
+                         </div>
                       </div>
                     ))}
                     {Object.keys(areasInput || {}).length === 0 && <p className="text-xs text-slate-400 italic text-center py-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200">Belum ada area yang ditambahkan.</p>}
@@ -1048,39 +1059,6 @@ export default function Dashboard() {
                     SIMPAN MANAJEMEN AREA
                   </Button>
                 </div>
-              </Card>
-
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 flex flex-col">
-                <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
-                   <Activity className="w-4 h-4" /> Attendance Shift Hours
-                </div>
-                <div className="space-y-6 flex-1">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Start Shift / Late Gate (Global Fallback)</Label>
-                      <Input 
-                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
-                        type="time" 
-                        value={shiftStartInput} 
-                        onChange={(e) => setShiftStartInput(e.target.value)} 
-                      />
-                      <p className="text-[9px] text-slate-400 font-medium italic">Digunakan jika pengaturan jam masuk spesifik per-shift tidak diisi</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">End Shift / Early Gate (Global Fallback)</Label>
-                      <Input 
-                        className="border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-900 h-10 text-sm font-bold rounded-xl focus-visible:ring-teal-600"
-                        type="time" 
-                        value={shiftEndInput} 
-                        onChange={(e) => setShiftEndInput(e.target.value)} 
-                      />
-                      <p className="text-[9px] text-slate-400 font-medium italic">Digunakan jika pengaturan jam pulang spesifik per-shift tidak diisi</p>
-                    </div>
-                  </div>
-                </div>
-                <Button onClick={saveSettings} disabled={loadingConfig} className="w-full bg-teal-600 hover:bg-teal-700 h-12 rounded-2xl text-xs font-black uppercase tracking-widest text-white shadow-lg mt-8 transition-all active:scale-95">
-                  SIMPAN PENGATURAN GEOLOKASI
-                </Button>
               </Card>
 
               <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6 flex flex-col md:col-span-2">

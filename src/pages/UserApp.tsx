@@ -87,6 +87,7 @@ export default function UserApp() {
   
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"home" | "absen" | "history" | "profile" | "izin_menu" | "hris" | "notifications">("home");
+  const [currentAreaName, setCurrentAreaName] = useState<string | null>(null);
   const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card" | "changelog">("menu");
   const [idCardSide, setIdCardSide] = useState<"front" | "back">("front");
   const [editName, setEditName] = useState("");
@@ -185,7 +186,7 @@ export default function UserApp() {
           isLate = true; 
         } else if (!firstInLog.status || firstInLog.status === 'approved') {
           const firstInDate = new Date(firstInLog.timestamp);
-          const shiftStartStr = dayShift?.start || shiftConfig?.startTime || settings?.shiftStart || "09:00";
+          const shiftStartStr = dayShift?.start || shiftConfig?.startTime || "09:00";
           const gracePeriod = shiftConfig?.gracePeriod || 0;
           
           const [startHour, startMin] = shiftStartStr.split(':').map(Number);
@@ -424,26 +425,56 @@ export default function UserApp() {
           
           setLocation({ lat: latitude, lng: longitude });
           
-          let targetLat = settings.officeLat;
-          let targetLng = settings.officeLng;
-          let targetRadius = settings.radiusMeters;
+          let closestAreaDist = Infinity;
+          let inAnyArea = false;
+          let foundAreaName = "Di Luar Area Terdaftar";
+          let closestTargetLat = 0;
+          let closestTargetLng = 0;
+          let closestTargetRadius = 100;
           
-          if (user?.areaId && settings.areas && settings.areas[user.areaId]) {
-             const areaConfig = settings.areas[user.areaId];
-             targetLat = areaConfig.lat;
-             targetLng = areaConfig.lng;
-             targetRadius = areaConfig.radius;
-          } else if (settings.areas && Object.keys(settings.areas).length > 0) {
-             const firstArea = Object.values(settings.areas)[0] as any;
-             targetLat = firstArea.lat;
-             targetLng = firstArea.lng;
-             targetRadius = firstArea.radius;
+          if (settings.areas && Object.keys(settings.areas).length > 0) {
+            if (user?.areaId && settings.areas[user.areaId]) {
+               const areaConfig = settings.areas[user.areaId];
+               closestTargetLat = areaConfig.lat;
+               closestTargetLng = areaConfig.lng;
+               closestTargetRadius = areaConfig.radius;
+               const dist = calculateDistance(latitude, longitude, closestTargetLat, closestTargetLng);
+               closestAreaDist = dist;
+               if (dist <= closestTargetRadius) {
+                 inAnyArea = true;
+                 foundAreaName = areaConfig.name;
+               }
+            } else {
+               // Check all areas to find closest
+               Object.values(settings.areas).forEach((area: any) => {
+                 const areaDist = calculateDistance(latitude, longitude, area.lat, area.lng);
+                 if (areaDist < closestAreaDist) {
+                   closestAreaDist = areaDist;
+                   closestTargetLat = area.lat;
+                   closestTargetLng = area.lng;
+                   closestTargetRadius = area.radius;
+                 }
+                 if (areaDist <= area.radius) {
+                   inAnyArea = true;
+                   foundAreaName = area.name;
+                 }
+               });
+            }
+          } else {
+            setCurrentAreaName("Belum Ada Area Terdaftar");
           }
           
-          const dist = calculateDistance(latitude, longitude, targetLat, targetLng);
-          setDistance(dist);
-          if (settings.geofenceEnabled) {
-             setIsWithinRadius(dist <= targetRadius);
+          if (closestAreaDist !== Infinity) {
+             setDistance(closestAreaDist);
+             if (settings.geofenceEnabled) {
+                setIsWithinRadius(inAnyArea);
+             }
+             setCurrentAreaName(foundAreaName);
+          } else {
+             setDistance(null);
+             if (settings.geofenceEnabled) {
+                setIsWithinRadius(false);
+             }
           }
         },
         (err) => {
@@ -993,19 +1024,19 @@ export default function UserApp() {
                       {location && (
                         <div className="mt-3 text-[10px] text-slate-400 font-mono tracking-widest text-center">
                           <p>LAT: {location.lat.toFixed(6)} | LNG: {location.lng.toFixed(6)}</p>
+                          <p className="mt-1 text-teal-600 font-black font-sans uppercase">📍 {currentAreaName || "Mencari Area..."}</p>
                           {settings?.geofenceEnabled && (
                              <p className="mt-1 text-slate-500 font-medium font-sans">
                                Max Radius: {
                                 (() => {
-                                  let targetRadius = settings.radiusMeters;
-                                  if (user?.areaId && settings.areas && settings.areas[user.areaId]) {
-                                    targetRadius = settings.areas[user.areaId].radius;
-                                  } else if (!user?.areaId && settings.areas && Object.keys(settings.areas).length > 0) {
-                                    targetRadius = (Object.values(settings.areas)[0] as any).radius;
+                                  if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
+                                    return `${settings.areas[user.areaId].radius} meters`;
+                                  } else if (settings?.areas && Object.keys(settings.areas).length > 0) {
+                                    return `Tergantung Titik Cabang`;
                                   }
-                                  return targetRadius;
+                                  return "Belum ada konfigurasi";
                                 })()
-                               } meters
+                               }
                              </p>
                           )}
                         </div>
@@ -1219,8 +1250,16 @@ export default function UserApp() {
                                 </span>
                              </div>
                              <MapPicker 
-                               center={{ lat: location.lat, lng: location.lng }} 
-                               radius={settings?.radiusMeters || 100}
+                               center={{ 
+                                 lat: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lat : (location?.lat || -6.2088), 
+                                 lng: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lng : (location?.lng || 106.8456)
+                               }} 
+                               radius={(() => {
+                                 if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
+                                   return settings.areas[user.areaId].radius;
+                                 }
+                                 return 100;
+                               })()}
                                readonly={true}
                              />
                           </div>
@@ -1771,7 +1810,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.4.0 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.7.1 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -1826,10 +1865,45 @@ export default function UserApp() {
                             <div className="space-y-5">
                                 <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.5.0 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.1 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Peningkatan Kemananan Identitas Barcode: Memperbaiki lookup identitas scanner barcode agar dapat bekerja menggunakan Firestore langsung dari QR code secara aman tanpa mendelegasikan izin list.</li>
-                                    <li>Notifikasi Anomali Barcode: Notifikasi beda perangkat ditampilkan pada Admin Dashboard secara Real Time jika pengguna diabsenkan oleh perangkat orang lain.</li>
+                                    <li>Efisiensi Shift Global: Menghapus pengaturan jam shift global, sistem kini sepenuhnya menggunakan Manajemen Shift dan Working Days yang lebih spesifik.</li>
+                                    <li>Fitur Edit Area & Radius: Admin kini dapat mengedit detail dari area dan radius yang sudah ditambahkan tanpa harus menghapus lalu membuatnya kembali.</li>
+                                 </ul>
+                               </div>
+
+                                <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Efisiensi Geofence Area: Menghapus pengaturan Radius dan Lokasi Global. Sistem lokasi kini sepenuhnya bergantung pada konfigurasi Manajemen Area masing-masing cabang untuk mencegah tumpang tindih radius.</li>
+                                 </ul>
+                               </div>
+
+                                <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.6.1</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan Radius Fix: Menghilangkan limit radius pada visual map dan memperbaiki sinkronisasi antara radius global dan area (kini radius asli yang disetel admin akan ditampilkan sepenuhnya).</li>
+                                 </ul>
+                               </div>
+
+                                <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.6.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan Radius Geofence: Menghadirkan input radius & kordinat global yang sempat tersembunyi di Dashboard Admin, memungkinkan fleksibilitas setting wilayah kerja yang lebih besar (di atas 140m).</li>
+                                    <li>Info Lokasi Real-Time: Pengguna kini dapat melihat di area/cabang mana mereka sedang berada langsung di dashboard utama.</li>
+                                    <li>Optimasi Dashboard: Optimalisasi visual dan sinkronisasi data area untuk manajemen multi-cabang.</li>
+                                 </ul>
+                               </div>
+
+                                <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.5.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan Kemananan Identitas Barcode: Memperbaiki lookup identitas scanner barcode agar dapat bekerja menggunakan Firestore langsung dari QR code secara aman.</li>
+                                    <li>Notifikasi Anomali Barcode: Notifikasi beda perangkat ditampilkan pada Admin Dashboard secara Real Time.</li>
                                  </ul>
                                </div>
 

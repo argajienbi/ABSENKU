@@ -42,11 +42,6 @@
       "type": "object",
       "properties": {
         "geofenceEnabled": { "type": "boolean" },
-        "officeLat": { "type": "number" },
-        "officeLng": { "type": "number" },
-        "radiusMeters": { "type": "number" },
-        "shiftStart": { "type": "string" },
-        "shiftEnd": { "type": "string" },
         "shifts": {
           "type": "object",
           "additionalProperties": {

@@ -63,12 +63,7 @@ service cloud.firestore {
     }
     
     function isValidSettings(data) {
-      return (!('geofenceEnabled' in data) || data.geofenceEnabled is bool) &&
-             (!('officeLat' in data) || data.officeLat is number) &&
-             (!('officeLng' in data) || data.officeLng is number) &&
-             (!('radiusMeters' in data) || data.radiusMeters is number) &&
-             (!('shiftStart' in data) || (data.shiftStart is string && data.shiftStart.size() <= 16)) &&
-             (!('shiftEnd' in data) || (data.shiftEnd is string && data.shiftEnd.size() <= 16));
+      return (!('geofenceEnabled' in data) || data.geofenceEnabled is bool);
     }
 
     function isValidIdRef(data) {
