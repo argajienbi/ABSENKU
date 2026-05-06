@@ -28,16 +28,18 @@ export default function Login() {
   const [role, setRole] = useState<"staff" | "crew">("staff");
   const [waNumber, setWaNumber] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [idRef, setIdRef] = useState("");
   const [loading, setLoading] = useState(false);
   
   const webcamRef = useRef<Webcam>(null);
   
-  const capturePhoto = useCallback(() => {
+  const handleCapture = useCallback(() => {
     if (webcamRef.current) {
       const imageSrc = webcamRef.current.getScreenshot();
       if (imageSrc) {
         setAvatarUrl(imageSrc);
+        setIsCameraOpen(false);
       }
     }
   }, [webcamRef]);
@@ -274,32 +276,41 @@ export default function Login() {
             <CardContent className="space-y-4 px-8 pb-8">
               <form onSubmit={handleRegister} className="space-y-4">
                 <div className="flex flex-col items-center justify-center space-y-3 mb-2">
-                   {!avatarUrl ? (
-                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-teal-100 dark:border-teal-900 bg-slate-100 dark:bg-gray-800 shadow-inner flex items-center justify-center cursor-pointer group" onClick={capturePhoto}>
-                         <Webcam
-                            audio={false}
-                            ref={webcamRef}
-                            screenshotFormat="image/jpeg"
-                            screenshotQuality={0.7}
-                            videoConstraints={{ facingMode: "user", width: 320, height: 320 }}
-                            className="w-full h-full object-cover"
-                         />
-                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Camera className="w-6 h-6 text-white" />
-                         </div>
-                      </div>
-                   ) : (
-                      <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-teal-500 shadow-md group">
+                   <div className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-teal-100 dark:border-teal-900 bg-slate-100 dark:bg-gray-800 shadow-inner flex items-center justify-center cursor-pointer group" onClick={() => setIsCameraOpen(true)}>
+                      {avatarUrl ? (
                          <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
-                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setAvatarUrl("")}>
-                            <RefreshCw className="w-6 h-6 text-white" />
+                      ) : (
+                         <div className="flex flex-col items-center justify-center text-slate-400">
+                             <Camera className="w-8 h-8" />
                          </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Camera className="w-6 h-6 text-white" />
                       </div>
-                   )}
+                   </div>
                    <div className="text-center">
                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{avatarUrl ? "Foto Berhasil Diambil" : "Klik untuk Ambil Foto Wajah"}</p>
                    </div>
                 </div>
+                
+                {isCameraOpen && (
+                   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                     <div className="bg-white dark:bg-gray-900 p-4 rounded-2xl w-full max-w-sm">
+                       <Webcam
+                          audio={false}
+                          ref={webcamRef}
+                          screenshotFormat="image/jpeg"
+                          screenshotQuality={0.7}
+                          videoConstraints={{ facingMode: "user" }}
+                          className="w-full rounded-lg"
+                       />
+                       <div className="mt-4 flex gap-2">
+                          <Button type="button" onClick={() => setIsCameraOpen(false)} variant="outline" className="flex-1">Batal</Button>
+                          <Button type="button" onClick={handleCapture} className="flex-1 bg-teal-600">Ambil Foto</Button>
+                       </div>
+                     </div>
+                   </div>
+                )}
 
                 <div className="space-y-2">
                   <Label htmlFor="reg-name" className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">Nama Lengkap</Label>

@@ -1,3 +1,4 @@
+import { performIntegrityCheck } from "../lib/integrity";
 import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings, calculateDistance } from "../settingsObject";
@@ -404,8 +405,19 @@ export default function UserApp() {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           setLocationError(false);
-          const { latitude, longitude } = position.coords;
+          const { latitude, longitude, accuracy } = position.coords;
           const now = Date.now();
+          
+          // Perform integrity check here
+          performIntegrityCheck(latitude, longitude, accuracy, now, lastPosRef.current ? { lat: lastPosRef.current.lat, lng: lastPosRef.current.lng, time: lastPosRef.current.time } : undefined)
+            .then(result => {
+              if (result.isSuspicious) {
+                setIsFakeGPS(true);
+                toast.error(`Aktivitas mencurigakan terdeteksi: ${result.reason}`);
+              } else {
+                setIsFakeGPS(false);
+              }
+            });
           
           if (lastPosRef.current) {
             const dist = calculateDistance(latitude, longitude, lastPosRef.current.lat, lastPosRef.current.lng);
