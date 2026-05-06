@@ -1,4 +1,4 @@
-import React from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { WaveBackground } from "./components/WaveBackground";
@@ -17,7 +17,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
 }
 
 export default function App() {
-  React.useEffect(() => {
+  useEffect(() => {
     fetchHolidays();
   }, []);
 

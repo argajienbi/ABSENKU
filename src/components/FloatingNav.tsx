@@ -11,37 +11,24 @@ export function FloatingNav({ view, setView, setProfileTab, unreadCount = 0 }: {
         style={{ backgroundImage: WAVE_SVG, backgroundSize: 'cover', backgroundPosition: 'bottom' }}
       >
         <button 
-          onClick={() => setView('home')}
-          className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-all ${view === 'home' ? 'bg-white dark:bg-gray-700 shadow-sm text-teal-600 dark:text-teal-400' : 'text-gray-500 hover:bg-gray-200/50'}`}
-        >
-          <Home className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-bold">Home</span>
-        </button>
-
-        <button 
           onClick={() => setView('history')}
-          className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-all ${view === 'history' ? 'bg-white dark:bg-gray-700 shadow-sm text-teal-600 dark:text-teal-400' : 'text-gray-500 hover:bg-gray-200/50'}`}
+          className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-all ${view === 'history' ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 hover:bg-gray-200/50'}`}
         >
           <CalendarDays className="w-6 h-6 mb-1" />
           <span className="text-[10px] font-bold">Riwayat</span>
         </button>
 
         <button 
-          onClick={() => setView('notifications')}
-          className={`flex flex-col items-center justify-center flex-1 h-16 relative rounded-xl transition-all ${view === 'notifications' ? 'bg-white dark:bg-gray-700 shadow-sm text-teal-600 dark:text-teal-400' : 'text-gray-500 hover:bg-gray-200/50'}`}
+          onClick={() => setView('home')}
+          className={`relative -top-6 flex flex-col items-center justify-center w-16 h-16 rounded-full shadow-lg transition-all ${view === 'home' ? 'bg-teal-600 text-white' : 'bg-white dark:bg-gray-700 text-teal-600 dark:text-teal-400'}`}
         >
-          <Bell className="w-6 h-6 mb-1" />
-          <span className="text-[10px] font-bold">Notifikasi</span>
-          {unreadCount > 0 && (
-             <span className="absolute top-2 right-2 shadow-sm flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black tracking-widest text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-             </span>
-          )}
+          <Home className="w-7 h-7" />
+          <span className="text-[8px] font-bold mt-1 uppercase">Home</span>
         </button>
 
         <button 
           onClick={() => { setView('profile'); setProfileTab('menu'); }}
-          className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-all ${view === 'profile' ? 'bg-white dark:bg-gray-700 shadow-sm text-teal-600 dark:text-teal-400' : 'text-gray-500 hover:bg-gray-200/50'}`}
+          className={`flex flex-col items-center justify-center flex-1 h-16 rounded-xl transition-all ${view === 'profile' ? 'text-teal-600 dark:text-teal-400' : 'text-gray-500 hover:bg-gray-200/50'}`}
         >
           <User className="w-6 h-6 mb-1" />
           <span className="text-[10px] font-bold">Profil</span>

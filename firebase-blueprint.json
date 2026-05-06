@@ -1,5 +1,51 @@
 {
   "entities": {
+    "Company": {
+      "title": "Company",
+      "description": "Company profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Division": {
+      "title": "Division",
+      "description": "Company division",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "companyId": { "type": "string" }
+      },
+      "required": ["name", "companyId"]
+    },
+    "WorkHourSetting": {
+      "title": "WorkHourSetting",
+      "description": "Rules for working hours",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "startEarlyAbsen": { "type": "string" },
+        "startLimitAbsen": { "type": "string" },
+        "startWork": { "type": "string" },
+        "endWork": { "type": "string" },
+        "toleranceMinutes": { "type": "number" },
+        "activeDays": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["name"]
+    },
+    "DivisionShiftAssignment": {
+      "title": "DivisionShiftAssignment",
+      "description": "Assignment of shifts to divisions",
+      "type": "object",
+      "properties": {
+        "divisionId": { "type": "string" },
+        "shiftId": { "type": "string" },
+        "startDate": { "type": "number" },
+        "endDate": { "type": "number" }
+      },
+      "required": ["divisionId", "shiftId", "startDate", "endDate"]
+    },
     "User": {
       "title": "User",
       "description": "User profile information",
@@ -11,6 +57,7 @@
         "role": { "type": "string", "enum": ["superadmin", "admin", "staff", "crew"] },
         "avatarUrl": { "type": "string" },
         "shiftId": { "type": "string" },
+        "divisionId": { "type": "string" },
         "uniqueId": { "type": "string" },
         "waNumber": { "type": "string" },
         "createdAt": { "type": "number" }
@@ -110,6 +157,22 @@
     }
   },
   "firestore": {
+    "/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Company registration"
+    },
+    "/divisions/{divisionId}": {
+      "schema": "Division",
+      "description": "Company divisions"
+    },
+    "/workHourSettings/{settingId}": {
+      "schema": "WorkHourSetting",
+      "description": "Working hour configurations"
+    },
+    "/divisionShiftAssignments/{assignmentId}": {
+      "schema": "DivisionShiftAssignment",
+      "description": "Mass shift assignments"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "Individual user profiles"

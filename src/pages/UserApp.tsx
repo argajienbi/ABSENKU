@@ -35,6 +35,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Calendar } from "../components/ui/calendar";
+import { HrisSettings } from "../components/HrisSettings";
 
 export default function UserApp() {
   const { user } = useAuth();
@@ -947,13 +948,17 @@ export default function UserApp() {
                     <h1 className="text-xl md:text-2xl font-bold tracking-tight">{user?.name}</h1>
                  </div>
              </div>
-             {settings?.appLogoUrl ? (
-                 <img src={settings.appLogoUrl} alt="Logo" className="h-12 w-auto object-contain" />
-             ) : (
-                 <div className="text-2xl font-black italic tracking-widest text-white/40">
-                     ABSEN<br/>KU
-                 </div>
-             )}
+             <button 
+                onClick={() => setView('notifications')}
+                className="relative p-2 rounded-full hover:bg-teal-600/50 transition-colors"
+             >
+                <Bell className="w-7 h-7 text-white" />
+                {appNotifications.filter(n => !n.read).length > 0 && (
+                   <span className="absolute top-0 right-0 shadow-sm flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white">
+                      {appNotifications.filter(n => !n.read).length > 9 ? '9+' : appNotifications.filter(n => !n.read).length}
+                   </span>
+                )}
+             </button>
           </div>
         </div>
 
@@ -1923,17 +1928,17 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.4 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.7 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Redesign Header Dashboard: Profil pengguna kini ditampilkan di sisi kiri atas dengan foto yang lebih besar, dan logo aplikasi ditempatkan di sisi kanan header untuk tampilan yang lebih bersih.</li>
+                                    <li>Memindahkan menu notifikasi ke header kanan, menggantikan logo aplikasi.</li>
                                  </ul>
                                </div>
 
                                  <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.3</h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.6</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Info Jam Kerja & Status: Menambahkan informasi jadwal shift dan status "Belum/Sudah Absen" secara langsung pada tombol absensi Masuk dan Pulang di aplikasi pengguna.</li>
+                                    <li>Redesign Navigation Bar: Menyederhanakan navigasi menjadi 3 menu (Riwayat, Home Floating, Profil) dan menghapus menu notifikasi.</li>
                                  </ul>
                                </div>
 
@@ -2250,7 +2255,21 @@ export default function UserApp() {
         </div>
       )}
 
-      <FloatingNav view={view} setView={setView} setProfileTab={setProfileTab} unreadCount={appNotifications.filter(n => !n.read).length} />
+       {view === "hris" && (
+         <div className="absolute inset-0 z-50 bg-gray-50 dark:bg-gray-900 overflow-y-auto pb-24">
+            <div className="p-4 flex items-center gap-2">
+                <button onClick={() => setView('home')} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                   <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h2 className="text-lg font-bold">HRIS & Pengaturan</h2>
+            </div>
+            <div className="p-4">
+                <HrisSettings />
+            </div>
+         </div>
+       )}
+
+      <FloatingNav view={view} setView={setView} setProfileTab={setProfileTab} />
       
       {/* Background Decor */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden mix-blend-multiply opacity-50 dark:mix-blend-lighten dark:opacity-20 transition-opacity">
