@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Webcam from "react-webcam";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
 import { uploadBase64Image } from "../lib/storage";
 import { useAuth } from "../contexts/AuthContext";
@@ -229,6 +229,26 @@ export default function Login() {
                     <Input id="password" type={showPassword ? "text" : "password"} required placeholder="••••••••" className="border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 h-12 rounded-xl px-4 pr-10" value={password} onChange={e => setPassword(e.target.value)} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-gray-500 dark:hover:text-gray-300">
                       {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  <div className="text-right">
+                    <button 
+                      type="button" 
+                      onClick={async () => {
+                        if (!email) {
+                          toast.error("Silakan isi alamat email Anda di atas terlebih dahulu");
+                          return;
+                        }
+                        try {
+                          await sendPasswordResetEmail(auth, email);
+                          toast.success("Email reset kata sandi telah dikirim");
+                        } catch (error: any) {
+                          toast.error(error.message || "Gagal mengirim email reset");
+                        }
+                      }}
+                      className="text-xs font-bold text-teal-600 dark:text-teal-400 hover:underline mt-1"
+                    >
+                      Lupa kata sandi?
                     </button>
                   </div>
                 </div>

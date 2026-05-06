@@ -386,36 +386,44 @@ export default function Dashboard() {
     <WaveBackground>
       <div className="py-4 sm:py-8 px-4 max-w-7xl mx-auto space-y-6 sm:space-y-8">
         {/* Header */}
-        <header className="relative h-auto sm:h-32 bg-teal-600 dark:bg-teal-800 overflow-hidden shrink-0 rounded-2xl shadow-lg mb-6 pb-6 sm:pb-0">
-          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px] opacity-30">
-            <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-20" preserveAspectRatio="none">
-              <path fill="currentColor" className="text-teal-50 dark:text-gray-900" d="M0,192L48,208C96,224,192,256,288,245.3C384,235,480,181,576,176C672,171,768,213,864,229.3C960,245,1056,235,1152,208C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+        <header className="relative h-auto sm:h-40 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 dark:from-teal-900 dark:via-emerald-900 dark:to-teal-950 overflow-hidden shrink-0 rounded-3xl shadow-2xl mb-8 pb-6 sm:pb-0 border border-white/10">
+          <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -top-16 -right-16 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl"></div>
+          
+          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[2px] opacity-20">
+            <svg viewBox="0 0 1440 320" className="w-full h-16 md:h-24" preserveAspectRatio="none">
+              <path fill="currentColor" className="text-teal-900 dark:text-black" d="M0,160L48,176C96,192,192,224,288,208C384,192,480,128,576,133.3C672,139,768,213,864,224C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
             </svg>
           </div>
-          <div className="relative z-10 p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start text-white gap-4">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-3 drop-shadow-md">
+          <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start text-white gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner border border-white/30">
                 {settings?.appLogoUrl ? (
-                  <img src={settings.appLogoUrl} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
-                ) : (
-                  <Activity className="w-8 h-8" />
-                )}
-                {settings?.appName || "ABSENKU"} <span className="font-light opacity-80 font-sans tracking-widest text-sm ml-1 uppercase">Admin</span>
-              </h1>
-              <p className="text-teal-50/80 text-xs sm:text-sm font-medium tracking-wide">Monitoring real-time presence and cloud sync status</p>
+                    <img src={settings.appLogoUrl} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
+                  ) : (
+                    <Activity className="w-10 h-10 text-white" />
+                  )}
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-lg">
+                  {settings?.appName || "ABSENKU"} 
+                  <span className="text-emerald-200 block text-sm font-semibold tracking-widest uppercase">Admin Management</span>
+                </h1>
+              </div>
             </div>
             <div className="flex gap-4 text-right items-center">
-               <div className="flex flex-col justify-center text-right mr-1">
+               <div className="hidden sm:flex flex-col justify-center text-right mr-2">
                 <span className="font-bold text-sm tracking-tight">{user?.name}</span>
-                <span className="text-[10px] text-teal-100/70 uppercase tracking-widest font-black">{user?.role}</span>
+                <span className="text-[10px] text-teal-100 uppercase tracking-widest font-black bg-white/20 px-2 py-0.5 rounded-full">{user?.role}</span>
                </div>
                
                <div className="flex gap-2">
-                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 rounded-xl backdrop-blur-md" onClick={() => navigate('/app')}>
-                    Aplikasi 
+                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 rounded-xl backdrop-blur-md transition-all px-4" onClick={() => navigate('/app')}>
+                    App
                  </Button>
 
-                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 w-10 p-0 rounded-xl backdrop-blur-md" onClick={() => auth.signOut()} title="Keluar">
+                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 w-10 p-0 rounded-full backdrop-blur-md transition-all" onClick={() => auth.signOut()} title="Keluar">
                     <LogOut className="w-5 h-5" />
                  </Button>
                </div>
@@ -597,7 +605,8 @@ export default function Dashboard() {
                       <TableRow className="border-b border-teal-100 dark:border-teal-900 hover:bg-transparent">
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 w-[200px]">Waktu</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">User</TableHead>
-                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Tipe</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Jadwal</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Tipe & Status</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Metode</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Status Geofence</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 text-center">Foto</TableHead>
@@ -614,9 +623,27 @@ export default function Dashboard() {
                             {filteredUsersList.find(u => u.uid === log.userId || u.id === log.userId)?.name || log.userId}
                           </TableCell>
                           <TableCell className="px-6 py-4">
+                             <div className="text-[10px] font-bold text-slate-500">Jadwal:</div>
+                             <div className="text-[10px] font-mono font-bold text-teal-700">
+                                {(() => {
+                                  const userLog = filteredUsersList.find(u => u.uid === log.userId || u.id === log.userId);
+                                  const shiftId = userLog?.shiftId || "shift1";
+                                  const shift = SHIFTS[shiftId as keyof typeof SHIFTS] || SHIFTS.shift1;
+                                  const dayOfWeek = new Date(log.timestamp).getDay();
+                                  const shiftDay = shift.workDays[dayOfWeek as keyof typeof shift.workDays];
+                                  return shiftDay ? `${shiftDay.start} - ${shiftDay.end}` : "-";
+                                })()}
+                             </div>
+                           </TableCell>
+                           <TableCell className="px-6 py-4">
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.type === 'in' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' : log.type === 'out' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : log.type === 'overtime_in' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : log.type === 'overtime_out' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300' : log.type === 'sick' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : ['permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
                               {log.type === 'in' ? 'MASUK' : log.type === 'out' ? 'PULANG' : log.type === 'overtime_in' ? 'LEMBUR MSK' : log.type === 'overtime_out' ? 'LEMBUR PLG' : log.type === 'sick' ? 'SAKIT' : log.type === 'permit' ? 'IZIN' : log.type === 'cuti' ? 'CUTI' : log.type === 'melahirkan' ? 'HAMIL' : log.type === 'meninggal' ? 'BERDUKA' : log.type}
                             </span>
+                            <div className="mt-1">
+                               <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${log.status === 'approved' ? 'bg-green-100 text-green-700' : log.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                 {log.status === 'approved' ? 'Disetujui' : log.status === 'rejected' ? 'Ditolak' : 'Menunggu'}
+                               </span>
+                            </div>
                           </TableCell>
                           <TableCell className="px-6 py-4 uppercase text-[10px] font-black text-slate-600 dark:text-gray-400 tracking-widest">
                             <span className="bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300 border-slate-200 dark:border-gray-600 px-2.5 py-1 rounded-lg border inline-block">{log.method}</span>
@@ -927,12 +954,23 @@ export default function Dashboard() {
                           <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
                         </div>
                      ) : (
-                        <LiveMap 
-                          attendances={attendances} 
-                          users={usersList} 
-                          apiKey={settings.googleMapsApiKey}
-                          center={{ lat: settings?.officeLat || -6.2088, lng: settings?.officeLng || 106.8456 }}
-                        />
+                        (() => {
+                          let defaultLat = -6.2088;
+                          let defaultLng = 106.8456;
+                          if (settings?.areas && Object.values(settings.areas).length > 0) {
+                            const firstArea = Object.values(settings.areas)[0];
+                            defaultLat = firstArea.lat;
+                            defaultLng = firstArea.lng;
+                          }
+                          return (
+                            <LiveMap 
+                              attendances={attendances} 
+                              users={usersList} 
+                              apiKey={settings.googleMapsApiKey}
+                              center={{ lat: defaultLat, lng: defaultLng }}
+                            />
+                          );
+                        })()
                      )}
                 </CardContent>
               </Card>

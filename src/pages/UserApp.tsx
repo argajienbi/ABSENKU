@@ -909,7 +909,7 @@ export default function UserApp() {
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
       <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
-        {/* Header */}
+             {/* Header */}
         <div className="relative bg-teal-500 pb-20 pt-8 px-6 dark:bg-teal-800 shrink-0">
           <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px]">
             <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-16" preserveAspectRatio="none">
@@ -917,26 +917,27 @@ export default function UserApp() {
             </svg>
           </div>
           <div className="relative z-10 flex justify-between items-center text-white max-w-5xl mx-auto md:px-4">
-             <div>
-                <div className="flex items-center gap-2 mb-0.5">
-                   <p className="text-teal-100 dark:text-teal-200 text-[10px] uppercase tracking-wider font-bold">{getGreeting()},</p>
-                   {!isOnline && (
-                     <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/30 text-[8px] uppercase font-black text-white border border-amber-500/50 backdrop-blur-sm animate-pulse">
-                       <WifiOff className="w-2 h-2" /> Offline
-                     </div>
-                   )}
-                </div>
-                <h1 className="text-2xl font-bold tracking-tight mb-1.5">{user?.name}</h1>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 text-white text-[9px] uppercase font-bold tracking-wider shadow-sm">
-                   <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${todayStatusText.includes('Belum') ? 'bg-rose-400' : 'bg-teal-300'}`}></div>
-                   {todayStatusText}
-                </div>
+             <div className="flex items-center gap-4">
+                 {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt="avatar" className="w-16 h-16 rounded-full border-2 border-white object-cover shadow-sm bg-teal-600" />
+                 ) : (
+                    <div className="w-16 h-16 rounded-full bg-teal-600 border-2 border-white flex items-center justify-center font-bold shadow-sm">{user?.name?.[0]}</div>
+                 )}
+                 <div>
+                    <div className="flex items-center gap-2 mb-0.5">
+                       <p className="text-teal-100 dark:text-teal-200 text-[10px] uppercase tracking-wider font-bold">{getGreeting()},</p>
+                       {!isOnline && (
+                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/30 text-[8px] uppercase font-black text-white border border-amber-500/50 backdrop-blur-sm animate-pulse">
+                           <WifiOff className="w-2 h-2" /> Offline
+                         </div>
+                       )}
+                    </div>
+                    <h1 className="text-xl md:text-2xl font-bold tracking-tight">{user?.name}</h1>
+                 </div>
              </div>
-             {user?.avatarUrl ? (
-                <img src={user.avatarUrl} alt="avatar" className="w-12 h-12 rounded-full border-2 border-white object-cover shadow-sm bg-teal-600" />
-             ) : (
-                <div className="w-12 h-12 rounded-full bg-teal-600 border-2 border-white flex items-center justify-center font-bold shadow-sm">{user?.name?.[0]}</div>
-             )}
+             <div className="text-2xl font-black italic tracking-widest text-white/40">
+                 ABSEN<br/>KU
+             </div>
           </div>
         </div>
 
@@ -1046,41 +1047,82 @@ export default function UserApp() {
                 </Card>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <Button 
-                    onClick={() => { setType("in"); setView("absen"); }}
-                    className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-teal-500 to-emerald-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
-                  >
-                    <div className="absolute top-0 right-0 p-3 opacity-20">
-                      <AlarmClock className="w-16 h-16" />
-                    </div>
-                    <AlarmClock className="w-8 h-8 mb-2 opacity-80" />
-                    <span className="text-sm">Absen Masuk</span>
-                  </Button>
-                  <Button 
-                    onClick={() => {
+                  {(() => {
                       const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
                       const inLog = todayLogs.find(log => log.type === 'in');
+                      const outLog = todayLogs.find(log => log.type === 'out');
+                      const myShiftId = user?.shiftId || "shift1";
+                      const myShift = resolvedShifts[myShiftId] || resolvedShifts["shift1"];
+                      const dayOfWeek = currentTime.getDay();
+                      const shiftDay = myShift && myShift.workDays ? myShift.workDays[dayOfWeek as keyof typeof myShift.workDays] : null;
                       
-                      if (!inLog) {
-                        toast.error("Anda belum Absen Masuk. Tidak bisa Absen Pulang. Silakan hubungi Admin.");
-                        return;
-                      }
-                      if (inLog.status === 'pending_approval') {
-                        toast.error("Absen Masuk Anda masih menunggu Approval Admin. Tidak bisa Absen Pulang.");
-                        return;
-                      }
-                      
-                      setType("out"); 
-                      setView("absen"); 
-                    }}
-                    className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-purple-500 to-violet-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
-                  >
-                    <div className="absolute top-0 right-0 p-3 opacity-20">
-                      <DoorOpen className="w-16 h-16" />
-                    </div>
-                    <DoorOpen className="w-8 h-8 mb-2 opacity-80" />
-                    <span className="text-sm">Absen Pulang</span>
-                  </Button>
+                      return (
+                        <>
+                          <Button 
+                            onClick={() => { setType("in"); setView("absen"); }}
+                            className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-teal-500 to-emerald-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
+                          >
+                            <div className="absolute top-0 right-0 p-3 opacity-20">
+                              <AlarmClock className="w-16 h-16" />
+                            </div>
+                            <AlarmClock className="w-7 h-7 mb-1.5 opacity-80" />
+                            <span className="text-sm mb-1 leading-none">Absen Masuk</span>
+                            {shiftDay ? (
+                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Jadwal: {shiftDay.start}</span>
+                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${inLog ? 'bg-white text-teal-600' : 'bg-red-500/80 text-white'}`}>
+                                    {inLog ? 'Sudah Absen' : 'Belum Absen'}
+                                 </span>
+                               </div>
+                            ) : (
+                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Libur</span>
+                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${inLog ? 'bg-white text-teal-600' : 'bg-red-500/80 text-white'}`}>
+                                    {inLog ? 'Sudah Absen' : 'Belum Absen'}
+                                 </span>
+                               </div>
+                            )}
+                          </Button>
+                          <Button 
+                            onClick={() => {
+                              if (!inLog) {
+                                toast.error("Anda belum Absen Masuk. Tidak bisa Absen Pulang. Silakan hubungi Admin.");
+                                return;
+                              }
+                              if (inLog.status === 'pending_approval') {
+                                toast.error("Absen Masuk Anda masih menunggu Approval Admin. Tidak bisa Absen Pulang.");
+                                return;
+                              }
+                              
+                              setType("out"); 
+                              setView("absen"); 
+                            }}
+                            className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-purple-500 to-violet-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
+                          >
+                            <div className="absolute top-0 right-0 p-3 opacity-20">
+                              <DoorOpen className="w-16 h-16" />
+                            </div>
+                            <DoorOpen className="w-7 h-7 mb-1.5 opacity-80" />
+                            <span className="text-sm mb-1 leading-none">Absen Pulang</span>
+                            {shiftDay ? (
+                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Jadwal: {shiftDay.end}</span>
+                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${outLog ? 'bg-white text-purple-600' : 'bg-red-500/80 text-white'}`}>
+                                    {outLog ? 'Sudah Absen' : 'Belum Absen'}
+                                 </span>
+                               </div>
+                            ) : (
+                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
+                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Libur</span>
+                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${outLog ? 'bg-white text-purple-600' : 'bg-red-500/80 text-white'}`}>
+                                    {outLog ? 'Sudah Absen' : 'Belum Absen'}
+                                 </span>
+                               </div>
+                            )}
+                          </Button>
+                        </>
+                      );
+                  })()}
                   <button 
                     disabled={!canEnableOvertime}
                     onClick={() => { setType("overtime_in"); setView("absen"); }}
@@ -1863,20 +1905,28 @@ export default function UserApp() {
                                <Code className="w-4 h-4" /> Log Perubahan (Changelog)
                             </h4>
                             <div className="space-y-5">
-                                <div className="relative pl-4 border-l-2 border-teal-500/30">
+                                 <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.1 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.4 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Efisiensi Shift Global: Menghapus pengaturan jam shift global, sistem kini sepenuhnya menggunakan Manajemen Shift dan Working Days yang lebih spesifik.</li>
-                                    <li>Fitur Edit Area & Radius: Admin kini dapat mengedit detail dari area dan radius yang sudah ditambahkan tanpa harus menghapus lalu membuatnya kembali.</li>
+                                    <li>Redesign Header Dashboard: Profil pengguna kini ditampilkan di sisi kiri atas dengan foto yang lebih besar, dan logo aplikasi ditempatkan di sisi kanan header untuk tampilan yang lebih bersih.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.3</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Info Jam Kerja & Status: Menambahkan informasi jadwal shift dan status "Belum/Sudah Absen" secara langsung pada tombol absensi Masuk dan Pulang di aplikasi pengguna.</li>
                                  </ul>
                                </div>
 
                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.0</h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.1</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Efisiensi Geofence Area: Menghapus pengaturan Radius dan Lokasi Global. Sistem lokasi kini sepenuhnya bergantung pada konfigurasi Manajemen Area masing-masing cabang untuk mencegah tumpang tindih radius.</li>
+                                    <li>Efisiensi Shift Global: Menghapus pengaturan jam shift global, sistem kini sepenuhnya menggunakan Manajemen Shift dan Working Days yang lebih spesifik.</li>
+                                    <li>Fitur Edit Area & Radius: Admin kini dapat mengedit detail dari area dan radius yang sudah ditambahkan tanpa harus menghapus lalu membuatnya kembali.</li>
                                  </ul>
                                </div>
 
@@ -2185,6 +2235,12 @@ export default function UserApp() {
       )}
 
       <FloatingNav view={view} setView={setView} setProfileTab={setProfileTab} unreadCount={appNotifications.filter(n => !n.read).length} />
+      
+      {/* Background Decor */}
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden mix-blend-multiply opacity-50 dark:mix-blend-lighten dark:opacity-20 transition-opacity">
+         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-teal-200 dark:bg-teal-900 blur-3xl opacity-50" />
+         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-100 dark:bg-blue-900/50 blur-3xl opacity-50" />
+      </div>
     </div>
   );
 }
