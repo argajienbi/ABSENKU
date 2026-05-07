@@ -1097,30 +1097,22 @@ export default function Dashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0 flex-1 relative">
-                     {(!settings?.googleMapsApiKey) ? (
+                     {!settings?.googleMapsApiKey ? (
                         <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
                           <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
                           <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">API Key Belum Diatur</h3>
                           <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
                         </div>
                      ) : (
-                        (() => {
-                          let defaultLat = -6.2088;
-                          let defaultLng = 106.8456;
-                          if (settings?.areas && Object.values(settings.areas).length > 0) {
-                            const firstArea = Object.values(settings.areas)[0];
-                            defaultLat = firstArea.lat;
-                            defaultLng = firstArea.lng;
-                          }
-                          return (
-                            <LiveMap 
-                              attendances={attendances} 
-                              users={usersList} 
-                              apiKey={settings.googleMapsApiKey}
-                              center={{ lat: defaultLat, lng: defaultLng }}
-                            />
-                          );
-                        })()
+                       <LiveMap 
+                         attendances={attendances} 
+                         users={usersList} 
+                         apiKey={settings.googleMapsApiKey}
+                         center={{ 
+                           lat: (settings?.areas && Object.values(settings.areas).length > 0) ? Object.values(settings.areas)[0].lat : -6.2088, 
+                           lng: (settings?.areas && Object.values(settings.areas).length > 0) ? Object.values(settings.areas)[0].lng : 106.8456 
+                         }}
+                       />
                      )}
                 </CardContent>
               </Card>

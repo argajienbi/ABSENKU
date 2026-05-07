@@ -35,8 +35,9 @@ export function LiveMap({ attendances, users, apiKey, center }: LiveMapProps) {
 
   return (
     <div className="w-full h-full relative">
-      <APIProvider apiKey={apiKey}>
+      <APIProvider apiKey={apiKey || ""}>
         <Map
+          style={{ width: '100%', height: '100%' }}
           defaultCenter={safeCenter}
           defaultZoom={14}
           mapId="DEMO_MAP_ID"
@@ -45,6 +46,7 @@ export function LiveMap({ attendances, users, apiKey, center }: LiveMapProps) {
         >
           <AdvancedMarker 
             position={safeCenter}
+            onClick={() => setActiveMarker('center')}
           >
             <Pin background={"#6366f1"} borderColor={"#ffffff"} glyphColor={"#ffffff"} />
           </AdvancedMarker>
@@ -52,7 +54,7 @@ export function LiveMap({ attendances, users, apiKey, center }: LiveMapProps) {
           {activeMarker === 'center' && (
             <InfoWindow position={safeCenter} onCloseClick={() => setActiveMarker(null)}>
                  <div className="p-1">
-                     <h3 className="font-bold text-gray-800 text-sm">Kantor Pusat</h3>
+                     <h3 className="font-bold text-gray-800 text-sm">Pusat Area</h3>
                  </div>
             </InfoWindow>
           )}
@@ -69,15 +71,16 @@ export function LiveMap({ attendances, users, apiKey, center }: LiveMapProps) {
             if (log.isEarlyLeave || log.isLate) color = "#f97316"; // orange
 
             return (
-              <AdvancedMarker
-                key={log.id}
-                position={position}
-                onClick={() => setActiveMarker(log.id)}
-                zIndex={isHovered ? 100 : 1}
-              >
-                <div style={{ transform: isHovered ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s' }}>
-                  <Pin background={color} borderColor={"#ffffff"} glyphColor={"#ffffff"} />
-                </div>
+              <React.Fragment key={log.id}>
+                <AdvancedMarker
+                  position={position}
+                  onClick={() => setActiveMarker(log.id)}
+                  zIndex={isHovered ? 100 : 1}
+                >
+                  <div style={{ transform: isHovered ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s' }}>
+                    <Pin background={color} borderColor={"#ffffff"} glyphColor={"#ffffff"} />
+                  </div>
+                </AdvancedMarker>
                 {isHovered && (
                   <InfoWindow position={position} onCloseClick={() => setActiveMarker(null)}>
                     <div className="p-3 bg-white rounded-lg min-w-[200px] shadow-sm">
@@ -102,7 +105,7 @@ export function LiveMap({ attendances, users, apiKey, center }: LiveMapProps) {
                     </div>
                   </InfoWindow>
                 )}
-              </AdvancedMarker>
+              </React.Fragment>
             );
           })}
         </Map>

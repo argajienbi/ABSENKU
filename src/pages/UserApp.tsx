@@ -1345,7 +1345,7 @@ export default function UserApp() {
                         )}
 
                         {!isDocumentCapture && location && (
-                          <div className="mb-4 hidden sm:block">
+                          <div className="mb-4">
                              <div className="flex justify-between items-center mb-2">
                                 <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Peta Visual (GPS)</span>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
@@ -1763,11 +1763,10 @@ export default function UserApp() {
                     </Card>
 
                     <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 py-1 mt-4">Sistem</div>
-                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50 p-4">
+                    <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50">
                         <button 
                           onClick={async () => {
                              if (!settings?.fcmVapidKey) {
-                               toast.error("VAPID Key belum dikonfigurasi oleh Admin di Dashboard.");
                                return;
                              }
                              toast.loading("Meminta izin push notification...");
@@ -1780,37 +1779,35 @@ export default function UserApp() {
                                 } catch (e) {
                                   toast.error("Gagal menyimpan token FCM ke database.");
                                 }
-                             } else {
-                                toast.error("Gagal meminta izin FCM. Pastikan browser mendukung push, tidak diblokir, dan Anda tidak berada di dalam iFrame (gunakan new tab/PWA).");
                              }
                           }}
-                          className="w-full flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                         >
                           <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                             <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
                                 <Bell className="w-4 h-4" />
                              </div>
-                             <div className="text-left py-2">
-                               <div>Aktifkan Notifikasi</div>
-                               <div className="text-xs text-gray-400 font-normal">Push notification (FCM)</div>
+                             <div className="text-left leading-tight">
+                               <div className="font-semibold">Aktifkan Notifikasi</div>
+                               <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">Push notification (FCM)</div>
                              </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                         </button>
                         <button 
                           onClick={() => setProfileTab('changelog')}
                           className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-t border-gray-100 dark:border-gray-700/50"
                         >
                           <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                             <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                             <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
                                 <Info className="w-4 h-4" />
                              </div>
-                             <div className="text-left py-2">
-                                <div>Tentang Aplikasi</div>
-                                <div className="text-xs text-gray-400 font-normal">Versi & Info Pembaruan</div>
+                             <div className="text-left leading-tight">
+                                <div className="font-semibold">Tentang Aplikasi</div>
+                                <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">Versi & Info Pembaruan</div>
                              </div>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-gray-400" />
+                          <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                         </button>
                     </Card>
                   </>
