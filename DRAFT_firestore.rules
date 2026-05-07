@@ -34,10 +34,10 @@ service cloud.firestore {
     function isValidAttendance(data) {
       return data.userId is string && data.userId.size() <= 128 &&
              data.timestamp is number &&
-             data.type is string && data.type in ["in", "out", "overtime_in", "overtime_out", "sick", "permit", "cuti", "melahirkan", "meninggal"] &&
+             data.type is string && data.type in ["in", "out", "overtime_in", "overtime_out", "sick", "permit", "cuti", "melahirkan", "meninggal", "dispensasi"] &&
              data.method is string && data.method in ["selfie", "qr", "rfid", "admin"] &&
              data.status is string && data.status in ["approved", "pending_approval", "rejected"] &&
-             data.photoBase64 is string && data.photoBase64.size() <= 2000000 &&
+             (!('photoBase64' in data) || data.photoBase64 == null || (data.photoBase64 is string && data.photoBase64.size() <= 2000000)) &&
              (!('extraData' in data) || data.extraData == null || (data.extraData is string && data.extraData.size() <= 256)) &&
              (!('location' in data) || data.location == null || (data.location is map)) &&
              (!('withinRadius' in data) || data.withinRadius == null || data.withinRadius is bool) &&
@@ -96,7 +96,7 @@ service cloud.firestore {
       allow get: if isValidId(attendanceId) && (isOwner(resource.data.userId) || isAdminOrDemo());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdminOrDemo());
       allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && 
-                    (incoming().userId == request.auth.uid || (incoming().method == 'qr' && incoming().deviceOwnerUid == request.auth.uid)) &&
+                    (incoming().userId == request.auth.uid || (incoming().method == 'qr' && incoming().deviceOwnerUid == request.auth.uid) || isAdmin()) &&
                     exists(/databases/$(database)/documents/users/$(incoming().userId));
       allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
                     incoming().diff(existing()).affectedKeys().hasOnly(['status']);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getDocs, writeBatch, where } from "firebase/firestore";
 import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../settingsObject";
@@ -201,6 +201,9 @@ export default function Dashboard() {
     }
   };
 
+  const [confirmDeleteGlobal, setConfirmDeleteGlobal] = useState(false);
+  const [deleteUserTarget, setDeleteUserTarget] = useState<{id: string, name: string} | null>(null);
+
   const [selectedUserForEdit, setSelectedUserForEdit] = useState<any>(null);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState("");
@@ -210,6 +213,9 @@ export default function Dashboard() {
   const [editIsBanned, setEditIsBanned] = useState(false);
   const [editWorkStartDate, setEditWorkStartDate] = useState("");
   const [editWorkEndDate, setEditWorkEndDate] = useState("");
+  const [editMonthlyShifts, setEditMonthlyShifts] = useState<Record<string, string>>({});
+  const [editWeeklyShiftPattern, setEditWeeklyShiftPattern] = useState<string[]>([]);
+  const [editShiftMode, setEditShiftMode] = useState<"default" | "weekly" | "monthly">("default");
 
   const handleEditUser = (user: any) => {
     setSelectedUserForEdit(user);
@@ -221,6 +227,9 @@ export default function Dashboard() {
     setEditIsBanned(user.isBanned || false);
     setEditWorkStartDate(user.workStartDate ? format(new Date(user.workStartDate), "yyyy-MM-dd") : "");
     setEditWorkEndDate(user.workEndDate ? format(new Date(user.workEndDate), "yyyy-MM-dd") : "");
+    setEditMonthlyShifts(user.monthlyShifts || {});
+    setEditWeeklyShiftPattern(user.weeklyShiftPattern || []);
+    setEditShiftMode(user.weeklyShiftPattern?.length > 0 ? "weekly" : (Object.keys(user.monthlyShifts || {}).length > 0 ? "monthly" : "default"));
   };
    
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -304,7 +313,9 @@ export default function Dashboard() {
         areaId: editArea === "global" ? null : editArea,
         isBanned: editIsBanned,
         workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
-        workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null
+        workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null,
+        monthlyShifts: editMonthlyShifts,
+        weeklyShiftPattern: editWeeklyShiftPattern
       });
       toast.success("Data user diperbarui successfully");
       setSelectedUserForEdit(null);
@@ -320,6 +331,48 @@ export default function Dashboard() {
   const [overtimeStartTime, setOvertimeStartTime] = useState("");
   const [overtimeEndTime, setOvertimeEndTime] = useState("");
   const [overtimeNotes, setOvertimeNotes] = useState("");
+
+  const [showKoreksiModal, setShowKoreksiModal] = useState(false);
+  const [koreksiUser, setKoreksiUser] = useState<any>(null);
+  const [koreksiDate, setKoreksiDate] = useState("");
+  const [koreksiNotes, setKoreksiNotes] = useState("Dispensasi sistem/database error");
+
+  const handleKoreksiAlpa = (user: any) => {
+    setKoreksiUser(user);
+    setKoreksiDate(format(new Date(), "yyyy-MM-dd"));
+    setShowKoreksiModal(true);
+  };
+
+  const submitKoreksiAlpa = async () => {
+    if (!koreksiDate || !koreksiUser) {
+      toast.error("Tanggal harus dipilih");
+      return;
+    }
+    try {
+      const parts = koreksiDate.split('-');
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const dateObj = new Date(year, month, day, 8, 0, 0); // insert at 8:00 AM
+
+      await setDoc(doc(collection(db, "attendance")), {
+        userId: koreksiUser.uid || koreksiUser.id,
+        timestamp: dateObj.getTime(),
+        type: "dispensasi",
+        method: "admin",
+        photoBase64: null,
+        location: { latitude: 0, longitude: 0, address: "Manual Entry by Admin" },
+        withinRadius: true,
+        status: "approved",
+        extraData: koreksiNotes
+      });
+      toast.success("Dispensasi alpa berhasil ditambahkan!");
+      setShowKoreksiModal(false);
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.CREATE, "attendance");
+      toast.error(`Gagal menambahkan dispensasi alpa: ${err.message}`);
+    }
+  };
 
   const handleAddManualOvertime = (user: any) => {
     setOvertimeUser(user);
@@ -385,6 +438,63 @@ export default function Dashboard() {
     } catch (err: any) {
       console.error(err);
       toast.error("Gagal menambahkan lembur");
+    }
+  };
+
+  const handleDeleteAllHistory = async () => {
+    if (user?.role !== "superadmin") return;
+    setConfirmDeleteGlobal(false);
+
+    try {
+      toast.info("Sedang menghapus riwayat absensi masal...");
+      const snapshot = await getDocs(collection(db, "attendance"));
+      let b = writeBatch(db);
+      let count = 0;
+      for (const d of snapshot.docs) {
+        b.delete(d.ref);
+        count++;
+        if (count % 500 === 0) {
+          await b.commit();
+          b = writeBatch(db);
+        }
+      }
+      if (count % 500 !== 0) {
+        await b.commit();
+      }
+      toast.success(`Berhasil menghapus ${count} riwayat absensi.`);
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.DELETE, "attendance");
+      toast.error("Gagal menghapus riwayat masal");
+    }
+  };
+
+  const handleDeleteUserHistory = async () => {
+    if (user?.role !== "superadmin" || !deleteUserTarget) return;
+    const targetUserId = deleteUserTarget.id;
+    const userName = deleteUserTarget.name;
+    setDeleteUserTarget(null);
+
+    try {
+      toast.info(`Sedang menghapus riwayat absensi ${userName}...`);
+      const q = query(collection(db, "attendance"), where("userId", "==", targetUserId));
+      const snapshot = await getDocs(q);
+      let b = writeBatch(db);
+      let count = 0;
+      for (const d of snapshot.docs) {
+        b.delete(d.ref);
+        count++;
+        if (count % 500 === 0) {
+          await b.commit();
+          b = writeBatch(db);
+        }
+      }
+      if (count % 500 !== 0) {
+        await b.commit();
+      }
+      toast.success(`Berhasil menghapus ${count} riwayat absensi untuk ${userName}.`);
+    } catch (err: any) {
+      handleFirestoreError(err, OperationType.DELETE, "attendance");
+      toast.error(`Gagal menghapus riwayat user ${userName}`);
     }
   };
 
@@ -483,6 +593,11 @@ export default function Dashboard() {
                   <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Daftar absensi terbaru dari seluruh user</CardDescription>
                 </div>
                 <div className="flex sm:justify-end gap-2 w-full sm:w-auto mt-4 sm:mt-0">
+                  {user?.role === 'superadmin' && (
+                    <Button variant="outline" size="sm" onClick={() => setConfirmDeleteGlobal(true)} className="h-10 text-xs font-bold border-rose-100 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900 hover:text-rose-700 dark:hover:text-rose-300 bg-white dark:bg-gray-800 transition-all rounded-xl">
+                      <Trash2 className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Hapus Riwayat Massal</span>
+                    </Button>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger className="inline-flex items-center justify-center bg-white dark:bg-gray-700 border border-teal-100 dark:border-teal-900 rounded-xl text-xs font-bold text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-900 h-10 px-4 w-full sm:w-auto transition-all shadow-sm cursor-pointer outline-none">
                     <Download className="w-4 h-4 mr-2" /> Export Laporan <ChevronDown className="w-3 h-3 ml-2" />
@@ -829,16 +944,45 @@ export default function Dashboard() {
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${usr.role === 'superadmin' ? 'bg-rose-500/20 text-rose-600' : usr.role === 'admin' ? 'bg-teal-500/20 text-teal-600' : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300'}`}>{usr.role}</span>
                           </TableCell>
                           <TableCell className="px-6 py-4">
-                            <span 
-                              className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase text-white shadow-sm"
-                              style={{ backgroundColor: usr.shiftId ? shiftsInput[usr.shiftId]?.color || '#64748b' : '#64748b' }}
-                            >
-                              {usr.shiftId ? shiftsInput[usr.shiftId]?.name || usr.shiftId : "NO SHIFT"}
-                            </span>
+                            {(() => {
+                              const isWeekly = usr.weeklyShiftPattern && usr.weeklyShiftPattern.length > 0;
+                              const isMonthly = usr.monthlyShifts && Object.keys(usr.monthlyShifts).length > 0;
+                              
+                              const strategyBadge = isWeekly ? (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-black tracking-widest uppercase bg-teal-600 text-white shadow-sm">ROTASI</span>
+                              ) : isMonthly ? (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-black tracking-widest uppercase bg-purple-600 text-white shadow-sm">BULANAN</span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded-md text-[9px] font-black tracking-widest uppercase bg-slate-500 text-white shadow-sm">DEFAULT</span>
+                              );
+
+                              const shiftName = isWeekly ? "ROTASI AKTIF" : isMonthly ? "BULANAN AKTIF" : (shiftsInput[usr.shiftId]?.name || usr.shiftId || "NO SHIFT");
+                              
+                              return (
+                                <div className="flex flex-col gap-1 items-start">
+                                  <span 
+                                    className="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase text-white shadow-sm"
+                                    style={{ backgroundColor: isWeekly ? '#0d9488' : isMonthly ? '#9333ea' : (shiftsInput[usr.shiftId]?.color || '#64748b') }}
+                                  >
+                                    {shiftName}
+                                  </span>
+                                  {strategyBadge}
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">
+                            {areasInput[usr.areaId]?.name || 'Global'}
                           </TableCell>
                           <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">{usr.createdAt ? format(new Date(usr.createdAt), "dd MMM yyyy") : "-"}</TableCell>
                           <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-black font-mono">{usr.uniqueId || "-"}</TableCell>
                           <TableCell className="px-6 py-4 text-right px-6 flex items-center justify-end gap-2">
+                             {user?.role === 'superadmin' && (
+                               <Button variant="outline" size="sm" className="h-9 px-2 text-[10px] font-black tracking-widest uppercase rounded-xl border-rose-100 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 shadow-sm" onClick={() => setDeleteUserTarget({id: usr.uid || usr.id, name: usr.name || 'User'})} title="Hapus Riwayat Absensi">
+                                 <Trash2 className="w-3.5 h-3.5" />
+                               </Button>
+                             )}
+                             <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black tracking-widest uppercase rounded-xl border-amber-100 dark:border-amber-900 text-amber-600 dark:text-amber-400 hover:bg-amber-50 shadow-sm" onClick={() => handleKoreksiAlpa(usr)}>Koreksi Alpa</Button>
                              <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black tracking-widest uppercase rounded-xl border-amber-100 dark:border-amber-900 text-amber-600 dark:text-amber-400 hover:bg-amber-50 shadow-sm" onClick={() => handleAddManualOvertime(usr)}>Lembur</Button>
                              <Button variant="outline" size="sm" className="h-9 px-3 text-[10px] font-black tracking-widest uppercase rounded-xl border-teal-100 dark:border-teal-900 text-teal-600 dark:text-teal-400 hover:bg-teal-50 shadow-sm" onClick={() => handleEditUser(usr)}>Edit</Button>
                              <Button 
@@ -854,7 +998,7 @@ export default function Dashboard() {
                       ))}
                       {filteredUsersList.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-12 text-slate-400">
+                          <TableCell colSpan={6} className="text-center py-12 text-slate-400">
                             Sedang sinkronisasi data user...
                           </TableCell>
                         </TableRow>
@@ -1652,7 +1796,7 @@ export default function Dashboard() {
 
         {/* Add Manual Overtime Dialog */}
         <Dialog open={showOvertimeModal} onOpenChange={(open) => !open && setShowOvertimeModal(false)}>
-          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem]">
+          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem] max-h-[90vh] overflow-y-auto">
             <DialogHeader className="mb-6">
               <DialogTitle className="text-xl font-black text-amber-900 dark:text-amber-50 uppercase tracking-tighter">Tambah Lembur Manual</DialogTitle>
               <CardDescription className="text-xs font-bold text-slate-500 uppercase tracking-widest">Atur waktu lembur user dari sistem</CardDescription>
@@ -1717,13 +1861,99 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
+        {/* Koreksi Alpa Dialog */}
+        <Dialog open={showKoreksiModal} onOpenChange={(open) => !open && setShowKoreksiModal(false)}>
+          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem] max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="mb-6">
+              <DialogTitle className="text-xl font-black text-amber-900 dark:text-amber-50 uppercase tracking-tighter">Koreksi Kehadiran / Dispensasi</DialogTitle>
+              <CardDescription className="text-xs font-bold text-slate-500 uppercase tracking-widest">Tambahkan riwayat untuk koreksi alpa</CardDescription>
+            </DialogHeader>
+            {koreksiUser && (
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Nama User</Label>
+                  <Input 
+                    disabled
+                    value={koreksiUser.name} 
+                    className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50 opacity-50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Tanggal Dispensasi</Label>
+                  <Input 
+                    type="date"
+                    value={koreksiDate} 
+                    onChange={(e) => setKoreksiDate(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-amber-700 dark:text-amber-300 uppercase tracking-[0.2em] ml-1">Keterangan Tambahan</Label>
+                  <Input 
+                    value={koreksiNotes} 
+                    onChange={(e) => setKoreksiNotes(e.target.value)}
+                    className="bg-slate-50 dark:bg-slate-900/50 border-amber-100 dark:border-amber-900 h-12 rounded-2xl font-bold text-amber-900 dark:text-amber-50"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4">
+                  <Button variant="ghost" className="flex-1 text-slate-400 font-bold uppercase text-xs h-12 rounded-2xl" onClick={() => setShowKoreksiModal(false)}>Batal</Button>
+                  <Button onClick={submitKoreksiAlpa} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-amber-600/20 rounded-2xl active:scale-95 transition-all">SIMPAN KOREKSI</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete All History Confirm Dialog */}
+        <Dialog open={confirmDeleteGlobal} onOpenChange={setConfirmDeleteGlobal}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 rounded-[2rem] border-0 shadow-2xl overflow-hidden">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl font-black text-rose-600 uppercase tracking-tighter">Peringatan Penghapusan</DialogTitle>
+              <CardDescription className="text-sm font-medium text-slate-500">
+                Anda akan menghapus <strong className="text-rose-600">SEMUA</strong> riwayat absensi dari seluruh user. Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin melanjutkan?
+              </CardDescription>
+            </DialogHeader>
+            <div className="flex gap-3 justify-end mt-4">
+              <Button variant="outline" onClick={() => setConfirmDeleteGlobal(false)} className="rounded-xl border-slate-200">Batal</Button>
+              <Button onClick={handleDeleteAllHistory} className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-md">Ya, Hapus Semua</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete User History Confirm Dialog */}
+        <Dialog open={!!deleteUserTarget} onOpenChange={(open) => !open && setDeleteUserTarget(null)}>
+          <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 rounded-[2rem] border-0 shadow-2xl overflow-hidden">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="text-xl font-black text-rose-600 uppercase tracking-tighter">Peringatan Penghapusan</DialogTitle>
+              <CardDescription className="text-sm font-medium text-slate-500">
+                Hapus semua riwayat absensi untuk user <strong className="text-rose-600">{deleteUserTarget?.name}</strong>? Tindakan ini tidak bisa dibatalkan.
+              </CardDescription>
+            </DialogHeader>
+            <div className="flex gap-3 justify-end mt-4">
+              <Button variant="outline" onClick={() => setDeleteUserTarget(null)} className="rounded-xl border-slate-200">Batal</Button>
+              <Button onClick={handleDeleteUserHistory} className="rounded-xl bg-rose-600 hover:bg-rose-700 text-white shadow-md">Ya, Hapus Riwayat</Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Edit User Dialog */}
         <Dialog open={!!selectedUserForEdit} onOpenChange={(open) => !open && setSelectedUserForEdit(null)}>
-          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem]">
+          <DialogContent className="sm:max-w-md bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border-0 shadow-2xl rounded-[2rem] max-h-[90vh] overflow-y-auto">
             <DialogHeader className="mb-6">
               <DialogTitle className="text-xl font-black text-teal-900 dark:text-teal-50 uppercase tracking-tighter">Edit Data User</DialogTitle>
               <CardDescription className="text-xs font-bold text-slate-500 uppercase tracking-widest">Update profile & shift information</CardDescription>
             </DialogHeader>
+            <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/30 mb-6">
+              <p className="text-[10px] font-bold text-teal-800 dark:text-teal-200 leading-relaxed">
+                <strong>💡 Catatan Prioritas Shift:</strong> Sistem mengikuti urutan berikut: 
+                <br/>1. Shift Mingguan (jika diatur &gt; 0)
+                <br/>2. Shift Bulanan (jika ada untuk bulan ini)
+                <br/>3. Penempatan Shift (Default)
+              </p>
+            </div>
             {selectedUserForEdit && (
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -1754,6 +1984,7 @@ export default function Dashboard() {
                     onChange={(e) => setEditShift(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
                   >
+                    <option value="none">TIDAK ADA SHIFT (NONE)</option>
                     {Object.entries(shiftsInput).map(([id, s]: [string, any]) => (
                       <option key={id} value={id}>{s.name} ({s.label})</option>
                     ))}
@@ -1800,6 +2031,56 @@ export default function Dashboard() {
                       onChange={(e) => setEditWorkEndDate(e.target.value)}
                       className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
                     />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">SHIFT MINGGUAN (ROTASI)</Label>
+                  <div className="space-y-2">
+                    {editWeeklyShiftPattern.map((shiftId, index) => (
+                      <div key={index} className="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Minggu {index + 1}</span>
+                        <span className="text-xs font-bold text-teal-700 dark:text-teal-300">{shiftsInput[shiftId]?.name || shiftId}</span>
+                        <button onClick={() => setEditWeeklyShiftPattern(prev => prev.filter((_, i) => i !== index))} className="text-rose-500 hover:text-rose-700 text-xs font-bold">Hapus</button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <select className="h-10 text-xs font-bold bg-slate-50 dark:bg-slate-900 border rounded-lg px-2 flex-grow" id="newWeeklyShift">
+                        {Object.entries(shiftsInput).map(([id, s]: [string, any]) => (
+                          <option key={id} value={id}>{s.name || id}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" onClick={() => {
+                        const s = (document.getElementById("newWeeklyShift") as HTMLSelectElement).value;
+                        if(s) setEditWeeklyShiftPattern(prev => [...prev, s]);
+                      }} className="h-10 px-3">+</Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">SHIFT BULANAN</Label>
+                  <div className="space-y-2">
+                    {Object.entries(editMonthlyShifts).map(([month, shiftId]) => (
+                      <div key={month} className="flex items-center justify-between bg-slate-100 dark:bg-slate-800 p-2 rounded-lg">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{month}</span>
+                        <span className="text-xs font-bold text-teal-700 dark:text-teal-300">{shiftsInput[shiftId]?.name || shiftId}</span>
+                        <button onClick={() => setEditMonthlyShifts(prev => { const next = {...prev}; delete next[month]; return next; })} className="text-rose-500 hover:text-rose-700 text-xs font-bold">Hapus</button>
+                      </div>
+                    ))}
+                    <div className="flex gap-2">
+                      <Input type="month" className="h-10 text-xs font-bold" id="newMonth" />
+                      <select className="h-10 text-xs font-bold bg-slate-50 dark:bg-slate-900 border rounded-lg px-2" id="newMonthShift">
+                        {Object.entries(shiftsInput).map(([id, s]: [string, any]) => (
+                          <option key={id} value={id}>{s.name || id}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" onClick={() => {
+                        const m = (document.getElementById("newMonth") as HTMLInputElement).value;
+                        const s = (document.getElementById("newMonthShift") as HTMLSelectElement).value;
+                        if(m && s) setEditMonthlyShifts(prev => ({ ...prev, [m]: s }));
+                      }} className="h-10 px-3">+</Button>
+                    </div>
                   </div>
                 </div>
 

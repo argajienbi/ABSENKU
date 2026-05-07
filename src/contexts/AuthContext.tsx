@@ -13,9 +13,11 @@ interface AppUser {
   waNumber?: string;
   workStartDate?: number;
   workEndDate?: number;
+  monthlyShifts?: Record<string, string>;
   uniqueId: string;
   areaId?: string | null;
   isBanned?: boolean;
+  createdAt?: number;
 }
 
 interface AuthContextType {

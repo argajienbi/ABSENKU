@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { format, isSameDay, isWeekend, eachDayOfInterval, subDays, isSaturday, isSunday } from "date-fns";
 import { id } from "date-fns/locale";
 import { MapPicker } from "../components/MapPicker";
-import { isHoliday, setCustomHolidays } from "../lib/dateUtils";
+import { isHoliday, setCustomHolidays, getEffectiveShiftId } from "../lib/dateUtils";
 import Webcam from "react-webcam";
 import { Html5Qrcode } from "html5-qrcode";
 import { useTheme } from "next-themes";
@@ -35,6 +35,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Calendar } from "../components/ui/calendar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { HrisSettings } from "../components/HrisSettings";
 
 export default function UserApp() {
@@ -91,6 +92,7 @@ export default function UserApp() {
   const [view, setView] = useState<"home" | "absen" | "history" | "profile" | "izin_menu" | "hris" | "notifications">("home");
   const [currentAreaName, setCurrentAreaName] = useState<string | null>(null);
   const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card" | "changelog">("menu");
+  const [summaryModalCategory, setSummaryModalCategory] = useState<'hadir' | 'telat' | 'ijin' | 'alpa' | 'lembur' | null>(null);
   const [idCardSide, setIdCardSide] = useState<"front" | "back">("front");
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -155,7 +157,7 @@ export default function UserApp() {
     const isFuture = date > new Date() && !isToday;
     
     // User shift settings
-    const shiftId = user?.shiftId || "shift1";
+    const shiftId = getEffectiveShiftId(user, date);
     const shiftConfig = resolvedShifts[shiftId] || resolvedShifts.shift1;
     const dayOfWeek = date.getDay();
     const dayShift = shiftConfig?.workDays[dayOfWeek];
@@ -164,10 +166,26 @@ export default function UserApp() {
 
     if (isFuture) return null;
 
+    const userStartDate = user?.workStartDate ? new Date(user.workStartDate) : (user?.createdAt ? new Date(user.createdAt) : new Date(0));
+    userStartDate.setHours(0,0,0,0);
+    const checkDate = new Date(date);
+    checkDate.setHours(0,0,0,0);
+    
+    let isWithinContract = checkDate >= userStartDate;
+    if (user?.workEndDate) {
+      const userEndDate = new Date(user.workEndDate);
+      userEndDate.setHours(23,59,59,999);
+      if (checkDate > userEndDate) {
+        isWithinContract = false;
+      }
+    }
+
     const dayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), date));
     
     const sickLog = dayLogs.find(l => l.type === 'sick');
     if (sickLog) return 'sick';
+    const dispensasiLog = dayLogs.find(l => l.type === 'dispensasi');
+    if (dispensasiLog) return 'dispensasi';
     const permitLog = dayLogs.find(l => ['permit', 'cuti', 'melahirkan', 'meninggal'].includes(l.type));
     if (permitLog) return 'permit'; 
 
@@ -175,7 +193,7 @@ export default function UserApp() {
     const outLogs = dayLogs.filter(l => l.type === 'out');
 
     if (inLogs.length === 0 && outLogs.length === 0) {
-        if (!isOffDay && !isToday) return 'alpa'; 
+        if (!isOffDay && !isToday && isWithinContract) return 'alpa'; 
         return null;
     }
 
@@ -237,7 +255,7 @@ export default function UserApp() {
      const minutesSinceOut = (now.getTime() - outTime.getTime()) / (1000 * 60);
      
      // Check shift end time
-     const shift = resolvedShifts[user?.shiftId || ''];
+     const shift = resolvedShifts[getEffectiveShiftId(user, new Date()) || ''];
      const dayOfWeek = new Date().getDay();
      const shiftDay = shift?.workDays?.[dayOfWeek];
      
@@ -263,16 +281,22 @@ export default function UserApp() {
      let alpaCount = 0;
      let lemburHours = 0;
      let hadirCount = 0;
+
+     const telatDates: Date[] = [];
+     const ijinDates: Date[] = [];
+     const alpaDates: Date[] = [];
+     const hadirDates: Date[] = [];
+     const lemburDetails: {date: Date, hours: number}[] = [];
      
      const now = new Date();
      for (let i = 1; i <= now.getDate(); i++) {
         const date = new Date(now.getFullYear(), now.getMonth(), i);
         const status = getStatusForDate(date);
         
-        if (status === 'telat') telatCount++;
-        if (status === 'sick' || status === 'permit') ijinCount++;
-        if (status === 'alpa') alpaCount++;
-        if (status === 'hadir') hadirCount++;
+        if (status === 'telat') { telatCount++; telatDates.push(date); }
+        if (status === 'sick' || status === 'permit' || status === 'dispensasi') { ijinCount++; ijinDates.push(date); }
+        if (status === 'alpa') { alpaCount++; alpaDates.push(date); }
+        if (status === 'hadir') { hadirCount++; hadirDates.push(date); }
         
         const dayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), date));
         const lemburIn = dayLogs.filter(l => l.type === 'overtime_in').sort((a,b) => a.timestamp - b.timestamp);
@@ -281,12 +305,14 @@ export default function UserApp() {
         if (lemburIn.length > 0 && lemburOut.length > 0) {
             const mSecs = lemburOut[0].timestamp - lemburIn[0].timestamp;
             if (mSecs > 0) {
-               lemburHours += mSecs / (1000 * 60 * 60);
+               const hours = mSecs / (1000 * 60 * 60);
+               lemburHours += hours;
+               lemburDetails.push({ date, hours });
             }
         }
      }
      
-     return { telatCount, ijinCount, alpaCount, lemburHours, hadirCount };
+     return { telatCount, ijinCount, alpaCount, lemburHours, hadirCount, telatDates, ijinDates, alpaDates, hadirDates, lemburDetails };
   }, [myHistory, getStatusForDate]);
 
   const todayStatusText = React.useMemo(() => {
@@ -403,117 +429,126 @@ export default function UserApp() {
     }
 
     if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setLocationError(false);
-          const { latitude, longitude, accuracy } = position.coords;
-          const now = Date.now();
-          
-          // Perform integrity check here
-          performIntegrityCheck(latitude, longitude, accuracy, now, lastPosRef.current ? { lat: lastPosRef.current.lat, lng: lastPosRef.current.lng, time: lastPosRef.current.time } : undefined)
-            .then(result => {
-              if (result.isSuspicious) {
-                setIsFakeGPS(true);
-                toast.error(`Aktivitas mencurigakan terdeteksi: ${result.reason}`);
-              } else {
-                setIsFakeGPS(false);
-              }
-            });
-          
-          if (lastPosRef.current) {
-            const dist = calculateDistance(latitude, longitude, lastPosRef.current.lat, lastPosRef.current.lng);
-            const timeDiff = (now - lastPosRef.current.time) / 1000; // seconds
-            if (timeDiff > 0) {
-              const speed = dist / timeDiff; // m/s
-              // If speed > 100 m/s (~360 km/h), suspicious.
-              if (speed > 100) {
+      let watchId: number;
+      let options = { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 };
+
+      const startWatching = () => {
+        return navigator.geolocation.watchPosition(
+          (position) => {
+            setLocationError(false);
+            const { latitude, longitude, accuracy } = position.coords;
+            const now = Date.now();
+            
+            // Perform integrity check here
+            performIntegrityCheck(latitude, longitude, accuracy, now, lastPosRef.current ? { lat: lastPosRef.current.lat, lng: lastPosRef.current.lng, time: lastPosRef.current.time } : undefined)
+              .then(result => {
+                if (result.isSuspicious) {
                   setIsFakeGPS(true);
-                  toast.error("Aktivitas mencurigakan terdeteksi (Fake GPS).");
-              } else {
+                  if (!isFakeGPS) toast.error(`Aktivitas mencurigakan terdeteksi: ${result.reason}`);
+                } else {
                   setIsFakeGPS(false);
+                }
+              });
+            
+            if (lastPosRef.current) {
+              const dist = calculateDistance(latitude, longitude, lastPosRef.current.lat, lastPosRef.current.lng);
+              const timeDiff = (now - lastPosRef.current.time) / 1000; // seconds
+              if (timeDiff > 0) {
+                const speed = dist / timeDiff; // m/s
+                if (speed > 100) {
+                    setIsFakeGPS(true);
+                    toast.error("Aktivitas mencurigakan terdeteksi (Fake GPS).");
+                }
               }
             }
-          }
-          lastPosRef.current = { lat: latitude, lng: longitude, time: now };
-          
-          setLocation({ lat: latitude, lng: longitude });
-          
-          let closestAreaDist = Infinity;
-          let inAnyArea = false;
-          let foundAreaName = "Di Luar Area Terdaftar";
-          let closestTargetLat = 0;
-          let closestTargetLng = 0;
-          let closestTargetRadius = 100;
-          
-          if (settings.areas && Object.keys(settings.areas).length > 0) {
-            if (user?.areaId && settings.areas[user.areaId]) {
-               const areaConfig = settings.areas[user.areaId];
-               closestTargetLat = areaConfig.lat;
-               closestTargetLng = areaConfig.lng;
-               closestTargetRadius = areaConfig.radius;
-               const dist = calculateDistance(latitude, longitude, closestTargetLat, closestTargetLng);
-               closestAreaDist = dist;
-               if (dist <= closestTargetRadius) {
-                 inAnyArea = true;
-                 foundAreaName = areaConfig.name;
-               }
-            } else {
-               // Check all areas to find closest
-               Object.values(settings.areas).forEach((area: any) => {
-                 const areaDist = calculateDistance(latitude, longitude, area.lat, area.lng);
-                 if (areaDist < closestAreaDist) {
-                   closestAreaDist = areaDist;
-                   closestTargetLat = area.lat;
-                   closestTargetLng = area.lng;
-                   closestTargetRadius = area.radius;
-                 }
-                 if (areaDist <= area.radius) {
+            lastPosRef.current = { lat: latitude, lng: longitude, time: now };
+            
+            setLocation({ lat: latitude, lng: longitude });
+            
+            let closestAreaDist = Infinity;
+            let inAnyArea = false;
+            let foundAreaName = "Di Luar Area Terdaftar";
+            let closestTargetLat = 0;
+            let closestTargetLng = 0;
+            let closestTargetRadius = 100;
+            
+            if (settings.areas && Object.keys(settings.areas).length > 0) {
+              if (user?.areaId && settings.areas[user.areaId]) {
+                 const areaConfig = settings.areas[user.areaId];
+                 closestTargetLat = areaConfig.lat;
+                 closestTargetLng = areaConfig.lng;
+                 closestTargetRadius = areaConfig.radius;
+                 const dist = calculateDistance(latitude, longitude, closestTargetLat, closestTargetLng);
+                 closestAreaDist = dist;
+                 if (dist <= closestTargetRadius) {
                    inAnyArea = true;
-                   foundAreaName = area.name;
+                   foundAreaName = areaConfig.name;
                  }
-               });
+              } else {
+                 Object.values(settings.areas).forEach((area: any) => {
+                   const areaDist = calculateDistance(latitude, longitude, area.lat, area.lng);
+                   if (areaDist < closestAreaDist) {
+                     closestAreaDist = areaDist;
+                     closestTargetLat = area.lat;
+                     closestTargetLng = area.lng;
+                     closestTargetRadius = area.radius;
+                   }
+                   if (areaDist <= area.radius) {
+                     inAnyArea = true;
+                     foundAreaName = area.name;
+                   }
+                 });
+              }
+            } else {
+              setCurrentAreaName("Belum Ada Area Terdaftar");
             }
-          } else {
-            setCurrentAreaName("Belum Ada Area Terdaftar");
-          }
-          
-          if (closestAreaDist !== Infinity) {
-             setDistance(closestAreaDist);
-             if (settings.geofenceEnabled) {
-                setIsWithinRadius(inAnyArea);
-             }
-             setCurrentAreaName(foundAreaName);
-          } else {
-             setDistance(null);
-             if (settings.geofenceEnabled) {
-                setIsWithinRadius(false);
-             }
-          }
-        },
-        (err) => {
-          let errorMessage = "Unknown error";
-          switch (err.code) {
-            case err.PERMISSION_DENIED:
-              errorMessage = "Izin lokasi ditolak oleh pengguna.";
-              break;
-            case err.POSITION_UNAVAILABLE:
-              errorMessage = "Informasi lokasi tidak tersedia.";
-              break;
-            case err.TIMEOUT:
-              errorMessage = "Waktu permintaan lokasi habis.";
-              break;
-          }
-          console.error(`Geolocation error (${err.code}): ${err.message}`, { code: err.code, message: err.message });
-          setLocationError(true);
-          if (settings.geofenceEnabled) {
-            setIsWithinRadius(false);
-          }
-          // Only show toast if it hasn't been shown recently or if it's a critical error
-          // For now, just log more clearly to fix the "{} " issue
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-      return () => navigator.geolocation.clearWatch(watchId);
+            
+            if (closestAreaDist !== Infinity) {
+               setDistance(closestAreaDist);
+               if (settings.geofenceEnabled) {
+                  setIsWithinRadius(inAnyArea);
+               }
+               setCurrentAreaName(foundAreaName);
+            } else {
+               setDistance(null);
+               if (settings.geofenceEnabled) {
+                  setIsWithinRadius(false);
+               }
+            }
+          },
+          (err) => {
+            let errorMessage = "Unknown error";
+            switch (err.code) {
+              case err.PERMISSION_DENIED:
+                errorMessage = "Izin lokasi ditolak oleh pengguna.";
+                break;
+              case err.POSITION_UNAVAILABLE:
+                errorMessage = "Informasi lokasi tidak tersedia.";
+                break;
+              case err.TIMEOUT:
+                errorMessage = "Waktu permintaan lokasi habis.";
+                break;
+            }
+            console.error(`Geolocation error (${err.code}): ${err.message}`, { code: err.code, message: err.message });
+            setLocationError(true);
+            if (settings.geofenceEnabled) {
+              setIsWithinRadius(false);
+            }
+            
+            // Auto fallback if high accuracy times out
+            if (err.code === err.TIMEOUT && options.enableHighAccuracy) {
+               console.log("Retrying location without high accuracy...");
+               options.enableHighAccuracy = false;
+               if (watchId) navigator.geolocation.clearWatch(watchId);
+               watchId = startWatching();
+            }
+          },
+          options
+        );
+      };
+      
+      watchId = startWatching();
+      return () => { if (watchId) navigator.geolocation.clearWatch(watchId); };
     } else {
       setLocationError(true);
       if (settings.geofenceEnabled) {
@@ -651,6 +686,11 @@ export default function UserApp() {
     }
     
     const isDocumentCapture = ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type);
+
+    if (locationError && !isDocumentCapture && settings?.geofenceEnabled) {
+      toast.error("Gagal mendapatkan lokasi. Pastikan izin lokasi (GPS) diaktifkan.");
+      return;
+    }
 
     if (settings?.geofenceEnabled && !isWithinRadius && !isDocumentCapture) {
       toast.error("Anda berada di luar radius kantor!");
@@ -1009,7 +1049,7 @@ export default function UserApp() {
                     {/* Shift Info */}
                     <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col items-center">
                       {(() => {
-                         const shiftId = user?.shiftId || "shift1";
+                         const shiftId = getEffectiveShiftId(user, new Date());
                          const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
                          const todayWork = shift?.workDays[currentTime.getDay()];
                          
@@ -1072,7 +1112,7 @@ export default function UserApp() {
                       const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
                       const inLog = todayLogs.find(log => log.type === 'in');
                       const outLog = todayLogs.find(log => log.type === 'out');
-                      const myShiftId = user?.shiftId || "shift1";
+                      const myShiftId = getEffectiveShiftId(user, new Date());
                       const myShift = resolvedShifts[myShiftId] || resolvedShifts["shift1"];
                       const dayOfWeek = currentTime.getDay();
                       const shiftDay = myShift && myShift.workDays ? myShift.workDays[dayOfWeek as keyof typeof myShift.workDays] : null;
@@ -1448,27 +1488,79 @@ export default function UserApp() {
                   <CalendarDays className="w-5 h-5 text-teal-600 dark:text-teal-400" /> Ringkasan Bulan Ini
                 </h2>
                 <div className="grid grid-cols-5 gap-2 mb-4">
-                   <div className="bg-teal-50 dark:bg-teal-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                   <div onClick={() => setSummaryModalCategory('hadir')} className="bg-teal-50 dark:bg-teal-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-teal-100 dark:hover:bg-teal-800/40 transition-colors active:scale-95">
                       <span className="text-lg font-bold text-teal-600 dark:text-teal-400">{summary.hadirCount}</span>
                       <span className="text-[9px] uppercase tracking-wider font-bold text-teal-700/60 dark:text-teal-500">Hadir</span>
                    </div>
-                   <div className="bg-yellow-50 dark:bg-yellow-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                   <div onClick={() => setSummaryModalCategory('telat')} className="bg-yellow-50 dark:bg-yellow-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-800/40 transition-colors active:scale-95">
                       <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">{summary.telatCount}</span>
                       <span className="text-[9px] uppercase tracking-wider font-bold text-yellow-700/60 dark:text-yellow-500">Telat</span>
                    </div>
-                   <div className="bg-blue-50 dark:bg-blue-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                   <div onClick={() => setSummaryModalCategory('ijin')} className="bg-blue-50 dark:bg-blue-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors active:scale-95">
                       <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{summary.ijinCount}</span>
                       <span className="text-[9px] uppercase tracking-wider font-bold text-blue-700/60 dark:text-blue-500">Ijin</span>
                    </div>
-                   <div className="bg-red-50 dark:bg-red-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                   <div onClick={() => setSummaryModalCategory('alpa')} className="bg-red-50 dark:bg-red-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-red-100 dark:hover:bg-red-800/40 transition-colors active:scale-95">
                       <span className="text-lg font-bold text-red-600 dark:text-red-400">{summary.alpaCount}</span>
                       <span className="text-[9px] uppercase tracking-wider font-bold text-red-700/60 dark:text-red-500">Alpa</span>
                    </div>
-                   <div className="bg-amber-50 dark:bg-amber-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm">
+                   <div onClick={() => setSummaryModalCategory('lembur')} className="bg-amber-50 dark:bg-amber-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-800/40 transition-colors active:scale-95">
                       <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{summary.lemburHours.toFixed(1)}</span>
                       <span className="text-[9px] uppercase tracking-wider font-bold text-amber-700/60 dark:text-amber-500">Jam Lmbr</span>
                    </div>
                 </div>
+
+                {summaryModalCategory && (
+                  <Dialog open={!!summaryModalCategory} onOpenChange={(open) => !open && setSummaryModalCategory(null)}>
+                    <DialogContent className="sm:max-w-md bg-white dark:bg-gray-900 rounded-[2rem] border-0 shadow-2xl p-6 w-[90%] mx-auto max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-black capitalize tracking-tight text-gray-900 dark:text-white">
+                          Rincian {summaryModalCategory === 'ijin' ? 'Ijin / Sakit' : summaryModalCategory}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="mt-4 space-y-3">
+                        {summaryModalCategory === 'hadir' && summary.hadirDates.length === 0 && <p className="text-sm text-gray-500 italic text-center">Belum ada riwayat</p>}
+                        {summaryModalCategory === 'hadir' && summary.hadirDates.map((d, i) => (
+                           <div key={i} className="flex justify-between items-center bg-teal-50 dark:bg-teal-900/20 px-4 py-3 rounded-xl border border-teal-100 dark:border-teal-800/30">
+                              <span className="font-bold text-sm text-teal-800 dark:text-teal-200">{format(d, "EEEE, dd MMM yyyy", { locale: id })}</span>
+                           </div>
+                        ))}
+                        
+                        {summaryModalCategory === 'telat' && summary.telatDates.length === 0 && <p className="text-sm text-gray-500 italic text-center">Belum ada riwayat</p>}
+                        {summaryModalCategory === 'telat' && summary.telatDates.map((d, i) => (
+                           <div key={i} className="flex justify-between items-center bg-yellow-50 dark:bg-yellow-900/20 px-4 py-3 rounded-xl border border-yellow-100 dark:border-yellow-800/30">
+                              <span className="font-bold text-sm text-yellow-800 dark:text-yellow-200">{format(d, "EEEE, dd MMM yyyy", { locale: id })}</span>
+                           </div>
+                        ))}
+
+                        {summaryModalCategory === 'ijin' && summary.ijinDates.length === 0 && <p className="text-sm text-gray-500 italic text-center">Belum ada riwayat</p>}
+                        {summaryModalCategory === 'ijin' && summary.ijinDates.map((d, i) => (
+                           <div key={i} className="flex justify-between items-center bg-blue-50 dark:bg-blue-900/20 px-4 py-3 rounded-xl border border-blue-100 dark:border-blue-800/30">
+                              <span className="font-bold text-sm text-blue-800 dark:text-blue-200">{format(d, "EEEE, dd MMM yyyy", { locale: id })}</span>
+                           </div>
+                        ))}
+
+                        {summaryModalCategory === 'alpa' && summary.alpaDates.length === 0 && <p className="text-sm text-gray-500 italic text-center">Belum ada riwayat</p>}
+                        {summaryModalCategory === 'alpa' && summary.alpaDates.map((d, i) => (
+                           <div key={i} className="flex justify-between items-center bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-100 dark:border-red-800/30">
+                              <span className="font-bold text-sm text-red-800 dark:text-red-200">{format(d, "EEEE, dd MMM yyyy", { locale: id })}</span>
+                           </div>
+                        ))}
+                        
+                        {summaryModalCategory === 'lembur' && summary.lemburDetails.length === 0 && <p className="text-sm text-gray-500 italic text-center">Belum ada riwayat</p>}
+                        {summaryModalCategory === 'lembur' && summary.lemburDetails.map((item, i) => (
+                           <div key={i} className="flex justify-between items-center bg-amber-50 dark:bg-amber-900/20 px-4 py-3 rounded-xl border border-amber-100 dark:border-amber-800/30">
+                              <span className="font-bold text-sm text-amber-800 dark:text-amber-200">{format(item.date, "EEEE, dd MMM", { locale: id })}</span>
+                              <span className="text-xs font-black bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 px-2 py-1 rounded-md">{item.hours.toFixed(1)} Jam</span>
+                           </div>
+                        ))}
+                      </div>
+                      <div className="mt-6">
+                        <Button onClick={() => setSummaryModalCategory(null)} className="w-full rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200 font-bold">Tutup</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
 
                 <div className="flex overflow-x-auto gap-3 py-4 px-2 -mx-2 mb-4 scrollbar-hide snap-x">
                     {eachDayOfInterval({ start: subDays(new Date(), 14), end: new Date() }).reverse().map(date => {
@@ -1517,12 +1609,12 @@ export default function UserApp() {
                           <Card key={log.id} className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden">
                             <div className="flex p-4 items-center justify-between">
                               <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${log.type === 'in' ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400' : log.type === 'overtime_in' ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : log.type === 'overtime_out' ? 'bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400' : ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? 'bg-cyan-50 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400' : 'bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400'}`}>
-                                  {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? <UserSquare2 className="w-5 h-5"/> : (log.type === 'in' || log.type === 'overtime_in') ? <Briefcase className="w-5 h-5"/> : <LogOut className="w-5 h-5"/>}
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${log.type === 'in' ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400' : log.type === 'overtime_in' ? 'bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400' : log.type === 'overtime_out' ? 'bg-rose-50 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400' : ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal', 'dispensasi'].includes(log.type) ? 'bg-cyan-50 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400' : 'bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400'}`}>
+                                  {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal', 'dispensasi'].includes(log.type) ? <UserSquare2 className="w-5 h-5"/> : (log.type === 'in' || log.type === 'overtime_in') ? <Briefcase className="w-5 h-5"/> : <LogOut className="w-5 h-5"/>}
                                 </div>
                                 <div>
                                    <p className="font-bold text-gray-800 dark:text-gray-100 text-sm">
-                                     {log.type === 'in' ? 'Masuk' : log.type === 'out' ? 'Pulang' : log.type === 'overtime_in' ? 'Lembur Msk' : log.type === 'overtime_out' ? 'Lembur Plg' : log.type === 'sick' ? 'Sakit' : log.type === 'permit' ? 'Izin Biasa' : log.type === 'cuti' ? 'Cuti' : log.type === 'melahirkan' ? 'Cuti Hamil' : log.type === 'meninggal' ? 'Berduka' : log.type}
+                                     {log.type === 'in' ? 'Masuk' : log.type === 'out' ? 'Pulang' : log.type === 'overtime_in' ? 'Lembur Msk' : log.type === 'overtime_out' ? 'Lembur Plg' : log.type === 'sick' ? 'Sakit' : log.type === 'permit' ? 'Izin Biasa' : log.type === 'cuti' ? 'Cuti' : log.type === 'melahirkan' ? 'Cuti Hamil' : log.type === 'meninggal' ? 'Berduka' : log.type === 'dispensasi' ? 'Dispensasi' : log.type}
                                    </p>
                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">{format(new Date(log.timestamp), "dd MMM yyyy")}</p>
                                 </div>
@@ -1791,9 +1883,9 @@ export default function UserApp() {
                                        <span className="text-[11px] font-bold text-teal-200/80 uppercase tracking-widest">ID: {user?.uniqueId}</span>
                                        <span className="text-teal-400/50">•</span>
                                        <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: user?.shiftId ? resolvedShifts[user.shiftId]?.color || '#fff' : '#fff' }}></div>
+                                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: resolvedShifts[getEffectiveShiftId(user, new Date())]?.color || '#fff' }}></div>
                                           <p className="text-[11px] font-bold text-teal-200/80 uppercase tracking-widest">
-                                            {user?.shiftId ? resolvedShifts[user.shiftId]?.name || "CUSTOM" : "NO SHIFT"}
+                                            {resolvedShifts[getEffectiveShiftId(user, new Date())]?.name || "CUSTOM"}
                                           </p>
                                        </div>
                                     </div>
@@ -1928,7 +2020,17 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.7 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.8.0 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Fitur Penghapusan Riwayat Absensi (Global & Per User) dengan Pop-up konfirmasi berjenjang untuk mencegah salah hapus.</li>
+                                    <li>Fitur Koreksi Dispensasi Alpa pada Riwayat User oleh Admin dengan input keterangan.</li>
+                                    <li>Pembaruan Kalkulasi Status Alpa: Kalkulasi berdasarkan Work Start Date (Mulai Kontrak) dan Work End Date (Selesai Kontrak), guna mencegah karyawan baru dinilai Alpa pada tanggal sebelum mereka mulai bekerja.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.7.7</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Memindahkan menu notifikasi ke header kanan, menggantikan logo aplikasi.</li>
                                  </ul>

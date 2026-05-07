@@ -62,6 +62,7 @@
         "waNumber": { "type": "string" },
         "workStartDate": { "type": "number", "description": "Mulai kontrak" },
         "workEndDate": { "type": "number", "description": "Selesai kontrak" },
+        "monthlyShifts": { "type": "object", "description": "Mapping bulan (YYYY-MM) ke shiftId" },
         "createdAt": { "type": "number" }
       },
       "required": ["uid", "email", "name", "role", "createdAt", "uniqueId"]
