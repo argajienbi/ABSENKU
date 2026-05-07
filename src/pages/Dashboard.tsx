@@ -208,6 +208,8 @@ export default function Dashboard() {
   const [editUniqueId, setEditUniqueId] = useState("");
   const [editArea, setEditArea] = useState("");
   const [editIsBanned, setEditIsBanned] = useState(false);
+  const [editWorkStartDate, setEditWorkStartDate] = useState("");
+  const [editWorkEndDate, setEditWorkEndDate] = useState("");
 
   const handleEditUser = (user: any) => {
     setSelectedUserForEdit(user);
@@ -217,6 +219,8 @@ export default function Dashboard() {
     setEditUniqueId(user.uniqueId || "");
     setEditArea(user.areaId || "global");
     setEditIsBanned(user.isBanned || false);
+    setEditWorkStartDate(user.workStartDate ? format(new Date(user.workStartDate), "yyyy-MM-dd") : "");
+    setEditWorkEndDate(user.workEndDate ? format(new Date(user.workEndDate), "yyyy-MM-dd") : "");
   };
    
   const [announcementTitle, setAnnouncementTitle] = useState("");
@@ -298,7 +302,9 @@ export default function Dashboard() {
         shiftId: editShift,
         uniqueId: editUniqueId,
         areaId: editArea === "global" ? null : editArea,
-        isBanned: editIsBanned
+        isBanned: editIsBanned,
+        workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
+        workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null
       });
       toast.success("Data user diperbarui successfully");
       setSelectedUserForEdit(null);
@@ -1775,6 +1781,26 @@ export default function Dashboard() {
                     onChange={(e) => setEditUniqueId(e.target.value)}
                     className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Mulai Kontrak</Label>
+                    <Input 
+                      type="date"
+                      value={editWorkStartDate} 
+                      onChange={(e) => setEditWorkStartDate(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Selesai Kontrak</Label>
+                    <Input 
+                      type="date"
+                      value={editWorkEndDate} 
+                      onChange={(e) => setEditWorkEndDate(e.target.value)}
+                      className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
+                    />
+                  </div>
                 </div>
 
                 {user?.role === "superadmin" && (
