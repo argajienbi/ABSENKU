@@ -11,6 +11,8 @@ interface AppUser {
   avatarUrl?: string;
   shiftId?: string;
   waNumber?: string;
+  workStartDate?: number;
+  workEndDate?: number;
   uniqueId: string;
   areaId?: string | null;
   isBanned?: boolean;

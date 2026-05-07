@@ -60,6 +60,8 @@
         "divisionId": { "type": "string" },
         "uniqueId": { "type": "string" },
         "waNumber": { "type": "string" },
+        "workStartDate": { "type": "number", "description": "Mulai kontrak" },
+        "workEndDate": { "type": "number", "description": "Selesai kontrak" },
         "createdAt": { "type": "number" }
       },
       "required": ["uid", "email", "name", "role", "createdAt", "uniqueId"]
