@@ -1096,7 +1096,7 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0 flex-1 relative">
+                <CardContent className="p-0 flex-1 relative min-h-[500px] h-[60vh]">
                      {!settings?.googleMapsApiKey ? (
                         <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
                           <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
