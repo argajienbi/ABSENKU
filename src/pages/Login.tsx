@@ -66,8 +66,38 @@ export default function Login() {
     }
     try {
       setLoading(true);
-      await signInWithEmailAndPassword(auth, email, password);
-      // Wait context to navigate
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      
+      let localDeviceId = localStorage.getItem("app_device_id");
+      if (!localDeviceId) {
+         localDeviceId = Math.random().toString(36).substring(2, 18);
+         localStorage.setItem("app_device_id", localDeviceId);
+      }
+      localStorage.setItem("suppress_device_logout", "true");
+      
+      const userRef = doc(db, "users", res.user.uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+         const data = userSnap.data();
+         if (data.deviceId && data.deviceId !== localDeviceId) {
+            // Log security warning for superadmin
+            try {
+               await setDoc(doc(db, "notifications", `notif_${Date.now()}_all`), {
+                 title: "Peringatan Keamanan Sistem",
+                 body: `Pengguna ${data.name || email} (${email}) login dari perangkat baru. Perangkat lama telah di-logout.`,
+                 userId: "all",
+                 type: "danger", 
+                 createdAt: Date.now(),
+                 read: false
+               });
+            } catch (e) {
+               console.error("Failed to write device log", e);
+            }
+         }
+      }
+      await updateDoc(userRef, { deviceId: localDeviceId });
+      setTimeout(() => localStorage.removeItem("suppress_device_logout"), 5000);
+      
     } catch (error: any) {
       toast.error(error.message || "Gagal masuk");
       setLoading(false);
@@ -130,6 +160,13 @@ export default function Login() {
 
       // Save custom fields
       const userRef = doc(db, "users", fbUser.uid);
+      let localDeviceId = localStorage.getItem("app_device_id");
+      if (!localDeviceId) {
+         localDeviceId = Math.random().toString(36).substring(2, 18);
+         localStorage.setItem("app_device_id", localDeviceId);
+      }
+      localStorage.setItem("suppress_device_logout", "true");
+
       const newUserData = {
         uid: fbUser.uid,
         email: fbUser.email || email,
@@ -140,13 +177,15 @@ export default function Login() {
         avatarUrl: avatarStorageUrl,
         shiftId: "shift1",
         uniqueId: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        areaId: "global"
+        areaId: "global",
+        deviceId: localDeviceId
       };
       console.log("Attempting to create user with data:", newUserData);
       await setDoc(userRef, newUserData).catch((e) => {
           console.error("setDoc users failed", e);
           throw e; // rethrow to be caught by outer catch
       });
+      setTimeout(() => localStorage.removeItem("suppress_device_logout"), 5000);
       
       // Mark ID REF as used if not a demo account
       if (assignedRole !== "demo" && assignedRole !== "demouser") {

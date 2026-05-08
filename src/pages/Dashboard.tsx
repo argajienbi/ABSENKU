@@ -84,6 +84,7 @@ export default function Dashboard() {
   const [newHoliday, setNewHoliday] = useState("");
   const [idRefsList, setIdRefsList] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [securityLogs, setSecurityLogs] = useState<any[]>([]);
 
   useEffect(() => {
     if (user?.role === "superadmin" || user?.role === "admin" || user?.role === "demo") {
@@ -97,9 +98,16 @@ export default function Dashboard() {
         setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
 
+      const q3 = query(collection(db, "notifications"), where("userId", "==", "all"), orderBy("createdAt", "desc"));
+      const unsub3 = onSnapshot(q3, (snapshot) => {
+        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setSecurityLogs(logs.filter(l => l.type === "danger"));
+      });
+
       return () => {
          unsub();
          unsub2();
+         unsub3();
       }
     }
   }, [user]);
@@ -552,7 +560,7 @@ export default function Dashboard() {
 
         {/* Sticky Header Nav Tabs */}
         <div className="sticky top-0 z-50 pt-2 pb-6 -mx-4 px-4 bg-teal-50/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-teal-100/50 dark:border-gray-800/50 shadow-sm mb-4">
-          <div className="flex sm:grid overflow-x-auto sm:overflow-visible sm:grid-cols-7 gap-3 sm:gap-4 snap-x no-scrollbar">
+          <div className="flex sm:grid overflow-x-auto sm:overflow-visible sm:grid-cols-8 gap-3 sm:gap-4 snap-x no-scrollbar">
           {[
             { value: "overview", label: "Overview", icon: Activity },
             { value: "users", label: "User", icon: Users },
@@ -561,6 +569,7 @@ export default function Dashboard() {
             { value: "live-map", label: "Peta Live", icon: MapPin },
             { value: "rekap", label: "Rekap", icon: ClipboardList },
             { value: "settings", label: "Pengaturan", icon: Settings },
+            { value: "logs", label: "Log Keamanan", icon: ShieldAlert },
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.value;
@@ -571,7 +580,7 @@ export default function Dashboard() {
                 className={`snap-center flex-shrink-0 flex flex-col items-center gap-2 p-3 sm:p-4 rounded-3xl transition-all border-2 ${isActive ? 'bg-white dark:bg-gray-800 border-teal-500 shadow-md transform scale-[1.02]' : 'bg-white/60 dark:bg-gray-800/60 border-transparent hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm'}`}
                 style={{ width: '84px', minWidth: '84px' }}
               >
-                <div className={`p-3 rounded-[1.25rem] transition-colors ${isActive ? (item.value === 'overview' ? 'bg-teal-500 text-white' : item.value === 'users' ? 'bg-sky-500 text-white' : item.value === 'announcements' ? 'bg-teal-600 text-white' : item.value === 'analytics' ? 'bg-purple-500 text-white' : item.value === 'live-map' ? 'bg-amber-500 text-white' : item.value === 'rekap' ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white') : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'}`}>
+                <div className={`p-3 rounded-[1.25rem] transition-colors ${isActive ? (item.value === 'overview' ? 'bg-teal-500 text-white' : item.value === 'users' ? 'bg-sky-500 text-white' : item.value === 'announcements' ? 'bg-teal-600 text-white' : item.value === 'analytics' ? 'bg-purple-500 text-white' : item.value === 'live-map' ? 'bg-amber-500 text-white' : item.value === 'rekap' ? 'bg-rose-500 text-white' : item.value === 'logs' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white') : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'}`}>
                   <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
                 <span className={`text-[10px] sm:text-xs font-bold text-center leading-tight ${isActive ? 'text-teal-700 dark:text-teal-400' : 'text-slate-600 dark:text-gray-400'}`}>{item.label}</span>
@@ -1672,6 +1681,58 @@ export default function Dashboard() {
                 </div>
               </Card>
 
+            </TabsContent>
+            
+            <TabsContent value="logs" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
+              <Card className="border-0 shadow-lg shadow-teal-900/5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-8 rounded-3xl">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                  <div>
+                    <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                       <ShieldAlert className="w-6 h-6 text-rose-500" />
+                       Peringatan & Log Keamanan
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                      Catatan sistem terkait login perangkat ganda dan isu keamanan lainnya. (Fitur Khusus Superadmin)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-gray-50/80 dark:bg-gray-800/80">
+                      <TableRow>
+                        <TableHead className="w-[180px] font-bold text-slate-700">Waktu</TableHead>
+                        <TableHead className="font-bold text-slate-700">Judul</TableHead>
+                        <TableHead className="font-bold text-slate-700">Keterangan</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {securityLogs.length > 0 ? securityLogs.map((log) => (
+                        <TableRow key={log.id} className="hover:bg-rose-50/50 dark:hover:bg-rose-900/10">
+                          <TableCell className="font-medium">
+                            {format(new Date(log.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
+                          </TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                               <ShieldAlert className="w-3 h-3" />
+                               {log.title}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-slate-600 dark:text-gray-300">
+                            {log.body}
+                          </TableCell>
+                        </TableRow>
+                      )) : (
+                        <TableRow>
+                          <TableCell colSpan={3} className="h-32 text-center text-slate-500">
+                            Tidak ada log peringatan keamanan yang tercatat.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
             </TabsContent>
           
         </Tabs>

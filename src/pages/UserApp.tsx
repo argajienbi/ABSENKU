@@ -1008,18 +1008,24 @@ export default function UserApp() {
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <Card style={{ backgroundImage: WAVE_SVG, backgroundSize: 'cover', backgroundPosition: 'bottom' }} className="relative overflow-hidden border-0 shadow-xl shadow-teal-900/5 group rounded-[2rem] bg-white dark:bg-gray-800 text-center px-4 pt-10 pb-5 w-full">
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-5" />
+                  <Card className="relative overflow-hidden border-0 shadow-xl shadow-teal-900/5 rounded-[1.75rem] bg-white dark:bg-gray-800 text-center px-5 pt-10 pb-5 w-full">
+                    {/* Inner Wave Background */}
+                    <div className="absolute bottom-0 left-0 right-0 top-1/2 overflow-hidden pointer-events-none rounded-b-[1.75rem]">
+                      <svg viewBox="0 0 1440 320" className="absolute bottom-0 w-full h-auto min-h-[160px] max-h-[85%] object-cover object-bottom" preserveAspectRatio="none">
+                        <path fill="currentColor" className="text-[#f1f2fc] dark:text-gray-900" d="M0,224L48,202.7C96,181,192,139,288,144C384,149,480,203,576,218.7C672,235,768,213,864,181.3C960,149,1056,107,1152,101.3C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                      </svg>
+                    </div>
+
                   <div className="relative z-10 flex flex-col items-center">
-                    <h2 className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-gray-100 tracking-tighter leading-none mb-1 flex items-center justify-center">
+                    <h2 className="text-[3.5rem] sm:text-6xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.04em] leading-none mb-2.5 flex items-center justify-center">
                       {format(currentTime, "HH:mm:ss")}
                     </h2>
-                    <p className="text-slate-800 dark:text-gray-300 font-medium text-[15px] mb-6">
+                    <p className="text-slate-800 dark:text-gray-300 font-medium text-[1.1rem] mb-6 tracking-tight">
                       {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
                     </p>
                     
                     {/* Shift Info */}
-                    <div className="flex flex-col items-center mb-8">
+                    <div className="flex flex-col items-center mb-8 w-full z-10">
                       {(() => {
                          const shiftId = getEffectiveShiftId(user, new Date());
                          const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
@@ -1027,12 +1033,12 @@ export default function UserApp() {
                          
                          return (
                            <>
-                             <span className="text-xs font-bold text-slate-800 dark:text-gray-300 uppercase tracking-widest mb-1.5">JADWAL HARI INI:</span>
-                             <p className="text-[1.75rem] leading-none font-black text-slate-900 dark:text-white mb-2">
+                             <span className="text-[11px] font-semibold text-slate-700 dark:text-gray-300 uppercase tracking-widest mb-1.5 font-sans">JADWAL HARI INI:</span>
+                             <p className="text-[1.8rem] leading-none font-black text-slate-800 dark:text-white mb-2 tracking-tight">
                                {todayWork ? `${todayWork.start} - ${todayWork.end}` : (shift?.startTime ? `${shift.startTime} - ${shift.endTime}` : "LIBUR")}
                              </p>
                              {shift?.gracePeriod > 0 && (
-                               <p className="text-xs font-medium text-slate-800 dark:text-gray-300 uppercase tracking-widest">
+                               <p className="text-[11px] font-semibold text-slate-700 dark:text-gray-300 uppercase tracking-[0.1em] font-sans">
                                   TOLERANSI: {shift.gracePeriod} MENIT
                                </p>
                              )}
@@ -1042,26 +1048,26 @@ export default function UserApp() {
                     </div>
                     
                     {/* Location Pill */}
-                    <div className="w-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-[1.25rem] shadow-[0_8px_30px_-4px_rgba(0,0,0,0.05)] shadow-teal-900/5 border border-gray-100 dark:border-gray-700/50 p-2.5 flex items-center justify-between text-left">
-                       <div className="flex items-center gap-3">
-                          <div className="shrink-0 w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-full flex justify-center items-center relative border-[3px] border-white dark:border-gray-700 shadow-sm">
-                             <MapPin className="w-5 h-5 text-rose-500 absolute -top-1.5 -right-1 z-10 fill-rose-500 drop-shadow-sm" />
-                             <Globe className="w-6 h-6 text-blue-500 dark:text-blue-400 stroke-[2.5]" />
+                    <div className="w-full bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)] border border-gray-100 dark:border-gray-700/50 p-2.5 flex items-center justify-between text-left relative z-20">
+                       <div className="flex items-center gap-3 w-full">
+                          <div className="shrink-0 w-[52px] h-[52px] bg-blue-50/50 dark:bg-blue-900/20 rounded-full flex justify-center items-center relative overflow-hidden border border-blue-100/50 dark:border-gray-700">
+                             <MapPin className="w-5 h-5 text-rose-500 absolute -top-1 right-0.5 z-10 fill-rose-500 drop-shadow-sm rotate-[15deg]" />
+                             <Globe className="w-8 h-8 text-blue-500 dark:text-blue-400 stroke-2 translate-y-1" />
                           </div>
                           
-                          <div className="flex flex-col">
-                             <div className="text-[13px] font-black uppercase text-slate-900 dark:text-white tracking-wide leading-tight mb-0.5">
+                          <div className="flex flex-col flex-1 pl-1">
+                             <div className="text-[13px] font-bold text-slate-800 dark:text-white tracking-widest leading-none mb-1">
                                {!settings?.geofenceEnabled 
                                  ? (location && distance !== null ? `JARAK: ${Math.round(distance)}M (Bebas)` : "GEOFENCE NONAKTIF")
                                  : (locationError ? "GAGAL LOKASI" : (location ? (distance !== null ? `JARAK: ${Math.round(distance)}M` : "MENGHITUNG...") : "MENCARI LOKASI..."))}
                              </div>
                              {location && (
-                               <div className="flex flex-col gap-0.5">
-                                 <div className="text-[10px] text-slate-600 dark:text-gray-400 font-medium tracking-tight">
-                                   LAT: {location.lat.toFixed(6)} <span className="opacity-40 px-0.5">|</span> LNG: {location.lng.toFixed(6)}
+                               <div className="flex flex-col">
+                                 <div className="text-[11px] text-slate-700 dark:text-gray-400 font-medium tracking-tight mb-0.5 font-mono">
+                                   LAT: {location.lat.toFixed(6)} <span className="opacity-50 px-0.5">|</span> LNG: {location.lng.toFixed(6)}
                                  </div>
                                  {settings?.geofenceEnabled && (
-                                   <div className="text-[10px] text-slate-600 dark:text-gray-400 font-medium tracking-tight">
+                                   <div className="text-[11px] text-slate-700 dark:text-gray-400 font-medium tracking-tight font-sans">
                                      Max Radius: {
                                       (() => {
                                         if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
@@ -1077,13 +1083,13 @@ export default function UserApp() {
                                </div>
                              )}
                           </div>
-                       </div>
-                       
-                       <div className="flex items-center gap-1.5 shrink-0 px-2 justify-end text-right">
-                          <MapPin className="w-4 h-4 text-emerald-500 fill-emerald-500" />
-                          <span className="text-sm font-black text-slate-900 dark:text-white truncate max-w-[80px]">
-                            {currentAreaName || "Area..."}
-                          </span>
+
+                          <div className="flex items-center gap-1.5 shrink-0 px-3 justify-end text-right border-l border-gray-100 dark:border-gray-700 h-8">
+                            <MapPin className="w-[18px] h-[18px] text-emerald-500 fill-emerald-500 shrink-0" />
+                            <span className="text-[15px] font-black text-slate-800 dark:text-white truncate max-w-[70px]">
+                              {currentAreaName || "Area"}
+                            </span>
+                          </div>
                        </div>
                     </div>
                   </div>

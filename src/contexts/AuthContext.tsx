@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser } from "firebase/auth";
-import { doc, getDoc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, addDoc, collection } from "firebase/firestore";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
 
 interface AppUser {
@@ -18,6 +18,7 @@ interface AppUser {
   areaId?: string | null;
   isBanned?: boolean;
   createdAt?: number;
+  deviceId?: string;
 }
 
 interface AuthContextType {
@@ -43,6 +44,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let unsubscribeSnap: (() => void) | null = null;
+    
+    // Ensure this device has a persistent local device ID
+    let currentDeviceId = localStorage.getItem("app_device_id");
+    if (!currentDeviceId) {
+      currentDeviceId = Math.random().toString(36).substring(2, 18);
+      localStorage.setItem("app_device_id", currentDeviceId);
+    }
 
     const unsubscribeAuth = auth.onAuthStateChanged(async (fbUser) => {
       setFirebaseUser(fbUser);
@@ -57,7 +65,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         unsubscribeSnap = onSnapshot(userRef, async (userSnap) => {
           if (userSnap.exists()) {
-            setUser({ uid: fbUser.uid, ...userSnap.data() } as AppUser);
+            const userData = userSnap.data() as AppUser;
+            
+            // Check for device lock
+            if (userData.deviceId && userData.deviceId !== currentDeviceId && !localStorage.getItem("suppress_device_logout")) {
+               console.log("Device mismatch detected. Found ID:", userData.deviceId, "Current:", currentDeviceId);
+               alert("Anda telah masuk (login) dari perangkat lain. Anda akan dikeluarkan dari perangkat ini.");
+               auth.signOut();
+               setUser(null);
+               return;
+            }
+
+            // Optional: If somehow they have no deviceId, we could stamp it.
+            // But we actually do it upon explicit login to prevent weird background updates.
+            setUser({ uid: fbUser.uid, ...userData });
             setLoading(false);
           } else {
             // The document will be created by the registration flow in Login.tsx
