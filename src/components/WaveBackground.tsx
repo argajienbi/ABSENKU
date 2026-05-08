@@ -2,9 +2,9 @@ import React from 'react';
 
 export function WaveBackground({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen w-full relative bg-teal-50 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-500">
+    <div className="min-h-screen w-full relative bg-teal-50 dark:bg-gray-900 font-sans transition-colors duration-500">
       {/* Background SVG Waves */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
+      <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
         <svg
           className="absolute top-0 w-full h-auto text-teal-500 dark:text-teal-900 opacity-20 dark:opacity-30 mix-blend-overlay"
           xmlns="http://www.w3.org/2000/svg"

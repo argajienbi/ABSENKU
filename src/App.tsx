@@ -36,7 +36,7 @@ export default function App() {
 
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRoles={['superadmin', 'admin', 'demo']}>
-                <WaveBackground><Dashboard /></WaveBackground>
+                <Dashboard />
               </ProtectedRoute>
             } />
 

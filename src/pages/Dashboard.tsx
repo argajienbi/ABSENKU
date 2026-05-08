@@ -500,9 +500,10 @@ export default function Dashboard() {
 
   return (
     <WaveBackground>
-      <div className="py-4 sm:py-8 px-4 max-w-7xl mx-auto space-y-6 sm:space-y-8">
-        {/* Header */}
-        <header className="relative h-auto sm:h-40 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 dark:from-teal-900 dark:via-emerald-900 dark:to-teal-950 overflow-hidden shrink-0 rounded-3xl shadow-2xl mb-8 pb-6 sm:pb-0 border border-white/10">
+      <div className="px-4 max-w-7xl mx-auto pb-8">
+        {/* Header (Not Sticky) */}
+        <div className="pt-4 sm:pt-6 pb-2 mb-4 sm:mb-6">
+           <header className="relative h-auto sm:h-32 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 dark:from-teal-900 dark:via-emerald-900 dark:to-teal-950 overflow-hidden shrink-0 rounded-3xl shadow-lg border border-white/10">
           <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
           <div className="absolute -top-16 -right-16 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl"></div>
@@ -512,23 +513,24 @@ export default function Dashboard() {
               <path fill="currentColor" className="text-teal-900 dark:text-black" d="M0,160L48,176C96,192,192,224,288,208C384,192,480,128,576,133.3C672,139,768,213,864,224C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
             </svg>
           </div>
-          <div className="relative z-10 p-6 sm:p-8 flex flex-col sm:flex-row justify-between items-start text-white gap-6">
+          <div className="relative z-10 p-6 flex flex-col sm:flex-row justify-between items-start text-white gap-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner border border-white/30">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner border border-white/30">
                 {settings?.appLogoUrl ? (
-                    <img src={settings.appLogoUrl} alt="Logo" className="w-10 h-10 object-contain brightness-0 invert" />
+                    <img src={settings.appLogoUrl} alt="Logo" className="w-8 h-8 object-contain brightness-0 invert" />
                   ) : (
-                    <Activity className="w-10 h-10 text-white" />
+                    <Activity className="w-8 h-8 text-white" />
                   )}
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black tracking-tight drop-shadow-lg">
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight drop-shadow-lg leading-tight">
                   {settings?.appName || "ABSENKU"} 
-                  <span className="text-emerald-200 block text-sm font-semibold tracking-widest uppercase">Admin Management</span>
+                  <span className="text-emerald-200 block text-xs font-semibold tracking-widest uppercase mt-0.5">Admin Management</span>
                 </h1>
               </div>
             </div>
-            <div className="flex gap-4 text-right items-center">
+            
+            <div className="relative z-20 flex gap-4 text-right items-center self-end sm:self-auto shrink-0">
                <div className="hidden sm:flex flex-col justify-center text-right mr-2">
                 <span className="font-bold text-sm tracking-tight">{user?.name}</span>
                 <span className="text-[10px] text-teal-100 uppercase tracking-widest font-black bg-white/20 px-2 py-0.5 rounded-full">{user?.role}</span>
@@ -546,8 +548,11 @@ export default function Dashboard() {
             </div>
           </div>
         </header>
+        </div>
 
-        <div className="grid grid-cols-4 sm:grid-cols-7 gap-4 mb-8">
+        {/* Sticky Header Nav Tabs */}
+        <div className="sticky top-0 z-50 pt-2 pb-6 -mx-4 px-4 bg-teal-50/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-teal-100/50 dark:border-gray-800/50 shadow-sm mb-4">
+          <div className="flex sm:grid overflow-x-auto sm:overflow-visible sm:grid-cols-7 gap-3 sm:gap-4 snap-x no-scrollbar">
           {[
             { value: "overview", label: "Overview", icon: Activity },
             { value: "users", label: "User", icon: Users },
@@ -558,19 +563,22 @@ export default function Dashboard() {
             { value: "settings", label: "Pengaturan", icon: Settings },
           ].map((item) => {
             const Icon = item.icon;
+            const isActive = activeTab === item.value;
             return (
               <button
                 key={item.value}
                 onClick={() => setActiveTab(item.value)}
-                className={`flex flex-col items-center gap-2 p-4 rounded-3xl bg-white dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all ${activeTab === item.value ? 'ring-2 ring-teal-500' : ''}`}
+                className={`snap-center flex-shrink-0 flex flex-col items-center gap-2 p-3 sm:p-4 rounded-3xl transition-all border-2 ${isActive ? 'bg-white dark:bg-gray-800 border-teal-500 shadow-md transform scale-[1.02]' : 'bg-white/60 dark:bg-gray-800/60 border-transparent hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm'}`}
+                style={{ width: '84px', minWidth: '84px' }}
               >
-                <div className={`p-4 rounded-2xl ${item.value === 'overview' ? 'bg-teal-500 text-white' : item.value === 'users' ? 'bg-sky-500 text-white' : item.value === 'announcements' ? 'bg-teal-600 text-white' : item.value === 'analytics' ? 'bg-purple-500 text-white' : item.value === 'live-map' ? 'bg-amber-500 text-white' : item.value === 'rekap' ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white'}`}>
-                  <Icon className="w-6 h-6" />
+                <div className={`p-3 rounded-[1.25rem] transition-colors ${isActive ? (item.value === 'overview' ? 'bg-teal-500 text-white' : item.value === 'users' ? 'bg-sky-500 text-white' : item.value === 'announcements' ? 'bg-teal-600 text-white' : item.value === 'analytics' ? 'bg-purple-500 text-white' : item.value === 'live-map' ? 'bg-amber-500 text-white' : item.value === 'rekap' ? 'bg-rose-500 text-white' : 'bg-slate-700 text-white') : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'}`}>
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <span className="text-xs font-bold text-slate-700 dark:text-gray-200 text-center">{item.label}</span>
+                <span className={`text-[10px] sm:text-xs font-bold text-center leading-tight ${isActive ? 'text-teal-700 dark:text-teal-400' : 'text-slate-600 dark:text-gray-400'}`}>{item.label}</span>
               </button>
             );
           })}
+          </div>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -963,7 +963,7 @@ export default function UserApp() {
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
       <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
              {/* Header */}
-        <div className="relative bg-teal-500 pb-20 pt-8 px-6 dark:bg-teal-800 shrink-0">
+        <div className="sticky top-0 z-40 bg-teal-500 pb-20 pt-8 px-6 dark:bg-teal-800 shrink-0">
           <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px]">
             <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-16" preserveAspectRatio="none">
               <path fill="currentColor" className="text-gray-50 dark:text-gray-900" d="M0,192L48,208C96,224,192,256,288,245.3C384,235,480,181,576,176C672,171,768,213,864,229.3C960,245,1056,235,1152,208C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
@@ -2007,6 +2007,10 @@ export default function UserApp() {
                                 <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
                                 <span>Manajemen Lengkap Organisasi (Pengumuman, Akun Karyawan, Shift, & Token Referral).</span>
                               </li>
+                              <li className="flex gap-2.5">
+                                <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                                <span>Navigasi Ul dan Header Fleksibel untuk mendukung performansi mobile dan layar sempit.</span>
+                              </li>
                             </ul>
                          </div>
 
@@ -2015,9 +2019,18 @@ export default function UserApp() {
                                <Code className="w-4 h-4" /> Log Perubahan (Changelog)
                             </h4>
                             <div className="space-y-5">
+                                 <div className="relative pl-4 border-l-2 border-indigo-500/30">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.8.2 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Fitur Peta Live Baru: Menambahkan Live Map baru di Dashboard Admin untuk melacak dan melihat lokasi absensi karyawan yang tersebar (termasuk deteksi lokasi Fake GPS) secara interaktif.</li>
+                                    <li>Penyempurnaan Tampilan: Membuat Header Layar Utama (Dashboard Admin & User) menjadi "Sticky" (tetap di posisinya saat halaman di-scroll ke bawah) untuk navigasi yang lebih elegan.</li>
+                                 </ul>
+                               </div>
+
                                  <div className="relative pl-4 border-l-2 border-teal-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.8.0 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.8.0</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Fitur Penghapusan Riwayat Absensi (Global & Per User) dengan Pop-up konfirmasi berjenjang untuk mencegah salah hapus.</li>
                                     <li>Fitur Koreksi Dispensasi Alpa pada Riwayat User oleh Admin dengan input keterangan.</li>
