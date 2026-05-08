@@ -25,7 +25,7 @@ import {
   MapPin, LogOut, Code, UserSquare2, Fingerprint, CalendarDays,
   Home, User, Settings as SettingsIcon, Sun, Moon, Briefcase, ArrowLeft,
   Share2, Download, Check, AlertCircle, Activity, ChevronRight, Printer, Camera, Key, Phone, Edit, IdCard,
-  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell, Info
+  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell, Info, Globe
 } from "lucide-react";
 import { WaveBackground } from "../components/WaveBackground";
 import { Card, CardContent } from "../components/ui/card";
@@ -1003,51 +1003,23 @@ export default function UserApp() {
         </div>
 
         {/* Content Area overlapped */}
-        <div className="relative z-20 px-4 -mt-12 space-y-6 w-full mx-auto">
+        <div className="relative z-30 px-4 -mt-[4.5rem] space-y-6 w-full mx-auto">
            {view === "home" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
-                {pendingCount > 0 && (
-                  <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 px-4 py-3 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse shrink-0 drop-shadow-sm"></div>
-                      <span className="text-xs font-medium">Anda memiliki <b>{pendingCount} absen menuggu approval.</b></span>
-                    </div>
-                  </div>
-                )}
-                
-                {announcements.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     {announcements.slice(0, 2).map((ann, idx) => (
-                        <div key={ann.id || idx} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-teal-50 dark:border-teal-900/50 flex gap-3">
-                           <div className={`mt-1 w-2 h-full rounded-full shrink-0 ${ann.type === 'danger' ? 'bg-rose-500' : ann.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-                           <div>
-                             <div className="flex items-center gap-2 mb-1">
-                                <Badge variant="outline" className={`text-[8px] uppercase font-black uppercase px-1.5 py-0 border-0 ${ann.type === 'danger' ? 'bg-rose-100 text-rose-700' : ann.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
-                                  {ann.type === 'danger' ? 'PENTING' : ann.type === 'success' ? 'BERITA BAIK' : 'INFO'}
-                                </Badge>
-                                <span className="text-[9px] text-slate-400 font-bold">{format(new Date(ann.createdAt), 'dd MMM yyyy')}</span>
-                             </div>
-                             <h4 className="font-bold text-teal-900 dark:text-white text-sm capitalize leading-tight mb-1">{ann.title}</h4>
-                             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{ann.content}</p>
-                           </div>
-                        </div>
-                     ))}
-                  </div>
-                )}
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <Card style={{ backgroundImage: WAVE_SVG, backgroundSize: 'cover', backgroundPosition: 'bottom' }} className="relative overflow-hidden border-0 shadow-xl group rounded-3xl bg-white/90 dark:bg-gray-800/90 text-center p-6 w-full">
+                  <Card style={{ backgroundImage: WAVE_SVG, backgroundSize: 'cover', backgroundPosition: 'bottom' }} className="relative overflow-hidden border-0 shadow-xl shadow-teal-900/5 group rounded-[2rem] bg-white dark:bg-gray-800 text-center px-4 pt-10 pb-5 w-full">
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-5" />
-                  <div className="relative">
-                    <h2 className="text-4xl font-black text-gray-800 dark:text-gray-100 tracking-tighter leading-none mb-1">
+                  <div className="relative z-10 flex flex-col items-center">
+                    <h2 className="text-5xl sm:text-6xl font-black text-slate-900 dark:text-gray-100 tracking-tighter leading-none mb-1 flex items-center justify-center">
                       {format(currentTime, "HH:mm:ss")}
                     </h2>
-                    <p className="text-gray-500 dark:text-gray-400 font-medium text-sm mt-1">
+                    <p className="text-slate-800 dark:text-gray-300 font-medium text-[15px] mb-6">
                       {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
                     </p>
                     
                     {/* Shift Info */}
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex flex-col items-center">
+                    <div className="flex flex-col items-center mb-8">
                       {(() => {
                          const shiftId = getEffectiveShiftId(user, new Date());
                          const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
@@ -1055,18 +1027,13 @@ export default function UserApp() {
                          
                          return (
                            <>
-                             <div className="flex items-center gap-2 mb-1">
-                               <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-[10px] font-black uppercase tracking-wider rounded-md">
-                                 {shift?.name || "Shift 1"}
-                               </span>
-                               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Jadwal Hari Ini:</span>
-                             </div>
-                             <p className="text-lg font-black text-slate-800 dark:text-white">
+                             <span className="text-xs font-bold text-slate-800 dark:text-gray-300 uppercase tracking-widest mb-1.5">JADWAL HARI INI:</span>
+                             <p className="text-[1.75rem] leading-none font-black text-slate-900 dark:text-white mb-2">
                                {todayWork ? `${todayWork.start} - ${todayWork.end}` : (shift?.startTime ? `${shift.startTime} - ${shift.endTime}` : "LIBUR")}
                              </p>
                              {shift?.gracePeriod > 0 && (
-                               <p className="text-[9px] text-rose-500 font-bold uppercase tracking-widest mt-1">
-                                  Toleransi: {shift.gracePeriod} Menit
+                               <p className="text-xs font-medium text-slate-800 dark:text-gray-300 uppercase tracking-widest">
+                                  TOLERANSI: {shift.gracePeriod} MENIT
                                </p>
                              )}
                            </>
@@ -1074,35 +1041,50 @@ export default function UserApp() {
                       })()}
                     </div>
                     
-                    <div className="mt-6 flex flex-col items-center">
-                      <div className={`flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-100 dark:border-gray-600 ${ (settings?.geofenceEnabled && !isWithinRadius) ? 'bg-red-50' : 'bg-green-50' }`}>
-                        <MapPin className={`w-4 h-4 ${(settings?.geofenceEnabled && !isWithinRadius) ? 'text-red-500' : 'text-green-500'}`} />
-                        <span className={`text-xs font-bold uppercase tracking-wider ${(settings?.geofenceEnabled && !isWithinRadius) ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
-                          {!settings?.geofenceEnabled 
-                            ? (location && distance !== null ? `Jarak: ${Math.round(distance)}m (Bebas)` : "Geofence Nonaktif")
-                            : (locationError ? "Gagal Mendapatkan Lokasi" : (location ? (distance !== null ? `Jarak: ${Math.round(distance)}m` : "Menghitung...") : "Mencari lokasi..."))}
-                        </span>
-                      </div>
-                      {location && (
-                        <div className="mt-3 text-[10px] text-slate-400 font-mono tracking-widest text-center">
-                          <p>LAT: {location.lat.toFixed(6)} | LNG: {location.lng.toFixed(6)}</p>
-                          <p className="mt-1 text-teal-600 font-black font-sans uppercase">📍 {currentAreaName || "Mencari Area..."}</p>
-                          {settings?.geofenceEnabled && (
-                             <p className="mt-1 text-slate-500 font-medium font-sans">
-                               Max Radius: {
-                                (() => {
-                                  if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
-                                    return `${settings.areas[user.areaId].radius} meters`;
-                                  } else if (settings?.areas && Object.keys(settings.areas).length > 0) {
-                                    return `Tergantung Titik Cabang`;
-                                  }
-                                  return "Belum ada konfigurasi";
-                                })()
-                               }
-                             </p>
-                          )}
-                        </div>
-                      )}
+                    {/* Location Pill */}
+                    <div className="w-full bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-[1.25rem] shadow-[0_8px_30px_-4px_rgba(0,0,0,0.05)] shadow-teal-900/5 border border-gray-100 dark:border-gray-700/50 p-2.5 flex items-center justify-between text-left">
+                       <div className="flex items-center gap-3">
+                          <div className="shrink-0 w-11 h-11 bg-blue-100 dark:bg-blue-900/30 rounded-full flex justify-center items-center relative border-[3px] border-white dark:border-gray-700 shadow-sm">
+                             <MapPin className="w-5 h-5 text-rose-500 absolute -top-1.5 -right-1 z-10 fill-rose-500 drop-shadow-sm" />
+                             <Globe className="w-6 h-6 text-blue-500 dark:text-blue-400 stroke-[2.5]" />
+                          </div>
+                          
+                          <div className="flex flex-col">
+                             <div className="text-[13px] font-black uppercase text-slate-900 dark:text-white tracking-wide leading-tight mb-0.5">
+                               {!settings?.geofenceEnabled 
+                                 ? (location && distance !== null ? `JARAK: ${Math.round(distance)}M (Bebas)` : "GEOFENCE NONAKTIF")
+                                 : (locationError ? "GAGAL LOKASI" : (location ? (distance !== null ? `JARAK: ${Math.round(distance)}M` : "MENGHITUNG...") : "MENCARI LOKASI..."))}
+                             </div>
+                             {location && (
+                               <div className="flex flex-col gap-0.5">
+                                 <div className="text-[10px] text-slate-600 dark:text-gray-400 font-medium tracking-tight">
+                                   LAT: {location.lat.toFixed(6)} <span className="opacity-40 px-0.5">|</span> LNG: {location.lng.toFixed(6)}
+                                 </div>
+                                 {settings?.geofenceEnabled && (
+                                   <div className="text-[10px] text-slate-600 dark:text-gray-400 font-medium tracking-tight">
+                                     Max Radius: {
+                                      (() => {
+                                        if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
+                                          return `${settings.areas[user.areaId].radius}m`;
+                                        } else if (settings?.areas && Object.keys(settings.areas).length > 0) {
+                                          return `Tergantung Titik`;
+                                        }
+                                        return "Belum ada konfigurasi";
+                                      })()
+                                     }
+                                   </div>
+                                 )}
+                               </div>
+                             )}
+                          </div>
+                       </div>
+                       
+                       <div className="flex items-center gap-1.5 shrink-0 px-2 justify-end text-right">
+                          <MapPin className="w-4 h-4 text-emerald-500 fill-emerald-500" />
+                          <span className="text-sm font-black text-slate-900 dark:text-white truncate max-w-[80px]">
+                            {currentAreaName || "Area..."}
+                          </span>
+                       </div>
                     </div>
                   </div>
                 </Card>
@@ -1209,7 +1191,36 @@ export default function UserApp() {
                   </button>
                 </div>
                 </div>
-             </div>
+                
+                {pendingCount > 0 && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700/50 text-yellow-800 dark:text-yellow-400 px-4 py-3 rounded-2xl flex items-center justify-between shadow-sm animate-in fade-in">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse shrink-0 drop-shadow-sm"></div>
+                      <span className="text-xs font-medium">Anda memiliki <b>{pendingCount} absen menuggu approval.</b></span>
+                    </div>
+                  </div>
+                )}
+                
+                {announcements.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {announcements.slice(0, 2).map((ann, idx) => (
+                        <div key={ann.id || idx} className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-teal-50 dark:border-teal-900/50 flex gap-3">
+                           <div className={`mt-1 w-2 h-full rounded-full shrink-0 ${ann.type === 'danger' ? 'bg-rose-500' : ann.type === 'success' ? 'bg-emerald-500' : 'bg-blue-500'}`} />
+                           <div>
+                             <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="outline" className={`text-[8px] uppercase font-black uppercase px-1.5 py-0 border-0 ${ann.type === 'danger' ? 'bg-rose-100 text-rose-700' : ann.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {ann.type === 'danger' ? 'PENTING' : ann.type === 'success' ? 'BERITA BAIK' : 'INFO'}
+                                </Badge>
+                                <span className="text-[9px] text-slate-400 font-bold">{format(new Date(ann.createdAt), 'dd MMM yyyy')}</span>
+                             </div>
+                             <h4 className="font-bold text-teal-900 dark:text-white text-sm capitalize leading-tight mb-1">{ann.title}</h4>
+                             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{ann.content}</p>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+                )}
+              </div>
            )}
 
            {view === "izin_menu" && (
