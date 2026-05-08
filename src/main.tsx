@@ -5,13 +5,7 @@ import './index.css';
 // @ts-expect-error PWA is provided by vite-plugin-pwa
 import { registerSW } from 'virtual:pwa-register';
 
-const updateSW = registerSW({
-  onNeedRefresh() {
-    if (confirm('Ada versi baru aplikasi. Apakah Anda ingin memperbarui?')) {
-      updateSW(true);
-    }
-  },
-});
+registerSW({ immediate: true });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

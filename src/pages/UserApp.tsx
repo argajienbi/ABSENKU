@@ -626,7 +626,7 @@ export default function UserApp() {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const MODEL_URL = "https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights";
+        const MODEL_URL = "/models";
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
         ]);
@@ -1084,11 +1084,19 @@ export default function UserApp() {
                              )}
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 px-3 justify-end text-right border-l border-gray-100 dark:border-gray-700 h-8">
+                          <div className="flex items-center gap-1.5 shrink-0 px-3 justify-end text-right border-l border-gray-100 dark:border-gray-700 h-8 max-w-[120px] sm:max-w-[150px] overflow-hidden">
                             <MapPin className="w-[18px] h-[18px] text-emerald-500 fill-emerald-500 shrink-0" />
-                            <span className="text-[15px] font-black text-slate-800 dark:text-white truncate max-w-[70px]">
-                              {currentAreaName || "Area"}
-                            </span>
+                            {((currentAreaName || "Area...").length > 7) ? (
+                              <div className="marquee-container w-full">
+                                <span className="text-[15px] font-black text-slate-800 dark:text-white animate-marquee pr-8">
+                                  {currentAreaName || "Area..."}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[15px] font-black text-slate-800 dark:text-white truncate">
+                                {currentAreaName || "Area..."}
+                              </span>
+                            )}
                           </div>
                        </div>
                     </div>
@@ -2038,7 +2046,26 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.8.2 <span className="text-xs font-normal text-gray-500 ml-2">Baru Tepat Sekarang</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.1 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Pembaruan PWA Otomatis: Aplikasi kini dapat memperbarui versinya (PWA auto-update) di latar belakang tanpa mengganggu atau memunculkan peringatan (pop-up) untuk pengguna.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.0</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan UI: Menambahkan efek berjalan (running text/marquee) pada nama area di halaman utama agar mendukung layar yang lebih kecil.</li>
+                                    <li>Peningkatan Keamanan: Pembatasan 1 akun 1 perangkat (Device Lock), akun akan logout otomatis jika terdeteksi login di perangkat lain.</li>
+                                    <li>Log Keamanan Khusus: Menambahkan tab peringatan keamanan di Dashboard Super Admin.</li>
+                                    <li>Perbaikan Bug: Menyelesaikan masalah model Face API dengan memindahkannya ke direktori proxy yang aman agar berjalan dengan performa yang mantab!.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.8.2</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Fitur Peta Live Baru: Menambahkan Live Map baru di Dashboard Admin untuk melacak dan melihat lokasi absensi karyawan yang tersebar (termasuk deteksi lokasi Fake GPS) secara interaktif.</li>
                                     <li>Penyempurnaan Tampilan: Membuat Header Layar Utama (Dashboard Admin & User) menjadi "Sticky" (tetap di posisinya saat halaman di-scroll ke bawah) untuk navigasi yang lebih elegan.</li>
