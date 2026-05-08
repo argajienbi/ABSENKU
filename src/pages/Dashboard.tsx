@@ -502,7 +502,7 @@ export default function Dashboard() {
     <WaveBackground>
       <div className="px-4 max-w-7xl mx-auto pb-8">
         {/* Header (Not Sticky) */}
-        <div className="pt-4 sm:pt-6 pb-2 mb-4 sm:mb-6">
+        <div className="pt-[20px] pb-2 mb-4 sm:mb-6">
            <header className="relative h-auto sm:h-32 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 dark:from-teal-900 dark:via-emerald-900 dark:to-teal-950 overflow-hidden shrink-0 rounded-3xl shadow-lg border border-white/10">
           <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
           <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>

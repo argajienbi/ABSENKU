@@ -963,7 +963,7 @@ export default function UserApp() {
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
       <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
              {/* Header */}
-        <div className="relative z-20 bg-teal-500 pb-20 pt-8 px-6 dark:bg-teal-800 shrink-0">
+        <div className="relative z-20 bg-teal-500 pb-20 pt-[20px] px-6 dark:bg-teal-800 shrink-0">
           <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px]">
             <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-16" preserveAspectRatio="none">
               <path fill="currentColor" className="text-gray-50 dark:text-gray-900" d="M0,192L48,208C96,224,192,256,288,245.3C384,235,480,181,576,176C672,171,768,213,864,229.3C960,245,1056,235,1152,208C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
