@@ -2003,7 +2003,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.6 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.7 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2062,7 +2062,15 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.6 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.7 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Perbaikan Bug: Menyelesaikan masalah unduhan file Laporan Excel (XLSX) yang berubah format menjadi .bin pada environment WebView Android (seperti aplkasi hasil build Sketchware Pro) dengan menerapkan metode unduhan data URI base64.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.6</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Peningkatan Efisiensi: Menerapkan fitur kompresi gambar otomatis (Canvas Auto-Compression) saat pengambilan foto absen untuk mengurangi drastis ukuran file penyimpanan (storage), menghemat memori Firebase (Pay-As-You-Go), dan mempercepat proses upload tanpa kehilangan kejelasan detail.</li>
                                  </ul>

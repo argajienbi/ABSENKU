@@ -653,7 +653,14 @@ export default function Dashboard() {
                       const ws = XLSX.utils.aoa_to_sheet(allRecords);
                       const wb = XLSX.utils.book_new();
                       XLSX.utils.book_append_sheet(wb, ws, "Laporan Absensi");
-                      XLSX.writeFile(wb, `Laporan_Absensi_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`);
+                      // Gunakan base64 untuk WebView Android (Sketchware) agar tidak jadi .bin
+                      const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                      const a = document.createElement('a');
+                      a.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+                      a.download = `Laporan_Absensi_${format(new Date(), 'yyyyMMdd_HHmmss')}.xlsx`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
                       toast.success("Laporan Excel berhasil diunduh.");
                     }}>
                       Export Excel (.xlsx)

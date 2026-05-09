@@ -288,7 +288,14 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
     const ws = XLSX.utils.aoa_to_sheet([header, ...records]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Rekap Absensi");
-    XLSX.writeFile(wb, `Rekap_Absen_${period}.xlsx`);
+    // Gunakan base64 untuk mengatasi masalah download menjadi .bin di WebView Android (Sketchware)
+    const b64 = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+    const a = document.createElement('a');
+    a.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + b64;
+    a.download = `Rekap_Absen_${period}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleExportPDF = () => {
