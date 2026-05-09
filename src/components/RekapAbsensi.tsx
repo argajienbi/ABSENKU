@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO } from "date-fns";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay, parseISO } from "date-fns";
+import { id as localeId } from "date-fns/locale";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
-import { Search, Loader2, Download, Table as TableIcon } from "lucide-react";
+import { Search, Loader2, Download, Table as TableIcon, Filter } from "lucide-react";
 import { Button } from "./ui/button";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -14,256 +15,480 @@ import autoTable from 'jspdf-autotable';
 
 interface RekapAbsensiProps {
   usersList: any[];
+  settings?: any;
 }
 
-export function RekapAbsensi({ usersList }: RekapAbsensiProps) {
+export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
-  const [period, setPeriod] = useState<string>("daily"); // daily, weekly, monthly
-  const [searchQuery, setSearchQuery] = useState("");
+  const [period, setPeriod] = useState<string>("monthly");
   
+  // New Filters
+  const [selectedArea, setSelectedArea] = useState<string>("all");
+  const [selectedShift, setSelectedShift] = useState<string>("all");
+  const [selectedRole, setSelectedRole] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("all"); // Tipe log
+  
+  const [searchQuery, setSearchQuery] = useState("");
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isFetched, setIsFetched] = useState(false);
 
-  // Filter users based on search
+  // Extract unique areas, shifts, roles from usersList
+  const uniqueAreas = useMemo(() => Array.from(new Set(usersList.map(u => u.areaId).filter(Boolean))), [usersList]);
+  const uniqueShifts = useMemo(() => Array.from(new Set(usersList.map(u => u.shiftId).filter(Boolean))), [usersList]);
+  const uniqueRoles = useMemo(() => Array.from(new Set(usersList.map(u => u.role).filter(Boolean))), [usersList]);
+
+  // Available variants based on current selection to disable invalid combinations
+  const availableAreas = useMemo(() => {
+    const list = usersList.filter(u => 
+      (selectedShift === "all" || u.shiftId === selectedShift) &&
+      (selectedRole === "all" || u.role === selectedRole) &&
+      (selectedUserId === "all" || (u.uid || u.id) === selectedUserId)
+    );
+    return new Set(list.map(u => u.areaId).filter(Boolean));
+  }, [usersList, selectedShift, selectedRole, selectedUserId]);
+
+  const availableShifts = useMemo(() => {
+    const list = usersList.filter(u => 
+      (selectedArea === "all" || u.areaId === selectedArea) &&
+      (selectedRole === "all" || u.role === selectedRole) &&
+      (selectedUserId === "all" || (u.uid || u.id) === selectedUserId)
+    );
+    return new Set(list.map(u => u.shiftId).filter(Boolean));
+  }, [usersList, selectedArea, selectedRole, selectedUserId]);
+
+  const availableRoles = useMemo(() => {
+    const list = usersList.filter(u => 
+      (selectedArea === "all" || u.areaId === selectedArea) &&
+      (selectedShift === "all" || u.shiftId === selectedShift) &&
+      (selectedUserId === "all" || (u.uid || u.id) === selectedUserId)
+    );
+    return new Set(list.map(u => u.role).filter(Boolean));
+  }, [usersList, selectedArea, selectedShift, selectedUserId]);
+
   const filteredUsers = useMemo(() => {
     return usersList.filter(u => 
       (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase()))
+      (u.email && u.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (u.uniqueId && u.uniqueId.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [usersList, searchQuery]);
 
-  // Fetch attendance data when user changes
+  const availableUsers = useMemo(() => {
+    const list = filteredUsers.filter(u => 
+      (selectedArea === "all" || u.areaId === selectedArea) &&
+      (selectedShift === "all" || u.shiftId === selectedShift) &&
+      (selectedRole === "all" || u.role === selectedRole)
+    );
+    return new Set(list.map(u => u.uid || u.id));
+  }, [filteredUsers, selectedArea, selectedShift, selectedRole]);
+
+  // Auto-reset invalid selections
   useEffect(() => {
-    const fetchAttendance = async () => {
-      setLoading(true);
-      try {
-        if (selectedUserId === "all") {
-           setAttendanceData([]);
-           setLoading(false);
-           return;
-        }
+    if (selectedArea !== "all" && !availableAreas.has(selectedArea)) setSelectedArea("all");
+  }, [availableAreas, selectedArea]);
 
-        const q = query(
-          collection(db, "attendance"),
-          where("userId", "==", selectedUserId)
-        );
-        const querySnapshot = await getDocs(q);
-        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-        // Sort descending locally to avoid requiring a composite index
-        data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setAttendanceData(data);
-      } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, "attendance");
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
+    if (selectedShift !== "all" && !availableShifts.has(selectedShift)) setSelectedShift("all");
+  }, [availableShifts, selectedShift]);
 
-    fetchAttendance();
-  }, [selectedUserId]);
+  useEffect(() => {
+    if (selectedRole !== "all" && !availableRoles.has(selectedRole)) setSelectedRole("all");
+  }, [availableRoles, selectedRole]);
 
-  const filteredDataByPeriod = useMemo(() => {
-    const now = new Date();
-    
-    return attendanceData.filter(record => {
-      if (!record.timestamp) return false;
-      const recordDate = new Date(record.timestamp);
+  useEffect(() => {
+    if (selectedUserId !== "all" && !availableUsers.has(selectedUserId)) setSelectedUserId("all");
+  }, [availableUsers, selectedUserId]);
 
+  const handleFetchData = async () => {
+    setLoading(true);
+    setIsFetched(false);
+    try {
+      const now = new Date();
+      let start, end;
       if (period === "daily") {
-        return format(recordDate, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
+        start = startOfDay(now); end = endOfDay(now);
       } else if (period === "weekly") {
-        const start = startOfWeek(now, { weekStartsOn: 1 });
-        const end = endOfWeek(now, { weekStartsOn: 1 });
-        return isWithinInterval(recordDate, { start, end });
+        start = startOfWeek(now, { weekStartsOn: 1 }); end = endOfWeek(now, { weekStartsOn: 1 });
       } else if (period === "monthly") {
-        const start = startOfMonth(now);
-        const end = endOfMonth(now);
-        return isWithinInterval(recordDate, { start, end });
+        start = startOfMonth(now); end = endOfMonth(now);
+      } else {
+        start = startOfDay(now); end = endOfDay(now);
+      }
+
+      let q;
+      if (period === "all_time") {
+        q = query(
+          collection(db, "attendance"),
+          orderBy("timestamp", "desc")
+        );
+      } else {
+        q = query(
+          collection(db, "attendance"),
+          where("timestamp", ">=", start.getTime()),
+          where("timestamp", "<=", end.getTime())
+        );
+      }
+      
+      const querySnapshot = await getDocs(q);
+      let data = querySnapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as object) })) as any[];
+      
+      // Sort descending locally
+      data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      
+      setAttendanceData(data);
+      setIsFetched(true);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, "attendance");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    handleFetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const filteredData = useMemo(() => {
+    if (!isFetched) return [];
+    
+    return attendanceData.filter(log => {
+      const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      
+      // Filter by User
+      if (selectedUserId !== "all" && log.userId !== selectedUserId) return false;
+      
+      // Filter by Area
+      if (selectedArea !== "all" && user?.areaId !== selectedArea) return false;
+      
+      // Filter by Shift
+      if (selectedShift !== "all" && user?.shiftId !== selectedShift) return false;
+      
+      // Filter by Role
+      if (selectedRole !== "all" && user?.role !== selectedRole) return false;
+      
+      // Filter by Status (Hadir, Sakit, Ijin, Lembur, Telat)
+      if (selectedStatus !== "all") {
+        if (selectedStatus === 'hadir') {
+           if (log.type !== 'in' && log.type !== 'out') return false;
+        } else if (selectedStatus === 'sakit') {
+           if (log.type !== 'sick') return false;
+        } else if (selectedStatus === 'ijin' || selectedStatus === 'cuti') {
+           if (log.type !== 'permit' && log.type !== 'cuti') return false;
+        } else if (selectedStatus === 'lembur') {
+           if (log.type !== 'overtime') return false;
+        } else if (selectedStatus === 'telat') {
+           if (log.type !== 'in') return false;
+           // Check if late based on settings
+           let isLate = false;
+           const userShiftStr = user?.shiftId || 'morning';
+           const shiftConfig = settings?.shifts?.[userShiftStr] || { startTime: "09:00", gracePeriod: 0 };
+           const logDate = new Date(log.timestamp);
+           const [startHour, startMin] = (shiftConfig.start || shiftConfig.startTime || "09:00").split(':').map(Number);
+           const shiftStartMinutes = (startHour * 60) + startMin + (shiftConfig.gracePeriod || 0);
+           const userInMinutes = (logDate.getHours() * 60) + logDate.getMinutes();
+           if (userInMinutes > shiftStartMinutes) isLate = true;
+           if (!isLate) return false;
+        }
       }
       return true;
     });
-  }, [attendanceData, period]);
+  }, [attendanceData, selectedUserId, selectedArea, selectedShift, selectedRole, selectedStatus, isFetched, usersList, settings]);
 
   const handleExportExcel = () => {
-    const header = ["Tanggal", "Jam", "Status", "Tipe", "Radius", "Lokasi", "Catatan"];
-    const records = filteredDataByPeriod.map(log => [
-      format(new Date(log.timestamp), "yyyy-MM-dd"),
-      format(new Date(log.timestamp), "HH:mm:ss"),
-      log.status || "APPROVED",
-      log.type,
-      log.withinRadius ? "Dalam Radius" : "Luar Radius",
-      log.location ? `${log.location.lat}, ${log.location.lng}` : "-",
-      log.extraData ? log.extraData.replace(/,/g, ' ') : "-"
-    ]);
+    const header = ["Nama", "Role", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan"];
+    const records = filteredData.map(log => {
+      const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      return [
+        user?.name || "Unknown",
+        user?.role || "-",
+        user?.shiftId || "-",
+        format(new Date(log.timestamp), "yyyy-MM-dd"),
+        format(new Date(log.timestamp), "HH:mm:ss"),
+        log.type,
+        log.status || "APPROVED",
+        log.withinRadius ? "Dalam Radius" : "Luar Radius",
+        log.location ? `${log.location.lat}, ${log.location.lng}` : "-",
+        log.extraData || log.notes ? String(log.extraData || log.notes).replace(/,/g, ' ') : "-"
+      ];
+    });
     
     const ws = XLSX.utils.aoa_to_sheet([header, ...records]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Rekap Absensi");
-    XLSX.writeFile(wb, `Rekap_Absen_${selectedUserId}_${period}.xlsx`);
+    XLSX.writeFile(wb, `Rekap_Absen_${period}.xlsx`);
   };
 
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.text("Laporan Rekap Absensi", 14, 20);
     doc.setFontSize(10);
-    const selectedUser = usersList.find(u => u.uid === selectedUserId || u.id === selectedUserId);
-    doc.text(`User: ${selectedUser?.name || 'Unknown'}`, 14, 28);
-    doc.text(`Periode: ${period.toUpperCase()}`, 14, 34);
+    doc.text(`Periode: ${period.toUpperCase()}`, 14, 28);
     
-    const tableColumn = ["Tanggal", "Jam", "Status", "Tipe", "Radius", "Catatan"];
-    const tableRows = filteredDataByPeriod.map(log => [
-      format(new Date(log.timestamp), "yyyy-MM-dd"),
-      format(new Date(log.timestamp), "HH:mm:ss"),
-      log.status || "APPROVED",
-      log.type,
-      log.withinRadius ? "Dalam Radius" : "Luar Radius",
-      log.extraData ? log.extraData.replace(/,/g, ' ') : "-"
-    ]);
+    const tableColumn = ["Nama", "Tanggal", "Jam", "Tipe", "Radius", "Catatan"];
+    const tableRows = filteredData.map(log => {
+      const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      return [
+        user?.name || "Unknown",
+        format(new Date(log.timestamp), "yyyy-MM-dd"),
+        format(new Date(log.timestamp), "HH:mm:ss"),
+        log.type,
+        log.withinRadius ? "Dalam Radius" : "Luar Radius",
+        log.extraData || log.notes ? String(log.extraData || log.notes).replace(/,/g, ' ') : "-"
+      ];
+    });
     
     autoTable(doc, { 
       head: [tableColumn],
       body: tableRows,
-      startY: 40,
+      startY: 35,
     });
-    doc.save(`Rekap_Absen_${selectedUserId}_${period}.pdf`);
+    doc.save(`Rekap_Absen_${period}.pdf`);
   };
 
   return (
-    <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0 relative">
+    <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl border-0 shadow-lg overflow-hidden p-0 relative">
       <CardHeader className="border-b border-teal-50 dark:border-teal-900 p-6 m-0 bg-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-4 sm:space-y-0">
         <div>
-          <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">Rekap Absensi</CardTitle>
-          <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Rekapitulasi harian, mingguan, dan bulanan untuk tiap user.</CardDescription>
+          <CardTitle className="text-teal-900 dark:text-teal-50 font-black text-xl tracking-tight">Rekap & Tarik Laporan</CardTitle>
+          <CardDescription className="text-xs font-medium text-slate-500 dark:text-gray-400">Filter, rekap, dan tarik data absensi dengan cepat.</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="p-6">
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-           <div className="w-full sm:w-1/3">
-             <label className="text-xs font-bold text-slate-500 dark:text-gray-400 mb-1 block uppercase tracking-wider">Cari & Pilih User</label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 bg-slate-50 dark:bg-gray-900/50 p-4 rounded-xl border border-slate-100 dark:border-gray-800">
+           
+           {/* Row 1/2 of Filters */}
+           <div className="col-span-1 lg:col-span-2">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Cari Karyawan / NIK</label>
+             <Input 
+                placeholder="Ketik nama atau NIK..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 text-xs rounded-lg bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700"
+             />
+           </div>
+
+           <div className="col-span-1 lg:col-span-2">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Pilih Karyawan</label>
              <select 
                value={selectedUserId} 
                onChange={(e) => setSelectedUserId(e.target.value)}
-               className="w-full h-10 items-center justify-between rounded-xl border border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-slate-500 dark:text-gray-300 font-bold outline-none"
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
              >
-                <option value="all">-- Pilih Karyawan --</option>
-                {filteredUsers.map(u => (
-                  <option key={u.uid || u.id} value={u.uid || u.id}>
-                    {u.name || "Unnamed"} {u.role ? `(${u.role})` : ''}
-                  </option>
-                ))}
+                <option value="all">-- Semua Karyawan --</option>
+                {filteredUsers.map(u => {
+                  const uId = u.uid || u.id;
+                  return (
+                    <option key={uId} value={uId} disabled={!availableUsers.has(uId)}>
+                      {u.name || "Unnamed"} {u.role ? `(${u.role})` : ''} 
+                    </option>
+                  );
+                })}
              </select>
            </div>
            
-           <div className="w-full sm:w-1/4">
-             <label className="text-xs font-bold text-slate-500 dark:text-gray-400 mb-1 block uppercase tracking-wider">Periode Rekap</label>
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Rentang Waktu</label>
              <select 
                value={period} 
-               onChange={(e) => setPeriod(e.target.value)} 
-               disabled={selectedUserId === 'all'}
-               className="w-full h-10 items-center justify-between rounded-xl border border-teal-100 dark:border-teal-900 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-slate-500 dark:text-gray-300 font-bold outline-none"
+               onChange={(e) => { setPeriod(e.target.value); setIsFetched(false); }} 
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
              >
-                 <option value="daily">Harian (Hari Ini)</option>
-                 <option value="weekly">Mingguan (Minggu Ini)</option>
-                 <option value="monthly">Bulanan (Bulan Ini)</option>
+                 <option value="daily">Hari Ini</option>
+                 <option value="weekly">Minggu Ini</option>
+                 <option value="monthly">Bulan Ini</option>
+                 <option value="all_time">Semua Waktu</option>
              </select>
            </div>
 
-           <div className="w-full sm:w-auto mt-auto flex gap-2">
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Area</label>
+             <select 
+               value={selectedArea} 
+               onChange={(e) => setSelectedArea(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                <option value="all">Semua Area</option>
+                {uniqueAreas.map(a => <option key={String(a)} value={String(a)} disabled={!availableAreas.has(a)}>{String(a)}</option>)}
+             </select>
+           </div>
+
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Shift</label>
+             <select 
+               value={selectedShift} 
+               onChange={(e) => setSelectedShift(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                <option value="all">Semua Shift</option>
+                {uniqueShifts.map(s => <option key={String(s)} value={String(s)} disabled={!availableShifts.has(s)}>{String(s).toUpperCase()}</option>)}
+             </select>
+           </div>
+
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Jabatan / Role</label>
+             <select 
+               value={selectedRole} 
+               onChange={(e) => setSelectedRole(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                <option value="all">Semua Role</option>
+                {uniqueRoles.map(r => <option key={String(r)} value={String(r)} disabled={!availableRoles.has(r)}>{String(r).toUpperCase()}</option>)}
+             </select>
+           </div>
+
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Status Absen</label>
+             <select 
+               value={selectedStatus} 
+               onChange={(e) => setSelectedStatus(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                 <option value="all">Semua Data</option>
+                 <option value="hadir">Hadir Normal</option>
+                 <option value="telat">Datang Terlambat</option>
+                 <option value="ijin">Ijin / Cuti</option>
+                 <option value="sakit">Sakit</option>
+                 <option value="lembur">Lembur</option>
+             </select>
+           </div>
+           
+           <div className="col-span-1 lg:col-span-3 flex items-end justify-end mt-2 lg:mt-0 gap-2">
              <Button 
-               disabled={selectedUserId === 'all' || filteredDataByPeriod.length === 0} 
+                onClick={handleFetchData}
+                disabled={loading}
+                className="h-9 rounded-lg px-6 font-bold shadow-sm bg-teal-600 hover:bg-teal-700 text-white w-full sm:w-auto transition-all active:scale-95"
+              >
+                {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Filter className="w-4 h-4 mr-2" />}
+                Tarik Data
+              </Button>
+           </div>
+        </div>
+
+        <div className="flex justify-between items-center mb-4">
+           {isFetched && (
+             <div className="text-xs font-medium text-slate-500">
+               Menampilkan <span className="font-bold text-teal-600 dark:text-teal-400">{filteredData.length}</span> baris data
+             </div>
+           )}
+           
+           <div className="flex gap-2 ml-auto">
+             <Button 
+               disabled={!isFetched || filteredData.length === 0} 
                onClick={handleExportExcel}
                variant="outline" 
-               className="h-10 rounded-xl text-teal-600 border-teal-200 hover:bg-teal-50 dark:text-teal-400 dark:border-teal-800 dark:hover:bg-teal-900/50 flex-1 sm:flex-none"
+               className="h-8 rounded-[8px] text-[11px] text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50"
              >
-                <TableIcon className="w-4 h-4 mr-2" /> Excel
+                <TableIcon className="w-3.5 h-3.5 mr-1.5" /> Excel
              </Button>
              <Button 
-               disabled={selectedUserId === 'all' || filteredDataByPeriod.length === 0} 
+               disabled={!isFetched || filteredData.length === 0} 
                onClick={handleExportPDF}
                variant="outline" 
-               className="h-10 rounded-xl text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/50 flex-1 sm:flex-none"
+               className="h-8 rounded-[8px] text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-900/50"
              >
-                <Download className="w-4 h-4 mr-2" /> PDF
+                <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
              </Button>
            </div>
         </div>
 
-        {selectedUserId === 'all' ? (
-           <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-teal-100 dark:border-teal-900 rounded-3xl min-h-[300px]">
-             <TableIcon className="w-12 h-12 text-teal-200 dark:text-teal-800 mb-4" />
-             <p className="text-teal-800 dark:text-teal-300 font-semibold mb-1">Pilih Karyawan</p>
-             <p className="text-xs text-teal-500/70 dark:text-teal-400/50 max-w-[250px]">
-               Gunakan kotak pencarian di atas untuk memilih karyawan yang ingin dilihat rekap absensinya.
-             </p>
+        {!isFetched && !loading ? (
+           <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-teal-100 dark:border-teal-900 rounded-xl min-h-[300px] bg-slate-50/50 dark:bg-gray-800/30">
+             <Filter className="w-12 h-12 text-teal-200 dark:text-teal-800 mb-4" />
+             <p className="text-teal-900 dark:text-teal-300 font-semibold mb-1">Menarik Data...</p>
            </div>
         ) : loading ? (
            <div className="flex flex-col items-center justify-center p-12 min-h-[300px]">
               <Loader2 className="w-8 h-8 text-teal-500 animate-spin mb-4" />
               <p className="text-sm font-medium text-slate-500">Memuat riwayat...</p>
            </div>
-        ) : filteredDataByPeriod.length === 0 ? (
-           <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed border-slate-100 dark:border-gray-700 rounded-3xl min-h-[300px]">
-             <p className="text-slate-400 dark:text-slate-500 mb-1 text-sm">Tidak ada data.</p>
-             <p className="text-xs text-slate-400/70 max-w-[250px]">
-               Belum ada catatan kehadiran untuk karyawan ini pada periode yang dipilih.
+        ) : filteredData.length === 0 ? (
+           <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-slate-200 dark:border-gray-700 rounded-xl min-h-[300px]">
+             <p className="text-slate-400 dark:text-slate-500 mb-1 text-sm font-bold">Tidak ada data ditemukan pada rentang waktu atau filter ini.</p>
+             <p className="text-xs text-slate-400/70 max-w-[300px]">
+               Atur ulang filter atau ubah rentang waktu menjadi <b>Semua Waktu</b>.
              </p>
            </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-teal-50 dark:border-teal-900/50 overflow-x-auto ring-1 ring-black/5 dark:ring-white/5">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-slate-200 dark:border-gray-700 overflow-x-auto ring-1 ring-black/5 dark:ring-white/5">
             <Table>
-              <TableHeader className="bg-slate-50/50 dark:bg-gray-700/50 border-b border-teal-50 dark:border-teal-900/50">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-[120px] font-bold text-slate-500 dark:text-gray-400 uppercase text-[10px] tracking-wider py-4 px-4 whitespace-nowrap">Tanggal</TableHead>
-                  <TableHead className="font-bold text-slate-500 dark:text-gray-400 uppercase text-[10px] tracking-wider py-4 px-4 whitespace-nowrap">Jam</TableHead>
-                  <TableHead className="font-bold text-slate-500 dark:text-gray-400 uppercase text-[10px] tracking-wider py-4 px-4 whitespace-nowrap">Status</TableHead>
-                  <TableHead className="font-bold text-slate-500 dark:text-gray-400 uppercase text-[10px] tracking-wider py-4 px-4 whitespace-nowrap">Tipe</TableHead>
-                  <TableHead className="font-bold text-slate-500 dark:text-gray-400 uppercase text-[10px] tracking-wider py-4 px-4 whitespace-nowrap text-right">Lokasi / Detail</TableHead>
+              <TableHeader className="bg-slate-50 dark:bg-gray-700/50">
+                <TableRow className="hover:bg-transparent border-slate-200 dark:border-gray-700">
+                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Karyawan</TableHead>
+                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Tanggal & Jam</TableHead>
+                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Tipe & Status</TableHead>
+                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4 min-w-[200px]">Detail / Informasi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredDataByPeriod.map((log) => (
-                  <TableRow key={log.id} className="group border-b border-teal-50/50 dark:border-teal-900/30 hover:bg-slate-50/80 dark:hover:bg-gray-700/50 transition-colors">
-                    <TableCell className="py-4 px-4 font-semibold text-xs text-slate-700 dark:text-slate-300">
-                      {format(new Date(log.timestamp), "d MMM yyyy")}
+                {filteredData.map((log) => {
+                  const u = usersList.find(user => user.uid === log.userId || user.id === log.userId);
+                  return (
+                  <TableRow key={log.id} className="group border-b border-slate-100 dark:border-gray-700/50 hover:bg-slate-50 dark:hover:bg-gray-700/30 transition-colors">
+                    <TableCell className="py-3 px-4">
+                       <div className="flex flex-col">
+                          <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{u?.name || log.userId}</span>
+                          <span className="text-[10px] text-slate-500">{u?.role ? String(u.role).toUpperCase() : "-"} • {u?.areaId || "Area PUSAT"}</span>
+                       </div>
                     </TableCell>
-                    <TableCell className="py-4 px-4 font-mono text-xs text-slate-600 dark:text-slate-400">
-                      {format(new Date(log.timestamp), "HH:mm")}
+                    <TableCell className="py-3 px-4">
+                       <div className="flex flex-col">
+                         <span className="font-bold text-xs text-slate-700 dark:text-slate-300">
+                           {format(new Date(log.timestamp), "d MMM yyyy", { locale: localeId })}
+                         </span>
+                         <span className="font-mono text-[11px] text-slate-500">
+                           {format(new Date(log.timestamp), "HH:mm")} WIB
+                         </span>
+                       </div>
                     </TableCell>
-                    <TableCell className="py-4 px-4">
-                      {log.status === "PENDING" ? (
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800">Pending</Badge>
-                      ) : log.status === "REJECTED" ? (
-                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800">Rejected</Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">Approved</Badge>
-                      )}
+                    <TableCell className="py-3 px-4">
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                          log.type === 'in' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' 
+                          : log.type === 'out' ? 'bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-slate-300'
+                          : log.type === 'overtime' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : log.type === 'sick' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : log.type === 'permit' || log.type === 'cuti' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                        }`}>
+                          {log.type.replace('_', ' ')}
+                        </span>
+                        {log.status === "PENDING" || log.status === "pending_approval" ? (
+                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-[9px] h-4">Menunggu</Badge>
+                        ) : log.status === "REJECTED" || log.status === "rejected" ? (
+                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[9px] h-4">Ditolak</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] h-4">Valid</Badge>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell className="py-4 px-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        log.type === 'in' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' 
-                        : log.type === 'overtime' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                        : log.type === 'location' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                      }`}>
-                        {log.type.toUpperCase()}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-4 px-4 text-right">
-                       <div className="flex flex-col items-end gap-1">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                             log.withinRadius ? "bg-teal-50 text-teal-700 border border-teal-200" : "bg-orange-50 text-orange-700 border border-orange-200"
-                          }`}>
-                             {log.withinRadius ? "Dalam Radius" : "Luar Radius"}
-                          </span>
-                          {log.extraData && (
-                             <span className="text-[10px] text-slate-500 max-w-[150px] truncate" title={log.extraData}>
-                               {log.extraData}
+                    <TableCell className="py-3 px-4">
+                       <div className="flex flex-col gap-1 items-start">
+                          {log.method === "qr" ? (
+                             <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">Scan QR</span>
+                          ) : (
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                               log.withinRadius ? "bg-teal-50 text-teal-700 border-teal-200" : "bg-orange-50 text-orange-700 border-orange-200"
+                            }`}>
+                               {log.withinRadius ? "✅ VALID GEOFENCE" : "⚠️ LUAR GEOFENCE"}
+                            </span>
+                          )}
+                          {(log.extraData || log.notes) && (
+                             <span className="text-[10px] text-slate-600 dark:text-slate-400 italic mt-0.5 break-all max-w-[250px]">
+                               &quot;{log.extraData || log.notes}&quot;
                              </span>
+                          )}
+                          {log.location && log.method !== "qr" && typeof log.location.lat === 'number' && typeof log.location.lng === 'number' && (
+                            <span className="text-[9px] text-slate-400 font-mono">
+                               {log.location.lat.toFixed(5)}, {log.location.lng.toFixed(5)}
+                            </span>
                           )}
                        </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

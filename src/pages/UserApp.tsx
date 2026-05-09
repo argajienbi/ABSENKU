@@ -644,14 +644,20 @@ export default function UserApp() {
       interval = setInterval(async () => {
         if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
           const video = webcamRef.current.video;
-          const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-          
-          const hasFace = !!detections;
-          setIsFaceDetected(hasFace);
-          
-          if (hasFace && !autoCaptureActive && !loading) {
-             // Auto-capture logic could go here if we want it ultra-responsive
-             // For now, just visual feedback
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            try {
+              const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+              
+              const hasFace = !!detections;
+              setIsFaceDetected(hasFace);
+              
+              if (hasFace && !autoCaptureActive && !loading) {
+                 // Auto-capture logic could go here if we want it ultra-responsive
+                 // For now, just visual feedback
+              }
+            } catch (err) {
+              console.error("Face detection error:", err);
+            }
           }
         }
       }, 500); // Check every 500ms
@@ -1007,8 +1013,8 @@ export default function UserApp() {
            {view === "home" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                  <Card className="relative overflow-hidden border-0 shadow-xl shadow-teal-900/5 rounded-[1.75rem] bg-white dark:bg-gray-800 text-center px-5 pt-10 pb-5 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                  <Card className="relative overflow-hidden border-0 shadow-xl shadow-teal-900/5 rounded-[1.5rem] bg-white dark:bg-gray-800 text-center px-4 pt-6 pb-4 w-full">
                     {/* Inner Wave Background */}
                     <div className="absolute bottom-0 left-0 right-0 top-1/2 overflow-hidden pointer-events-none rounded-b-[1.75rem]">
                       <svg viewBox="0 0 1440 320" className="absolute bottom-0 w-full h-auto min-h-[160px] max-h-[85%] object-cover object-bottom" preserveAspectRatio="none">
@@ -1017,7 +1023,7 @@ export default function UserApp() {
                     </div>
 
                   <div className="relative z-10 flex flex-col items-center">
-                    <h2 className="text-[3.5rem] sm:text-6xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.04em] leading-none mb-2.5 flex items-center justify-center">
+                    <h2 className="text-[2.5rem] sm:text-5xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.04em] leading-none mb-2 flex items-center justify-center">
                       {format(currentTime, "HH:mm:ss")}
                     </h2>
                     <p className="text-slate-800 dark:text-gray-300 font-medium text-[1.1rem] mb-6 tracking-tight">
@@ -1117,13 +1123,13 @@ export default function UserApp() {
                         <>
                           <Button 
                             onClick={() => { setType("in"); setView("absen"); }}
-                            className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-teal-500 to-emerald-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
+                            className="relative overflow-hidden border-0 shadow-lg group rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 p-4 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-[6.5rem]"
                           >
-                            <div className="absolute top-0 right-0 p-3 opacity-20">
-                              <AlarmClock className="w-16 h-16" />
+                            <div className="absolute top-0 right-0 p-2 opacity-20">
+                              <AlarmClock className="w-12 h-12" />
                             </div>
-                            <AlarmClock className="w-7 h-7 mb-1.5 opacity-80" />
-                            <span className="text-sm mb-1 leading-none">Absen Masuk</span>
+                            <AlarmClock className="w-6 h-6 mb-1 opacity-80" />
+                            <span className="text-xs mb-1 leading-none text-center">Absen Masuk</span>
                             {shiftDay ? (
                                <div className="flex flex-col items-center gap-0.5 mt-0.5">
                                  <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Jadwal: {shiftDay.start}</span>
@@ -1154,13 +1160,13 @@ export default function UserApp() {
                               setType("out"); 
                               setView("absen"); 
                             }}
-                            className="relative overflow-hidden border-0 shadow-lg group rounded-3xl bg-gradient-to-br from-purple-500 to-violet-600 p-6 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-32"
+                            className="relative overflow-hidden border-0 shadow-lg group rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 p-4 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-[6.5rem]"
                           >
-                            <div className="absolute top-0 right-0 p-3 opacity-20">
-                              <DoorOpen className="w-16 h-16" />
+                            <div className="absolute top-0 right-0 p-2 opacity-20">
+                              <DoorOpen className="w-12 h-12" />
                             </div>
-                            <DoorOpen className="w-7 h-7 mb-1.5 opacity-80" />
-                            <span className="text-sm mb-1 leading-none">Absen Pulang</span>
+                            <DoorOpen className="w-6 h-6 mb-1 opacity-80" />
+                            <span className="text-xs mb-1 leading-none text-center">Absen Pulang</span>
                             {shiftDay ? (
                                <div className="flex flex-col items-center gap-0.5 mt-0.5">
                                  <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Jadwal: {shiftDay.end}</span>
@@ -1183,25 +1189,25 @@ export default function UserApp() {
                   <button 
                     disabled={!canEnableOvertime}
                     onClick={() => { setType("overtime_in"); setView("absen"); }}
-                    className="p-6 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-4 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <TrendingUp className="w-8 h-8 mb-2 opacity-80" />
-                    <span className="text-sm">Lembur Masuk</span>
+                    <TrendingUp className="w-6 h-6 mb-1.5 opacity-80" />
+                    <span className="text-xs text-center">Lembur Masuk</span>
                   </button>
                   <button 
                     disabled={!canEnableOvertime}
                     onClick={() => { setType("overtime_out"); setView("absen"); }}
-                    className="p-6 bg-rose-500 hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-4 bg-rose-500 hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <TrendingDown className="w-8 h-8 mb-2 opacity-80" />
-                    <span className="text-sm">Lembur Pulang</span>
+                    <TrendingDown className="w-6 h-6 mb-1.5 opacity-80" />
+                    <span className="text-xs text-center">Lembur Pulang</span>
                   </button>
                   <button 
                     onClick={() => { setView("izin_menu"); }}
-                    className="p-6 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 col-span-2"
+                    className="p-4 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 col-span-2"
                   >
-                    <CalendarDays className="w-8 h-8 mb-2 opacity-80" />
-                    <span className="text-sm">Lapor Izin / Sakit / Cuti</span>
+                    <CalendarDays className="w-6 h-6 mb-1.5 opacity-80" />
+                    <span className="text-xs">Lapor Izin / Sakit / Cuti</span>
                   </button>
                 </div>
                 </div>
@@ -1249,14 +1255,14 @@ export default function UserApp() {
                 <div className="grid grid-cols-1 gap-4">
                   <button 
                     onClick={() => { setType("sick"); setView("absen"); setActiveAbsenTab("selfie"); }}
-                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                    className="p-3.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
-                        <UserSquare2 className="w-6 h-6" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
+                        <UserSquare2 className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <p className="text-gray-900 dark:text-gray-100 font-bold">Sakit</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-bold text-sm">Sakit</p>
                         <p className="text-xs text-gray-500 font-medium mt-0.5">Wajib lapirkan surat dokter</p>
                       </div>
                     </div>
@@ -1265,14 +1271,14 @@ export default function UserApp() {
 
                   <button 
                     onClick={() => { setType("permit"); setView("absen"); setActiveAbsenTab("selfie"); }}
-                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                    className="p-3.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 rounded-xl flex items-center justify-center">
-                        <CalendarDays className="w-6 h-6" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600 dark:text-cyan-400 rounded-xl flex items-center justify-center shrink-0">
+                        <CalendarDays className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <p className="text-gray-900 dark:text-gray-100 font-bold">Izin Biasa</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-bold text-sm">Izin Biasa</p>
                         <p className="text-xs text-gray-500 font-medium mt-0.5">Keperluan pribadi / mendesak</p>
                       </div>
                     </div>
@@ -1281,14 +1287,14 @@ export default function UserApp() {
 
                   <button 
                     onClick={() => { setType("cuti"); setView("absen"); setActiveAbsenTab("selfie"); }}
-                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                    className="p-3.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
-                        <CalendarDays className="w-6 h-6" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
+                        <CalendarDays className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <p className="text-gray-900 dark:text-gray-100 font-bold">Cuti Tahunan</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-bold text-sm">Cuti Tahunan</p>
                         <p className="text-xs text-gray-500 font-medium mt-0.5">Libur terencana tahunan</p>
                       </div>
                     </div>
@@ -1297,34 +1303,34 @@ export default function UserApp() {
 
                   <button 
                     onClick={() => { setType("melahirkan"); setView("absen"); setActiveAbsenTab("selfie"); }}
-                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                    className="p-3.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400 rounded-xl flex items-center justify-center">
-                        <UserSquare2 className="w-6 h-6" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-pink-100 dark:bg-pink-900/40 text-pink-600 dark:text-pink-400 rounded-xl flex items-center justify-center shrink-0">
+                        <UserSquare2 className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <p className="text-gray-900 dark:text-gray-100 font-bold">Cuti Melahirkan</p>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">Wajib lampirkan surat RS</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-bold text-sm">Cuti Melahirkan</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium mt-0.5">Wajib lampirkan surat RS</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
                   </button>
 
                   <button 
                     onClick={() => { setType("meninggal"); setView("absen"); setActiveAbsenTab("selfie"); }}
-                    className="p-5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
+                    className="p-3.5 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-gray-700 rounded-2xl flex items-center justify-between font-bold shadow-sm transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl flex items-center justify-center">
-                        <UserSquare2 className="w-6 h-6" />
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl flex items-center justify-center shrink-0">
+                        <UserSquare2 className="w-5 h-5" />
                       </div>
                       <div className="text-left">
-                        <p className="text-gray-900 dark:text-gray-100 font-bold">Izin Berduka / Meninggal</p>
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">Keluarga inti meninggal</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-bold text-sm">Izin Berduka / Meninggal</p>
+                        <p className="text-[10px] sm:text-xs text-gray-500 font-medium mt-0.5">Keluarga inti meninggal</p>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                    <ChevronRight className="w-5 h-5 text-gray-400 shrink-0" />
                   </button>
                 </div>
              </div>

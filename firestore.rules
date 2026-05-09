@@ -28,6 +28,7 @@ service cloud.firestore {
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
              (!('isBanned' in data) || data.isBanned is bool) &&
              (!('fcmToken' in data) || data.fcmToken is string) &&
+             (!('deviceId' in data) || data.deviceId is string && data.deviceId.size() <= 256) &&
              (!('waNumber' in data) || data.waNumber == null || (data.waNumber is string && data.waNumber.size() <= 20));
     }
 
@@ -96,10 +97,10 @@ service cloud.firestore {
       allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
                     (
                       isSuperAdmin() ||
-                      (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken']) && incoming().uid == existing().uid) ||
+                      (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken', 'deviceId']) && incoming().uid == existing().uid) ||
                       (isAdmin() &&
                        get(/databases/$(database)/documents/users/$(userId)).data.role != 'superadmin' &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'isBanned', 'fcmToken']) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'isBanned', 'fcmToken', 'deviceId']) &&
                        incoming().uid == existing().uid
                       )
                     );
@@ -166,10 +167,10 @@ service cloud.firestore {
 
     // Notifications Collection
     match /notifications/{notificationId} {
-      allow get: if isValidId(notificationId) && isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all");
-      allow list: if isSignedIn() && resource.data.userId in [request.auth.uid, "all"];
+      allow get: if isValidId(notificationId) && isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all" || (isAdmin() && resource.data.userId == "admin_only"));
+      allow list: if isSignedIn() && (resource.data.userId in [request.auth.uid, "all"] || (isAdmin() && resource.data.userId == "admin_only"));
       allow create: if isAdmin() && isValidId(notificationId);
-      allow update: if isValidId(notificationId) && isSignedIn() && resource.data.userId in [request.auth.uid, "all"] && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow update: if isValidId(notificationId) && isSignedIn() && (resource.data.userId in [request.auth.uid, "all"] || (isAdmin() && resource.data.userId == "admin_only")) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
       allow delete: if isAdmin() && isValidId(notificationId);
     }
 

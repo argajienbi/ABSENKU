@@ -99,10 +99,10 @@ export default function Dashboard() {
         setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       });
 
-      const q3 = query(collection(db, "notifications"), where("userId", "==", "all"), orderBy("createdAt", "desc"));
+      const q3 = query(collection(db, "notifications"), where("userId", "in", ["all", "admin_only"]), orderBy("createdAt", "desc"));
       const unsub3 = onSnapshot(q3, (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setSecurityLogs(logs.filter(l => l.type === "danger"));
+        const logs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as object) })) as any[];
+        setSecurityLogs(logs.filter(l => l.userId === "admin_only" || l.type === "danger"));
       });
 
       return () => {
@@ -1137,7 +1137,7 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="rekap" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
-             <RekapAbsensi usersList={filteredUsersList} />
+             <RekapAbsensi usersList={filteredUsersList} settings={settings} />
           </TabsContent>
 
           <TabsContent value="settings" className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">

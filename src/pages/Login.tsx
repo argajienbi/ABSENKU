@@ -81,17 +81,19 @@ export default function Login() {
          const data = userSnap.data();
          if (data.deviceId && data.deviceId !== localDeviceId) {
             // Log security warning for superadmin
-            try {
-               await setDoc(doc(db, "notifications", `notif_${Date.now()}_all`), {
-                 title: "Peringatan Keamanan Sistem",
-                 body: `Pengguna ${data.name || email} (${email}) login dari perangkat baru. Perangkat lama telah di-logout.`,
-                 userId: "all",
-                 type: "danger", 
-                 createdAt: Date.now(),
-                 read: false
-               });
-            } catch (e) {
-               console.error("Failed to write device log", e);
+            if (data.role === 'superadmin' || data.role === 'admin') {
+               try {
+                  await setDoc(doc(db, "notifications", `notif_${Date.now()}_admin_only`), {
+                    title: "Peringatan Keamanan Sistem",
+                    body: `Pengguna ${data.name || email} (${email}) login dari perangkat baru. Perangkat lama telah di-logout.`,
+                    userId: "admin_only",
+                    type: "danger", 
+                    createdAt: Date.now(),
+                    read: false
+                  });
+               } catch (e) {
+                  console.error("Failed to write device log", e);
+               }
             }
          }
       }
