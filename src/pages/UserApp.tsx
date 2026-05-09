@@ -1096,55 +1096,59 @@ export default function UserApp() {
                     </div>
                     
                     {/* Location Pill */}
-                    <div className="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-[18px] shadow-sm border border-white/80 dark:border-gray-700/50 p-2.5 flex items-center justify-between text-left relative z-20">
-                       <div className="flex items-center gap-3 w-full">
-                          <div className="shrink-0 w-[42px] h-[42px] bg-blue-50/80 dark:bg-blue-900/40 rounded-[14px] flex justify-center items-center relative overflow-hidden border border-blue-100/50 dark:border-gray-700">
-                             <MapPin className="w-4 h-4 text-rose-500 absolute -top-1 right-0.5 z-10 fill-rose-500 drop-shadow-sm rotate-[15deg]" />
-                             <Globe className="w-6 h-6 text-blue-500 dark:text-blue-400 stroke-2 translate-y-0.5" />
+                    <div className="relative w-full rounded-[18px] bg-white/70 dark:bg-gray-800/70 p-3 shadow-inner border border-white/60 dark:border-white/5 overflow-hidden flex flex-col gap-2">
+                       <div className="flex items-start gap-3 w-full relative z-10">
+                          <div className="shrink-0 w-10 h-10 bg-blue-50/80 dark:bg-blue-900/40 rounded-xl flex justify-center items-center relative shadow-sm border border-blue-100 dark:border-blue-900/60">
+                             <MapPin className="w-4 h-4 text-rose-500 absolute -top-1 -right-1 z-10 fill-rose-500 drop-shadow-md rotate-[15deg]" />
+                             <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400 stroke-[2.5px] translate-y-[1px]" />
                           </div>
                           
-                          <div className="flex flex-col flex-1 pl-1">
-                             <div className="text-[11px] font-black text-slate-800 dark:text-white tracking-widest leading-none mb-1">
-                               {!settings?.geofenceEnabled 
-                                 ? (location && distance !== null ? `JARAK: ${Math.round(distance)}M (BEBAS)` : "GEOFENCE NONAKTIF")
-                                 : (locationError ? "GAGAL LOKASI" : (location ? (distance !== null ? `JARAK: ${Math.round(distance)}M` : "MENGHITUNG...") : "MENCARI LOKASI..."))}
+                          <div className="flex flex-col flex-1 min-w-0">
+                             <div className="flex items-center gap-2 mb-1">
+                               <div className="flex-1 text-[10px] font-black text-slate-800 dark:text-white tracking-widest leading-none truncate uppercase bg-slate-100/80 dark:bg-slate-900/50 px-2 py-1 rounded-md">
+                                 {!settings?.geofenceEnabled 
+                                   ? (location && distance !== null ? `JARAK: ${Math.round(distance)}M (BEBAS)` : "GEOFENCE NONAKTIF")
+                                   : (locationError ? "GAGAL LOKASI" : (location ? (distance !== null ? `JARAK: ${Math.round(distance)}M` : "MENGHITUNG...") : "MENCARI LOKASI..."))}
+                               </div>
+                               
+                               <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md shrink-0 border border-emerald-100/50 dark:border-emerald-800/30 max-w-[110px]">
+                                 <MapPin className="w-3 h-3 fill-current shrink-0" />
+                                 {((currentAreaName || "Area...").length > 7) ? (
+                                    <div className="marquee-container w-full overflow-hidden">
+                                      <span className="text-[9px] font-black uppercase whitespace-nowrap animate-marquee block">
+                                        {currentAreaName || "Area..."}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[9px] font-black uppercase truncate">
+                                      {currentAreaName || "Area..."}
+                                    </span>
+                                  )}
+                               </div>
                              </div>
-                             {location && (
-                               <div className="flex flex-col">
-                                 <div className="text-[9px] text-slate-500 dark:text-gray-400 font-medium tracking-tight mb-0.5 font-mono">
-                                   LAT: {location.lat.toFixed(6)} <span className="opacity-50 px-0.5">|</span> LNG: {location.lng.toFixed(6)}
-                                 </div>
+                             {location ? (
+                               <div className="flex items-center justify-between text-[9px] text-slate-500 dark:text-gray-400 mt-1 pl-0.5">
+                                 <span className="font-mono font-semibold tracking-tight truncate mr-2">LT: {location.lat.toFixed(5)} LG: {location.lng.toFixed(5)}</span>
                                  {settings?.geofenceEnabled && (
-                                   <div className="text-[9px] text-slate-600 dark:text-gray-400 font-bold tracking-tight uppercase">
-                                     Max Radius: {
+                                   <span className="font-bold tracking-widest uppercase shrink-0">
+                                     RAD: {
                                       (() => {
                                         if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
-                                          return `${settings.areas[user.areaId].radius}m`;
+                                          return `${settings.areas[user.areaId].radius}M`;
                                         } else if (settings?.areas && Object.keys(settings.areas).length > 0) {
-                                          return `Tergantung Titik`;
+                                          return `TITIK`;
                                         }
-                                        return "Belum ada konfigurasi";
+                                        return "-";
                                       })()
                                      }
-                                   </div>
+                                   </span>
                                  )}
                                </div>
+                             ) : (
+                               <div className="flex items-center justify-between text-[9px] text-slate-500 dark:text-gray-400 mt-1 pl-0.5">
+                                 <span className="font-mono font-semibold tracking-tight">Menunggu koordinat...</span>
+                               </div>
                              )}
-                          </div>
-
-                          <div className="flex items-center gap-1.5 shrink-0 px-3 justify-end text-right border-l border-gray-200 dark:border-gray-700 h-8 max-w-[100px] sm:max-w-[120px] overflow-hidden">
-                            <MapPin className="w-4 h-4 text-emerald-500 fill-emerald-500 shrink-0" />
-                            {((currentAreaName || "Area...").length > 7) ? (
-                              <div className="marquee-container w-full">
-                                <span className="text-[11px] font-black uppercase text-slate-800 dark:text-white animate-marquee pr-8">
-                                  {currentAreaName || "Area..."}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-[11px] font-black uppercase text-slate-800 dark:text-white truncate">
-                                {currentAreaName || "Area..."}
-                              </span>
-                            )}
                           </div>
                        </div>
                     </div>
