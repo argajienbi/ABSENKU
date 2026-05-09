@@ -12,7 +12,7 @@ export async function urlToBase64(url: string): Promise<{ mimeType: string, data
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        const match = result.match(/^data:(image\/[a-z]+);base64,(.*)$/);
+        const match = result.match(/^data:([^;]+);base64,(.*)$/);
         if (match) {
           resolve({ mimeType: match[1], data: match[2] });
         } else {
@@ -35,11 +35,11 @@ export async function urlToBase64(url: string): Promise<{ mimeType: string, data
         if (!ctx) return reject(new Error("No ctx"));
         ctx.drawImage(img, 0, 0);
         const dataUrl = canvas.toDataURL("image/jpeg");
-        const match = dataUrl.match(/^data:(image\/[a-z]+);base64,(.*)$/);
+        const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
         if (match) resolve({ mimeType: match[1], data: match[2] });
         else reject(new Error("Failed to parse canvas base64"));
       };
-      img.onerror = reject;
+      img.onerror = () => reject(new Error("Image failed to load for canvas draw"));
       // Append a query param to bypass cache if needed
       img.src = url + (url.includes('?') ? '&' : '?') + 'notag=1';
     });
@@ -50,8 +50,16 @@ export type VerificationResult = 'MATCH' | 'NO_MATCH' | 'UNAVAILABLE';
 
 export async function verifyFace(selfieBase64: string, avatarUrl: string): Promise<VerificationResult> {
   try {
-    const selfieMatch = selfieBase64.match(/^data:(image\/[a-zA-Z0-9]+);base64,(.*)$/);
-    if (!selfieMatch) return 'NO_MATCH';
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn("GEMINI_API_KEY is missing. Skipping verification.");
+      return 'UNAVAILABLE';
+    }
+
+    const selfieMatch = selfieBase64.match(/^data:([^;]+);base64,(.*)$/);
+    if (!selfieMatch) {
+       console.error("Selfie base64 does not match expected pattern");
+       return 'NO_MATCH';
+    }
     
     const selfieMime = selfieMatch[1];
     const selfieBytes = selfieMatch[2];

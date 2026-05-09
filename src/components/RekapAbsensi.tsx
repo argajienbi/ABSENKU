@@ -7,7 +7,7 @@ import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Badge } from "./ui/badge";
 import { Input } from "./ui/input";
-import { Search, Loader2, Download, Table as TableIcon, Filter } from "lucide-react";
+import { Search, Loader2, Download, Table as TableIcon, Filter, Clock, Activity, UserCheck, AlertCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
@@ -150,6 +150,77 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const summaryStats = useMemo(() => {
+    if (!isFetched || attendanceData.length === 0) return null;
+
+    let totalHadir = 0;
+    let totalTelat = 0;
+    let totalSakitIzin = 0;
+    let totalHariLembur = 0;
+    let totalMenitKerja = 0;
+    let totalMenitLembur = 0;
+
+    const baseData = attendanceData.filter(log => {
+      const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      if (selectedUserId !== "all" && log.userId !== selectedUserId) return false;
+      if (selectedArea !== "all" && user?.areaId !== selectedArea) return false;
+      if (selectedShift !== "all" && user?.shiftId !== selectedShift) return false;
+      if (selectedRole !== "all" && user?.role !== selectedRole) return false;
+      // We don't filter by selectedStatus to make sure we don't skew the pairing of "in" and "out" logs
+      return true;
+    });
+
+    const grouped: Record<string, Record<string, any[]>> = {};
+
+    baseData.forEach(log => {
+       const uId = log.userId;
+       const dateStr = format(new Date(log.timestamp), "yyyy-MM-dd");
+       if (!grouped[uId]) grouped[uId] = {};
+       if (!grouped[uId][dateStr]) grouped[uId][dateStr] = [];
+       grouped[uId][dateStr].push(log);
+    });
+
+    Object.keys(grouped).forEach(uId => {
+       const user = usersList.find(u => u.uid === uId || u.id === uId);
+       const shiftStr = user?.shiftId || 'morning';
+       const shiftConfig = settings?.shifts?.[shiftStr] || { startTime: "09:00", gracePeriod: 0 };
+       const startParts = (shiftConfig.start || shiftConfig.startTime || "09:00").split(':');
+       const startHour = Number(startParts[0] || '9');
+       const startMin = Number(startParts[1] || '0');
+       const shiftStartMinutes = (startHour * 60) + startMin + (shiftConfig.gracePeriod || 0);
+
+       Object.keys(grouped[uId]).forEach(dateStr => {
+          const dayLogs = grouped[uId][dateStr].sort((a: any, b: any) => a.timestamp - b.timestamp);
+          
+          const inLog = dayLogs.find(l => l.type === 'in');
+          const outLog = dayLogs.slice().reverse().find(l => l.type === 'out');
+          const hasSickIzin = dayLogs.find(l => ['sick', 'permit', 'cuti'].includes(l.type));
+          const ovInLog = dayLogs.find(l => l.type === 'overtime_in' || l.type === 'overtime');
+          const ovOutLog = dayLogs.slice().reverse().find(l => l.type === 'overtime_out');
+          
+          if (inLog) {
+             totalHadir++;
+             const logDate = new Date(inLog.timestamp);
+             const userInMinutes = (logDate.getHours() * 60) + logDate.getMinutes();
+             if (userInMinutes > shiftStartMinutes) totalTelat++;
+          }
+          
+          if (hasSickIzin) totalSakitIzin++;
+          if (ovInLog) totalHariLembur++;
+
+          if (inLog && outLog && outLog.timestamp > inLog.timestamp) {
+             totalMenitKerja += Math.floor((outLog.timestamp - inLog.timestamp) / 60000);
+          }
+          
+          if (ovInLog && ovOutLog && ovOutLog.timestamp > ovInLog.timestamp) {
+             totalMenitLembur += Math.floor((ovOutLog.timestamp - ovInLog.timestamp) / 60000);
+          }
+       });
+    });
+
+    return { totalHadir, totalTelat, totalSakitIzin, totalHariLembur, totalMenitKerja, totalMenitLembur };
+  }, [attendanceData, selectedUserId, selectedArea, selectedShift, selectedRole, isFetched, usersList, settings]);
+
   const filteredData = useMemo(() => {
     if (!isFetched) return [];
     
@@ -177,7 +248,7 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
         } else if (selectedStatus === 'ijin' || selectedStatus === 'cuti') {
            if (log.type !== 'permit' && log.type !== 'cuti') return false;
         } else if (selectedStatus === 'lembur') {
-           if (log.type !== 'overtime') return false;
+           if (log.type !== 'overtime' && log.type !== 'overtime_in' && log.type !== 'overtime_out') return false;
         } else if (selectedStatus === 'telat') {
            if (log.type !== 'in') return false;
            // Check if late based on settings
@@ -393,6 +464,36 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
            </div>
         </div>
 
+        {/* Summary Stats Region */}
+        {summaryStats && !loading && isFetched && (
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+            <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-3 rounded-xl border border-indigo-100 dark:border-indigo-900/30 flex flex-col items-center text-center justify-center">
+               <span className="text-xl font-black text-indigo-700 dark:text-indigo-400">{summaryStats.totalHadir}</span>
+               <span className="text-[10px] font-bold text-indigo-600/70 dark:text-indigo-400/70 uppercase tracking-wider mt-1 flex items-center justify-center gap-1"><UserCheck className="w-3 h-3"/> Kehadiran</span>
+            </div>
+            <div className="bg-rose-50/50 dark:bg-rose-900/20 p-3 rounded-xl border border-rose-100 dark:border-rose-900/30 flex flex-col items-center text-center justify-center">
+               <span className="text-xl font-black text-rose-700 dark:text-rose-400">{summaryStats.totalTelat}</span>
+               <span className="text-[10px] font-bold text-rose-600/70 dark:text-rose-400/70 uppercase tracking-wider mt-1 flex items-center justify-center gap-1"><AlertCircle className="w-3 h-3"/> Datang Telat</span>
+            </div>
+            <div className="bg-amber-50/50 dark:bg-amber-900/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30 flex flex-col items-center text-center justify-center">
+               <span className="text-xl font-black text-amber-700 dark:text-amber-400">{summaryStats.totalHariLembur}</span>
+               <span className="text-[10px] font-bold text-amber-600/70 dark:text-amber-400/70 uppercase tracking-wider mt-1 flex items-center justify-center gap-1"><Activity className="w-3 h-3"/> Hr Lembur</span>
+            </div>
+            <div className="bg-yellow-50/50 dark:bg-yellow-900/20 p-3 rounded-xl border border-yellow-100 dark:border-yellow-900/30 flex flex-col items-center text-center justify-center">
+               <span className="text-xl font-black text-yellow-700 dark:text-yellow-400">{summaryStats.totalSakitIzin}</span>
+               <span className="text-[10px] font-bold text-yellow-600/70 dark:text-yellow-400/70 uppercase tracking-wider mt-1 flex items-center justify-center gap-1"><Activity className="w-3 h-3"/> Izin / Sakit</span>
+            </div>
+            <div className="bg-emerald-50/50 dark:bg-emerald-900/20 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30 flex flex-col items-center text-center justify-center">
+               <span className="text-xl font-black text-emerald-700 dark:text-emerald-400">{Math.floor(summaryStats.totalMenitKerja / 60)}h {summaryStats.totalMenitKerja % 60}m</span>
+               <span className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider mt-1 flex items-center justify-center gap-1"><Clock className="w-3 h-3"/> Jam Kerja</span>
+            </div>
+            <div className="bg-orange-50/50 dark:bg-orange-900/20 p-3 rounded-xl border border-orange-100 dark:border-orange-900/30 flex flex-col items-center text-center justify-center">
+               <span className="text-xl font-black text-orange-700 dark:text-orange-400">{Math.floor(summaryStats.totalMenitLembur / 60)}h {summaryStats.totalMenitLembur % 60}m</span>
+               <span className="text-[10px] font-bold text-orange-600/70 dark:text-orange-400/70 uppercase tracking-wider mt-1 flex items-center justify-center gap-1"><Clock className="w-3 h-3"/> Jam Lembur</span>
+            </div>
+          </div>
+        )}
+
         {!isFetched && !loading ? (
            <div className="flex flex-col items-center justify-center p-12 text-center border border-dashed border-teal-100 dark:border-teal-900 rounded-xl min-h-[300px] bg-slate-50/50 dark:bg-gray-800/30">
              <Filter className="w-12 h-12 text-teal-200 dark:text-teal-800 mb-4" />
@@ -447,7 +548,8 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
                           log.type === 'in' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' 
                           : log.type === 'out' ? 'bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-slate-300'
-                          : log.type === 'overtime' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : log.type === 'overtime_in' || log.type === 'overtime' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : log.type === 'overtime_out' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
                           : log.type === 'sick' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                           : log.type === 'permit' || log.type === 'cuti' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                           : 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
