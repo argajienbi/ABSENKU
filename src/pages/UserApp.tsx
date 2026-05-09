@@ -129,8 +129,6 @@ export default function UserApp() {
   const editWebcamRef = useRef<Webcam>(null);
   const [isEditSaving, setIsEditSaving] = useState(false);
 
-  const [isFaceDetected, setIsFaceDetected] = useState(false);
-  const [isModelsLoaded, setIsModelsLoaded] = useState(false);
   const [autoCaptureActive, setAutoCaptureActive] = useState(false);
   const [confirmData, setConfirmData] = useState<{ method: "selfie" | "qr"; photoBase64: string | null; extraData?: string } | null>(null);
   const [pendingQRData, setPendingQRData] = useState<string | null>(null);
@@ -625,55 +623,42 @@ export default function UserApp() {
     }
   }, [view, activeAbsenTab, type]);
 
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        const MODEL_URL = "/models";
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        ]);
-        setIsModelsLoaded(true);
-      } catch (e) {
-        console.error("Failed to load faceapi models", e);
-      }
-    };
-    loadModels();
-  }, []);
-
+  // Wajah tidak lagi dicek otomatis oleh faceapi
   useEffect(() => {
     let interval: any;
-    if (view === "absen" && activeAbsenTab === "selfie" && isModelsLoaded && !loading) {
-      interval = setInterval(async () => {
-        if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
-          const video = webcamRef.current.video;
-          if (video.videoWidth > 0 && video.videoHeight > 0) {
-            // Fix Box.constructor face-api error by setting explicit width/height
-            // face-api.js specifically looks for width and height attributes in some cases
-            if (!video.hasAttribute("width") || video.getAttribute("width") !== video.videoWidth.toString()) {
-              video.setAttribute("width", video.videoWidth.toString());
-              video.setAttribute("height", video.videoHeight.toString());
-            }
-            try {
-              const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
-              
-              const hasFace = !!detections;
-              setIsFaceDetected(hasFace);
-              
-              if (hasFace && !autoCaptureActive && !loading) {
-                 // Auto-capture logic could go here if we want it ultra-responsive
-                 // For now, just visual feedback
-              }
-            } catch (err) {
-              console.error("Face detection error:", err);
-            }
-          }
-        }
-      }, 500); // Check every 500ms
-    } else {
-      setIsFaceDetected(false);
+    if (view === "absen" && activeAbsenTab === "selfie" && !loading) {
+       // Visual hint saja, tidak ada face-api
     }
     return () => clearInterval(interval);
-  }, [view, activeAbsenTab, isModelsLoaded, loading, autoCaptureActive]);
+  }, [view, activeAbsenTab, loading, autoCaptureActive]);
+
+  const compressImage = (base64Str: string, maxWidth = 800, quality = 0.6): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        } else {
+          resolve(base64Str); // Fallback
+        }
+      };
+      img.onerror = () => resolve(base64Str); // Fallback on error
+    });
+  };
 
   const checkPendingAndStartAttendance = async (method: "selfie" | "qr", extraData?: string) => {
     if (!user) return;
@@ -720,12 +705,13 @@ export default function UserApp() {
     let photoBase64 = null;
     try {
       if (method === "selfie") {
-        photoBase64 = webcamRef.current?.getScreenshot();
-        if (!photoBase64) {
+        const rawPhoto = webcamRef.current?.getScreenshot();
+        if (!rawPhoto) {
           toast.error("Gagal mengambil foto. Pastikan kamera diizinkan dan siap digunakan.");
           setLoading(false);
           return;
         }
+        photoBase64 = await compressImage(rawPhoto);
         
         if (!isDocumentCapture) {
           if (user.avatarUrl) {
@@ -961,11 +947,12 @@ export default function UserApp() {
     }
   };
 
-  const captureEditFace = () => {
+  const captureEditFace = async () => {
     if (editWebcamRef.current) {
       const src = editWebcamRef.current.getScreenshot();
       if (src) {
-        setEditFaceBase64(src);
+        const compressedSrc = await compressImage(src);
+        setEditFaceBase64(compressedSrc);
         setShowFaceUpdateCam(false);
       } else {
         toast.error("Gagal mengambil foto");
@@ -1440,6 +1427,7 @@ export default function UserApp() {
                               audio={false}
                               ref={webcamRef}
                               screenshotFormat="image/jpeg"
+                              screenshotQuality={0.8}
                               className={`w-full h-full object-cover ${isDocumentCapture ? '' : 'scale-x-[-1]'}`}
                               videoConstraints={{ facingMode: isDocumentCapture ? "environment" : "user" }}
                             />
@@ -1456,28 +1444,16 @@ export default function UserApp() {
                                  </div>
                               </div>
                             ) : (
-                              <div className={`w-64 h-64 sm:w-48 sm:h-48 rounded-full border-2 transition-colors duration-300 ${isFaceDetected ? 'border-teal-400 bg-teal-400/10' : 'border-white/30'} shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] flex items-center justify-center`}>
-                               {isFaceDetected ? (
-                                 <div className="absolute inset-0 flex items-center justify-center">
-                                    <div className="w-full h-full rounded-full border-4 border-teal-400 animate-ping opacity-30"></div>
-                                    <div className="bg-teal-500 text-white p-2 rounded-full shadow-lg">
-                                       <Check className="w-8 h-8" />
-                                    </div>
-                                 </div>
-                               ) : (
-                                 <div className="absolute inset-0 animate-[pulse_2s_infinite]">
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[105%] h-[105%] rounded-full border border-teal-400/30"></div>
-                                 </div>
-                               )}
+                              <div className="w-64 h-80 sm:w-56 sm:h-72 rounded-[100px] border-4 transition-colors duration-300 border-white/50 border-dashed shadow-[0_0_0_9999px_rgba(0,0,0,0.5)] flex items-center justify-center">
                                
-                               <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full backdrop-blur-md transform translate-y-32 sm:translate-y-28 transition-all duration-300 ${isFaceDetected ? 'bg-teal-500 text-white' : 'bg-gray-900/60 text-white/70'}`}>
-                                  {isFaceDetected ? "WAJAH TERDETEKSI" : "POSISIKAN WAJAH"}
+                               <div className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full backdrop-blur-md transform translate-y-32 sm:translate-y-28 transition-all duration-300 bg-gray-900/60 text-white/70`}>
+                                  POSISIKAN WAJAH KE AREA OVAL
                                </div>
                             </div>
                             )}
                             
                             {/* Scanning Line only when no face detected */}
-                            {!isDocumentCapture && !isFaceDetected && (
+                            {!isDocumentCapture && (
                               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 sm:w-56 sm:h-56 pointer-events-none overflow-hidden rounded-full">
                                 <div className="absolute left-0 w-full h-1 bg-gradient-to-r from-transparent via-teal-400 to-transparent shadow-[0_0_15px_rgba(45,212,191,0.5)] animate-[scan_3s_linear_infinite]" style={{ top: '-10%' }}></div>
                               </div>
@@ -1506,7 +1482,7 @@ export default function UserApp() {
                             </span>
                           ) : (
                             <span className="flex items-center gap-2">
-                              {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type) ? <Check className="w-4 h-4" /> : isFaceDetected ? <Check className="w-4 h-4" /> : <UserSquare2 className="w-4 h-4" />}
+                              {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type) ? <Check className="w-4 h-4" /> : <UserSquare2 className="w-4 h-4" />}
                               {['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type) ? 'KIRIM DOKUMEN & LAPOR' : `ABSEN & ${type.includes('in') ? 'MASUK' : type.includes('out') ? 'PULANG' : 'LAPOR'}`}
                             </span>
                           )}
@@ -2027,7 +2003,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.4 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.6 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2086,7 +2062,23 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.4 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.6 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan Efisiensi: Menerapkan fitur kompresi gambar otomatis (Canvas Auto-Compression) saat pengambilan foto absen untuk mengurangi drastis ukuran file penyimpanan (storage), menghemat memori Firebase (Pay-As-You-Go), dan mempercepat proses upload tanpa kehilangan kejelasan detail.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.5</h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Peningkatan Performa & Stabilitas: Menghapus dependensi Deteksi Wajah AI (FaceAPI) di sisi klien. Hal ini menyelesaikan seluruh masalah error kamera di berbagai perangkat HP, secara signifikan menghemat baterai & memori (RAM), membuat absen jauh lebih cepat & ringan diganti dengan bingkai pemindai statis yang sangat stabil.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.4</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Penyempurnaan Tampilan: Membuat Header profil pengguna beserta greeting text dan icon notifikasi menjadi fitur "Sticky" agar selalu berada di posisi teratas di setiap menu utama (Home, Riwayat, dan Profil).</li>
                                  </ul>
@@ -2357,6 +2349,7 @@ export default function UserApp() {
                                     audio={false}
                                     ref={editWebcamRef}
                                     screenshotFormat="image/jpeg"
+                                    screenshotQuality={0.8}
                                     className="w-full h-full object-cover scale-x-[-1]"
                                     videoConstraints={{ facingMode: "user" }}
                                   />
