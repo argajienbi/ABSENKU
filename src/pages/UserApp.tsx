@@ -87,6 +87,7 @@ export default function UserApp() {
   const [locationError, setLocationError] = useState(false);
   const [isFakeGPS, setIsFakeGPS] = useState(false);
   const [isCardExpanded, setIsCardExpanded] = useState(false);
+  const [isAbsenMapExpanded, setIsAbsenMapExpanded] = useState(false);
   const lastPosRef = useRef<{lat: number, lng: number, time: number} | null>(null);
   
   const [loading, setLoading] = useState(false);
@@ -1347,67 +1348,84 @@ export default function UserApp() {
            )}
 
            {view === "absen" && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto">
-                <div className="flex items-center mb-2 px-2">
-                   <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
-                      <ArrowLeft className="w-5 h-5" />
-                   </button>
-                   <h2 className="text-xl font-bold ml-2 dark:text-gray-100">
-                      Proses Absen {type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type === 'overtime_in' ? 'Lembur Masuk' : type === 'overtime_out' ? 'Lembur Pulang' : type === 'sick' ? 'Sakit' : 'Izin'}
-                   </h2>
-                </div>
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto pb-10">
+                 <div className="sticky top-0 z-50 flex items-center mb-2 px-2 py-3 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md rounded-b-xl shadow-sm -mx-2 -mt-4">
+                    <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                       <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <h2 className="text-xl font-bold ml-2 dark:text-gray-100">
+                       Proses Absen {type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type === 'overtime_in' ? 'Lembur Masuk' : type === 'overtime_out' ? 'Lembur Pulang' : type === 'sick' ? 'Sakit' : 'Izin'}
+                    </h2>
+                 </div>
 
-                <Card className="bg-white dark:bg-gray-800 shadow-md rounded-2xl border-0">
-                  <CardContent className="p-4">
-                    <Tabs value={activeAbsenTab} onValueChange={(val) => {
-                       setActiveAbsenTab(val);
-                       setPendingQRData(null);
-                       setQrUserIdentity(null);
-                    }} className="w-full">
-                      {!isDocumentCapture && (
-                        <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg h-auto">
-                          <TabsTrigger value="selfie" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><UserSquare2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>Selfie</span></TabsTrigger>
-                          <TabsTrigger value="qr" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>QR Scan</span></TabsTrigger>
-                        </TabsList>
-                      )}
-                      
-                      <TabsContent value="selfie" className="space-y-4">
-                        {isDocumentCapture && type === 'cuti' && (
-                          <div className="grid grid-cols-2 gap-2 mb-4">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-500 uppercase">Mulai</label>
-                              <Input type="date" value={permitStartDate ? format(permitStartDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitStartDate(new Date(e.target.value))} className="h-10 text-sm" />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-gray-500 uppercase">Akhir</label>
-                              <Input type="date" value={permitEndDate ? format(permitEndDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitEndDate(new Date(e.target.value))} className="h-10 text-sm" />
-                            </div>
-                          </div>
-                        )}
-
-                        {!isDocumentCapture && location && (
-                          <div className="mb-4">
-                             <div className="flex justify-between items-center mb-2">
-                                <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest">Peta Visual (GPS)</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
-                                  {isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence'}
-                                </span>
+                 <Card className="bg-white dark:bg-gray-800 shadow-md rounded-2xl border-0">
+                   <CardContent className="p-4">
+                     <Tabs value={activeAbsenTab} onValueChange={(val) => {
+                        setActiveAbsenTab(val);
+                        setPendingQRData(null);
+                        setQrUserIdentity(null);
+                     }} className="w-full">
+                       {!isDocumentCapture && (
+                         <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-50 dark:bg-gray-700/50 p-1 rounded-lg h-auto">
+                           <TabsTrigger value="selfie" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><UserSquare2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>Selfie</span></TabsTrigger>
+                           <TabsTrigger value="qr" className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] font-semibold py-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-600"><Code className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> <span>QR Scan</span></TabsTrigger>
+                         </TabsList>
+                       )}
+                       
+                       <TabsContent value="selfie" className="space-y-4">
+                         {isDocumentCapture && type === 'cuti' && (
+                           <div className="grid grid-cols-2 gap-2 mb-4">
+                             <div className="space-y-1">
+                               <label className="text-[10px] font-bold text-gray-500 uppercase">Mulai</label>
+                               <Input type="date" value={permitStartDate ? format(permitStartDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitStartDate(new Date(e.target.value))} className="h-10 text-sm" />
                              </div>
-                             <MapPicker 
-                               center={{ 
-                                 lat: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lat : (location?.lat || -6.2088), 
-                                 lng: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lng : (location?.lng || 106.8456)
-                               }} 
-                               radius={(() => {
-                                 if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
-                                   return settings.areas[user.areaId].radius;
-                                 }
-                                 return 100;
-                               })()}
-                               readonly={true}
-                             />
-                          </div>
-                        )}
+                             <div className="space-y-1">
+                               <label className="text-[10px] font-bold text-gray-500 uppercase">Akhir</label>
+                               <Input type="date" value={permitEndDate ? format(permitEndDate, "yyyy-MM-dd") : ""} onChange={(e) => setPermitEndDate(new Date(e.target.value))} className="h-10 text-sm" />
+                             </div>
+                           </div>
+                         )}
+
+                         {!isDocumentCapture && location && (
+                           <div className="mb-4 bg-gray-50 dark:bg-gray-900 rounded-xl p-3 border border-gray-100 dark:border-gray-800 transition-all duration-300">
+                              <div 
+                                className="flex justify-between items-center cursor-pointer"
+                                onClick={() => setIsAbsenMapExpanded(!isAbsenMapExpanded)}
+                              >
+                                 <div className="flex items-center gap-2">
+                                   <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center text-teal-600 dark:text-teal-400">
+                                      <MapPin className="w-4 h-4" />
+                                   </div>
+                                   <div>
+                                      <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest block leading-none mb-1">Peta Visual (GPS)</span>
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
+                                        {isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence'}
+                                      </span>
+                                   </div>
+                                 </div>
+                                 <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    {isAbsenMapExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                 </button>
+                              </div>
+                              <div className={`grid transition-all duration-300 ease-in-out w-full ${isAbsenMapExpanded ? "grid-rows-[1fr] opacity-100 mt-3" : "grid-rows-[0fr] opacity-0"}`}>
+                                <div className="overflow-hidden w-full">
+                                   <MapPicker 
+                                     center={{ 
+                                       lat: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lat : (location?.lat || -6.2088), 
+                                       lng: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lng : (location?.lng || 106.8456)
+                                     }} 
+                                     radius={(() => {
+                                       if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
+                                         return settings.areas[user.areaId].radius;
+                                       }
+                                       return 100;
+                                     })()}
+                                     readonly={true}
+                                   />
+                                </div>
+                              </div>
+                           </div>
+                         )}
 
                         <div className="aspect-square sm:aspect-video bg-gray-900 rounded-2xl overflow-hidden relative shadow-2xl border-4 border-white dark:border-gray-800">
                           {activeAbsenTab === 'selfie' && (
@@ -2003,7 +2021,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.2 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.3 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2062,7 +2080,16 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.2 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.3 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Penyempurnaan UI: Menambahkan fitur Show/Hide Peta Visual (GPS) pada menu Kamera Absen dengan efek transisi yang mulus.</li>
+                                    <li>Penyempurnaan UI: Membuat Header Menu Kamera menjadi Sticky agar tidak ikut terscroll dan tetap terlihat dengan jelas saat scroll.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.2</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Penyempurnaan Tampilan: Menambahkan animasi Show/Hide pada detail informasi di tampilan header Utama User untuk pengalaman visual yang lebih lega dan rapi.</li>
                                     <li>Penyempurnaan Visual: Penggunaan tema gelombang (Wave Background) seragam pada halaman utama aplikasi, konsisten dengan elemen di halaman Login & Register.</li>
