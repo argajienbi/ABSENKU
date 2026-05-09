@@ -965,7 +965,7 @@ export default function UserApp() {
       <div className="h-screen flex flex-col text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
         <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
              {/* Elegant Glassmorphism Header */}
-        <div className="sticky top-0 z-40 shrink-0 border-b border-teal-500/10 dark:border-white/5 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl shadow-sm transition-all overflow-hidden">
+        <div className="sticky top-0 z-40 shrink-0 border-b border-teal-500/10 dark:border-white/5 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl shadow-sm transition-all overflow-hidden rounded-b-[2rem]">
           <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
           
           {/* Subtle Dynamic Wave SVG in Header */}
@@ -1264,7 +1264,7 @@ export default function UserApp() {
 
            {view === "izin_menu" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto pb-10">
-                 <div className="sticky top-0 z-50 overflow-hidden flex items-center mb-4 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4">
+                 <div className="sticky top-0 z-50 overflow-hidden flex items-center mb-4 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4 rounded-b-[2rem]">
                     <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
                     <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                       <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
@@ -1361,7 +1361,7 @@ export default function UserApp() {
 
            {view === "absen" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto pb-10">
-                 <div className="sticky top-0 z-50 overflow-hidden flex items-center mb-4 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4">
+                 <div className="sticky top-0 z-50 overflow-hidden flex items-center mb-4 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4 rounded-b-[2rem]">
                     <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
                     <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                       <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
@@ -1710,7 +1710,7 @@ export default function UserApp() {
 
            {view === "notifications" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-xl mx-auto mb-24 pb-10">
-                 <div className="sticky top-0 z-50 overflow-hidden flex items-center justify-between px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4 mb-4">
+                 <div className="sticky top-0 z-50 overflow-hidden flex items-center justify-between px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4 mb-4 rounded-b-[2rem]">
                     <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
                     <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                       <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
@@ -2035,7 +2035,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.9 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.10 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2094,15 +2094,15 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.9 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.10 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Penyempurnaan Visual: Menambahkan aksen background vektor gelombang (Wave Vector SVG) dengan kombinasi warna gradien transparan pada setiap header navigasi demi menghilangkan kesan kosong & menjaga fluiditas antara komponen tanpa mengurangi readability teks.</li>
+                                    <li>Penyempurnaan Visual: Memberikan sentuhan lengkung (curve rounded) pada sudut sisi bawah struktur Header navigasi untuk memberikan kesan lebih luwes, modern, & mengalir saat di-scroll.</li>
                                  </ul>
                                </div>
 
                                  <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.8</h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.9</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Perbaikan Bug: Menyelesaikan masalah unduhan file Laporan Excel (XLSX) yang berubah format menjadi .bin pada environment WebView Android (seperti aplkasi hasil build Sketchware Pro) dengan menerapkan metode unduhan data URI base64.</li>
                                  </ul>
@@ -2520,7 +2520,7 @@ export default function UserApp() {
 
        {view === "hris" && (
          <div className="absolute inset-0 z-50 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm overflow-y-auto pb-24">
-            <div className="sticky top-0 z-50 overflow-hidden flex items-center gap-3 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm mb-4">
+            <div className="sticky top-0 z-50 overflow-hidden flex items-center gap-3 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm mb-4 rounded-b-[2rem]">
                 <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
                 <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
                   <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
