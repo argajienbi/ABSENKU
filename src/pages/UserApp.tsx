@@ -24,7 +24,7 @@ import { jsPDF } from "jspdf";
 import {
   MapPin, LogOut, Code, UserSquare2, Fingerprint, CalendarDays,
   Home, User, Settings as SettingsIcon, Sun, Moon, Briefcase, ArrowLeft,
-  Share2, Download, Check, AlertCircle, Activity, ChevronRight, Printer, Camera, Key, Phone, Edit, IdCard,
+  Share2, Download, Check, AlertCircle, Activity, ChevronRight, ChevronUp, ChevronDown, Printer, Camera, Key, Phone, Edit, IdCard,
   Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell, Info, Globe
 } from "lucide-react";
 import { WaveBackground } from "../components/WaveBackground";
@@ -86,6 +86,7 @@ export default function UserApp() {
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [locationError, setLocationError] = useState(false);
   const [isFakeGPS, setIsFakeGPS] = useState(false);
+  const [isCardExpanded, setIsCardExpanded] = useState(false);
   const lastPosRef = useRef<{lat: number, lng: number, time: number} | null>(null);
   
   const [loading, setLoading] = useState(false);
@@ -1009,7 +1010,7 @@ export default function UserApp() {
         </div>
 
         {/* Content Area overlapped */}
-        <div className="relative z-30 px-4 -mt-[4.5rem] space-y-6 w-full mx-auto">
+        <div className="relative z-30 px-4 -mt-[4.5rem] pt-[50px] space-y-6 w-full mx-auto">
            {view === "home" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
                 
@@ -1023,34 +1024,47 @@ export default function UserApp() {
                     </div>
 
                   <div className="relative z-10 flex flex-col items-center">
-                    <h2 className="text-4xl sm:text-4xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.02em] leading-none mb-1 flex items-center justify-center">
-                      {format(currentTime, "HH:mm:ss")}
-                    </h2>
-                    <p className="text-slate-500 dark:text-gray-400 font-medium text-[0.85rem] mb-5 tracking-tight">
-                      {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
-                    </p>
-                    
-                    {/* Shift Info */}
-                    <div className="flex flex-col items-center mb-6 w-full z-10">
-                      {(() => {
-                         const shiftId = getEffectiveShiftId(user, new Date());
-                         const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
-                         const todayWork = shift?.workDays[currentTime.getDay()];
-                         
-                         return (
-                           <>
-                             <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1 font-sans bg-teal-50 dark:bg-teal-900/30 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-800/30">INFO SHIFT</span>
-                             <p className="text-[1.4rem] leading-none font-black text-slate-800 dark:text-white mb-2 tracking-tight">
-                               {shift?.name || "Shift Standard"}
-                             </p>
-                             {shift?.gracePeriod > 0 && (
-                               <p className="text-[10px] font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-[0.1em] font-sans">
-                                  TOLERANSI: {shift.gracePeriod} MENIT
-                               </p>
-                             )}
-                           </>
-                         )
-                      })()}
+                    <button 
+                      onClick={() => setIsCardExpanded(!isCardExpanded)}
+                      className="absolute -top-2 -right-2 z-30 p-1.5 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/40 rounded-full hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors"
+                    >
+                       {isCardExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    <div className={`grid transition-all duration-300 ease-in-out w-full ${isCardExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                      <div className="overflow-hidden flex flex-col items-center w-full">
+                        <div className="pt-2 pb-6 flex flex-col items-center w-full min-h-[min-content]">
+                          <h2 className="text-4xl sm:text-4xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.02em] leading-none mb-1 flex items-center justify-center">
+                            {format(currentTime, "HH:mm:ss")}
+                          </h2>
+                          <p className="text-slate-500 dark:text-gray-400 font-medium text-[0.85rem] mb-5 tracking-tight">
+                            {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                          </p>
+                          
+                          {/* Shift Info */}
+                          <div className="flex flex-col items-center w-full z-10">
+                            {(() => {
+                               const shiftId = getEffectiveShiftId(user, new Date());
+                               const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
+                               const todayWork = shift?.workDays[currentTime.getDay()];
+                               
+                               return (
+                                 <>
+                                   <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1 font-sans bg-teal-50 dark:bg-teal-900/30 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-800/30">INFO SHIFT</span>
+                                   <p className="text-[1.4rem] leading-none font-black text-slate-800 dark:text-white mb-2 tracking-tight">
+                                     {shift?.name || "Shift Standard"}
+                                   </p>
+                                   {shift?.gracePeriod > 0 && (
+                                     <p className="text-[10px] font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-[0.1em] font-sans">
+                                        TOLERANSI: {shift.gracePeriod} MENIT
+                                     </p>
+                                   )}
+                                 </>
+                               )
+                            })()}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     
                     {/* Location Pill */}

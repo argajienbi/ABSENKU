@@ -570,7 +570,7 @@ export default function Dashboard() {
             { value: "live-map", label: "Peta Live", icon: MapPin },
             { value: "rekap", label: "Rekap", icon: ClipboardList },
             { value: "settings", label: "Pengaturan", icon: Settings },
-            { value: "logs", label: "Log Keamanan", icon: ShieldAlert },
+            ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log Keamanan", icon: ShieldAlert }] : []),
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.value;
@@ -1684,19 +1684,21 @@ export default function Dashboard() {
 
             </TabsContent>
             
-            <TabsContent value="logs" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
-              <Card className="border-0 shadow-lg shadow-teal-900/5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-8 rounded-3xl">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-                  <div>
-                    <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
-                       <ShieldAlert className="w-6 h-6 text-rose-500" />
-                       Peringatan & Log Keamanan
-                    </h2>
-                    <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
-                      Catatan sistem terkait login perangkat ganda dan isu keamanan lainnya. (Fitur Khusus Superadmin)
-                    </p>
+            {user?.role === 'superadmin' && (
+              <TabsContent value="logs" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
+                <Card className="border-0 shadow-lg shadow-teal-900/5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-8 rounded-3xl">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                    <div>
+                      <h2 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
+                         <ShieldAlert className="w-6 h-6 text-rose-500" />
+                         Peringatan & Log Keamanan
+                      </h2>
+                      <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
+                        Catatan sistem terkait login perangkat ganda dan isu keamanan lainnya. (Fitur Khusus Superadmin)
+                      </p>
+                    </div>
                   </div>
-                </div>
+
 
                 <div className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
                   <Table>
@@ -1735,6 +1737,7 @@ export default function Dashboard() {
                 </div>
               </Card>
             </TabsContent>
+            )}
           
         </Tabs>
 
