@@ -964,34 +964,49 @@ export default function UserApp() {
     <>
       <div className="h-screen flex flex-col text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
         <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
-             {/* Header */}
-        <div className="sticky top-0 z-40 pb-4 pt-[50px] px-6 shrink-0 bg-teal-50/90 dark:bg-gray-900/90 backdrop-blur-lg shadow-sm border-b border-teal-100/50 dark:border-gray-800/50 transition-all">
-          <div className="relative z-10 flex justify-between items-center max-w-5xl mx-auto md:px-4">
+             {/* Elegant Glassmorphism Header */}
+        <div className="sticky top-0 z-40 shrink-0 border-b border-teal-500/10 dark:border-white/5 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl shadow-sm transition-all overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
+          
+          {/* Subtle Dynamic Wave SVG in Header */}
+          <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+          </svg>
+          <svg className="absolute inset-x-0 -top-8 w-full h-[160%] opacity-[0.04] dark:opacity-[0.02] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path fill="#0d9488" d="M0,128L48,133.3C96,139,192,149,288,144C384,139,480,117,576,144C672,171,768,245,864,256C960,267,1056,213,1152,186.7C1248,160,1344,160,1392,160L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+          </svg>
+          
+          <div className="relative z-10 flex justify-between items-center max-w-5xl mx-auto px-6 pb-4 pt-[50px] md:px-8">
              <div className="flex items-center gap-4">
-                 {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="avatar" className="w-16 h-16 rounded-full border-2 border-white dark:border-gray-800 object-cover shadow-sm bg-teal-100 dark:bg-teal-900" />
-                 ) : (
-                    <div className="w-16 h-16 rounded-full bg-teal-100 dark:bg-teal-900 border-2 border-white dark:border-gray-800 flex items-center justify-center font-bold shadow-sm text-teal-800 dark:text-teal-100">{user?.name?.[0]}</div>
-                 )}
+                 <div className="relative group">
+                   <div className="absolute inset-0 bg-teal-500 rounded-full blur-md opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                   {user?.avatarUrl ? (
+                      <img src={user.avatarUrl} alt="avatar" className="relative w-[60px] h-[60px] rounded-full ring-2 ring-white/80 dark:ring-white/10 object-cover shadow-sm bg-teal-100 dark:bg-zinc-800" />
+                   ) : (
+                      <div className="relative w-[60px] h-[60px] rounded-full bg-gradient-to-br from-teal-400 to-teal-600 dark:from-teal-600 dark:to-teal-800 ring-2 ring-white/80 dark:ring-white/10 flex items-center justify-center font-bold shadow-sm text-white text-xl">
+                        {user?.name?.[0]}
+                      </div>
+                   )}
+                 </div>
                  <div>
                     <div className="flex items-center gap-2 mb-0.5">
-                       <p className="text-teal-600 dark:text-teal-400 text-[10px] uppercase tracking-wider font-bold">{getGreeting()},</p>
+                       <p className="text-teal-600/90 dark:text-teal-400/90 text-xs uppercase tracking-widest font-bold">{getGreeting()}</p>
                        {!isOnline && (
-                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/30 text-[8px] uppercase font-black text-amber-800 dark:text-amber-200 border border-amber-500/50 backdrop-blur-sm animate-pulse">
-                           <WifiOff className="w-2 h-2" /> Offline
+                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-[9px] uppercase font-black text-amber-600 dark:text-amber-400 ring-1 ring-amber-500/20 backdrop-blur-md animate-pulse">
+                           <WifiOff className="w-2.5 h-2.5" /> Offline
                          </div>
                        )}
                     </div>
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-800 dark:text-gray-100">{user?.name}</h1>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white drop-shadow-sm">{user?.name}</h1>
                  </div>
              </div>
              <button 
                 onClick={() => setView('notifications')}
-                className="relative p-2 rounded-full hover:bg-teal-100 dark:hover:bg-gray-800 transition-colors"
+                className="relative p-2.5 rounded-xl bg-white/50 dark:bg-zinc-800/50 hover:bg-white/80 dark:hover:bg-zinc-700/50 ring-1 ring-zinc-900/5 dark:ring-white/10 shadow-sm transition-all active:scale-95"
              >
-                <Bell className="w-7 h-7 text-slate-700 dark:text-gray-300" />
+                <Bell className="w-6 h-6 text-zinc-700 dark:text-zinc-300" />
                 {appNotifications.filter(n => !n.read).length > 0 && (
-                   <span className="absolute top-0 right-0 shadow-sm flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white">
+                   <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 ring-2 ring-white dark:ring-zinc-900 text-[10px] font-black text-white px-1">
                       {appNotifications.filter(n => !n.read).length > 9 ? '9+' : appNotifications.filter(n => !n.read).length}
                    </span>
                 )}
@@ -1248,13 +1263,17 @@ export default function UserApp() {
            )}
 
            {view === "izin_menu" && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto">
-                <div className="flex items-center mb-6 px-2">
-                   <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
-                      <ArrowLeft className="w-5 h-5" />
-                   </button>
-                   <h2 className="text-xl font-bold ml-2 dark:text-gray-100">Pilih Jenis Laporan</h2>
-                </div>
+             <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto pb-10">
+                 <div className="sticky top-0 z-50 overflow-hidden flex items-center mb-4 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4">
+                    <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
+                    <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+                    </svg>
+                    <button onClick={() => setView('home')} className="relative z-10 p-2 -ml-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-300 transition-colors">
+                       <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <h2 className="relative z-10 text-xl font-extrabold ml-2 text-zinc-900 dark:text-white tracking-tight">Pilih Jenis Laporan</h2>
+                 </div>
                 
                 <div className="grid grid-cols-1 gap-4">
                   <button 
@@ -1342,12 +1361,16 @@ export default function UserApp() {
 
            {view === "absen" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 max-w-xl mx-auto pb-10">
-                 <div className="sticky top-0 z-50 flex items-center mb-2 px-2 py-3 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-md rounded-b-xl shadow-sm -mx-2 -mt-4">
-                    <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
+                 <div className="sticky top-0 z-50 overflow-hidden flex items-center mb-4 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4">
+                    <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
+                    <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+                    </svg>
+                    <button onClick={() => setView('home')} className="relative z-10 p-2 -ml-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-300 transition-colors">
                        <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <h2 className="text-xl font-bold ml-2 dark:text-gray-100">
-                       Proses Absen {type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type === 'overtime_in' ? 'Lembur Masuk' : type === 'overtime_out' ? 'Lembur Pulang' : type === 'sick' ? 'Sakit' : 'Izin'}
+                    <h2 className="relative z-10 text-xl font-extrabold ml-2 text-zinc-900 dark:text-white tracking-tight">
+                       Proses Absen <span className="text-teal-600 dark:text-teal-400">{type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type === 'overtime_in' ? 'Lembur Masuk' : type === 'overtime_out' ? 'Lembur Pulang' : type === 'sick' ? 'Sakit' : 'Izin'}</span>
                     </h2>
                  </div>
 
@@ -1686,13 +1709,22 @@ export default function UserApp() {
            )}
 
            {view === "notifications" && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-xl mx-auto mb-24">
-                <div className="flex items-center justify-between px-2 mb-4">
-                   <h2 className="text-xl font-bold dark:text-gray-100 flex items-center gap-2">
-                     <Bell className="w-5 h-5 text-teal-600 dark:text-teal-400" />
-                     Notifikasi In-App & Push
-                   </h2>
-                </div>
+             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-xl mx-auto mb-24 pb-10">
+                 <div className="sticky top-0 z-50 overflow-hidden flex items-center justify-between px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm -mx-4 -mt-4 mb-4">
+                    <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
+                    <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+                    </svg>
+                    <div className="relative z-10 flex items-center gap-3">
+                       <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-300 transition-colors">
+                          <ArrowLeft className="w-5 h-5" />
+                       </button>
+                       <h2 className="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+                         <Bell className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+                         Notifikasi In-App & Push
+                       </h2>
+                    </div>
+                 </div>
                 
                 <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl border-white/50 dark:border-gray-700 shadow-xl overflow-hidden rounded-3xl p-6 relative">
                    <div className="space-y-3">
@@ -2003,7 +2035,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.7 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.9 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2062,7 +2094,15 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.7 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.9 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Penyempurnaan Visual: Menambahkan aksen background vektor gelombang (Wave Vector SVG) dengan kombinasi warna gradien transparan pada setiap header navigasi demi menghilangkan kesan kosong & menjaga fluiditas antara komponen tanpa mengurangi readability teks.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.8</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Perbaikan Bug: Menyelesaikan masalah unduhan file Laporan Excel (XLSX) yang berubah format menjadi .bin pada environment WebView Android (seperti aplkasi hasil build Sketchware Pro) dengan menerapkan metode unduhan data URI base64.</li>
                                  </ul>
@@ -2479,14 +2519,18 @@ export default function UserApp() {
       )}
 
        {view === "hris" && (
-         <div className="absolute inset-0 z-50 bg-gray-50 dark:bg-gray-900 overflow-y-auto pb-24">
-            <div className="p-4 flex items-center gap-2">
-                <button onClick={() => setView('home')} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+         <div className="absolute inset-0 z-50 bg-gray-50/50 dark:bg-gray-900/50 backdrop-blur-sm overflow-y-auto pb-24">
+            <div className="sticky top-0 z-50 overflow-hidden flex items-center gap-3 px-4 py-3 bg-white/70 dark:bg-zinc-950/70 backdrop-blur-xl border-b border-teal-500/10 dark:border-white/5 shadow-sm mb-4">
+                <div className="absolute inset-0 bg-gradient-to-br from-teal-50/50 via-transparent to-transparent dark:from-teal-950/20 pointer-events-none" />
+                <svg className="absolute inset-x-0 -top-4 w-full h-[150%] opacity-[0.05] dark:opacity-[0.03] pointer-events-none" viewBox="0 0 1440 320" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                  <path fill="#0d9488" d="M0,256L48,229.3C96,203,192,149,288,154.7C384,160,480,224,576,218.7C672,213,768,139,864,122.7C960,107,1056,149,1152,176C1248,203,1344,213,1392,218.7L1440,224L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+                </svg>
+                <button onClick={() => setView('home')} className="relative z-10 p-2 -ml-2 rounded-xl text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-300 transition-colors">
                    <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h2 className="text-lg font-bold">HRIS & Pengaturan</h2>
+                <h2 className="relative z-10 text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight">HRIS & Pengaturan</h2>
             </div>
-            <div className="p-4">
+            <div className="p-4 max-w-5xl mx-auto">
                 <HrisSettings />
             </div>
          </div>
