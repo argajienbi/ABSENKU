@@ -25,7 +25,6 @@ import autoTable from 'jspdf-autotable';
 import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle, Download, ChevronDown, ClipboardList } from "lucide-react";
 
 import { QRCodeCanvas } from 'qrcode.react';
-import { WaveBackground } from "../components/WaveBackground";
 import { SHIFTS } from "../constants";
 import { PerformanceAnalytics } from "../components/Analytics";
 import { RekapAbsensi } from "../components/RekapAbsensi";
@@ -508,7 +507,7 @@ export default function Dashboard() {
   };
 
   return (
-    <WaveBackground>
+    <>
       <div className="px-4 max-w-7xl mx-auto pb-8">
         {/* Header (Not Sticky) */}
         <div className="pt-[50px] pb-2 mb-4 sm:mb-6">
@@ -2181,6 +2180,6 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
       </div>
-    </WaveBackground>
+    </>
   );
 }

@@ -46,7 +46,7 @@ export default function UserApp() {
 
   if (user?.isBanned) {
     return (
-      <WaveBackground>
+      <>
         <div className="min-h-screen flex items-center justify-center p-6">
           <Card className="w-full max-w-md bg-white/90 dark:bg-gray-900/90 backdrop-blur-2xl border-0 shadow-2xl rounded-[2.5rem] overflow-hidden p-8 text-center space-y-6">
             <div className="w-24 h-24 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto text-rose-600 dark:text-rose-400">
@@ -65,7 +65,7 @@ export default function UserApp() {
             </Button>
           </Card>
         </div>
-      </WaveBackground>
+      </>
     );
   }
 
@@ -967,39 +967,35 @@ export default function UserApp() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
-      <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
+    <>
+      <div className="h-screen flex flex-col text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
+        <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
              {/* Header */}
-        <div className="relative z-20 bg-teal-500 pb-20 pt-[50px] px-6 dark:bg-teal-800 shrink-0">
-          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[1px]">
-            <svg viewBox="0 0 1440 320" className="w-full h-12 md:h-16" preserveAspectRatio="none">
-              <path fill="currentColor" className="text-gray-50 dark:text-gray-900" d="M0,192L48,208C96,224,192,256,288,245.3C384,235,480,181,576,176C672,171,768,213,864,229.3C960,245,1056,235,1152,208C1248,181,1344,139,1392,117.3L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-            </svg>
-          </div>
-          <div className="relative z-10 flex justify-between items-center text-white max-w-5xl mx-auto md:px-4">
+        <div className="relative z-20 pb-12 pt-[50px] px-6 shrink-0">
+          <div className="relative z-10 flex justify-between items-center max-w-5xl mx-auto md:px-4">
              <div className="flex items-center gap-4">
                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="avatar" className="w-16 h-16 rounded-full border-2 border-white object-cover shadow-sm bg-teal-600" />
+                    <img src={user.avatarUrl} alt="avatar" className="w-16 h-16 rounded-full border-2 border-white dark:border-gray-800 object-cover shadow-sm bg-teal-100 dark:bg-teal-900" />
                  ) : (
-                    <div className="w-16 h-16 rounded-full bg-teal-600 border-2 border-white flex items-center justify-center font-bold shadow-sm">{user?.name?.[0]}</div>
+                    <div className="w-16 h-16 rounded-full bg-teal-100 dark:bg-teal-900 border-2 border-white dark:border-gray-800 flex items-center justify-center font-bold shadow-sm text-teal-800 dark:text-teal-100">{user?.name?.[0]}</div>
                  )}
                  <div>
                     <div className="flex items-center gap-2 mb-0.5">
-                       <p className="text-teal-100 dark:text-teal-200 text-[10px] uppercase tracking-wider font-bold">{getGreeting()},</p>
+                       <p className="text-teal-600 dark:text-teal-400 text-[10px] uppercase tracking-wider font-bold">{getGreeting()},</p>
                        {!isOnline && (
-                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/30 text-[8px] uppercase font-black text-white border border-amber-500/50 backdrop-blur-sm animate-pulse">
+                         <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/30 text-[8px] uppercase font-black text-amber-800 dark:text-amber-200 border border-amber-500/50 backdrop-blur-sm animate-pulse">
                            <WifiOff className="w-2 h-2" /> Offline
                          </div>
                        )}
                     </div>
-                    <h1 className="text-xl md:text-2xl font-bold tracking-tight">{user?.name}</h1>
+                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-slate-800 dark:text-gray-100">{user?.name}</h1>
                  </div>
              </div>
              <button 
                 onClick={() => setView('notifications')}
-                className="relative p-2 rounded-full hover:bg-teal-600/50 transition-colors"
+                className="relative p-2 rounded-full hover:bg-teal-100 dark:hover:bg-gray-800 transition-colors"
              >
-                <Bell className="w-7 h-7 text-white" />
+                <Bell className="w-7 h-7 text-slate-700 dark:text-gray-300" />
                 {appNotifications.filter(n => !n.read).length > 0 && (
                    <span className="absolute top-0 right-0 shadow-sm flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white">
                       {appNotifications.filter(n => !n.read).length > 9 ? '9+' : appNotifications.filter(n => !n.read).length}
@@ -1009,8 +1005,8 @@ export default function UserApp() {
           </div>
         </div>
 
-        {/* Content Area overlapped */}
-        <div className="relative z-30 px-4 -mt-[4.5rem] pt-[50px] space-y-6 w-full mx-auto">
+        {/* Content Area */}
+        <div className="relative z-30 px-4 -mt-4 space-y-6 w-full mx-auto">
            {view === "home" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
                 
@@ -2007,7 +2003,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.7.1 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.2 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2066,7 +2062,16 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.1 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.2 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Penyempurnaan Tampilan: Menambahkan animasi Show/Hide pada detail informasi di tampilan header Utama User untuk pengalaman visual yang lebih lega dan rapi.</li>
+                                    <li>Penyempurnaan Visual: Penggunaan tema gelombang (Wave Background) seragam pada halaman utama aplikasi, konsisten dengan elemen di halaman Login & Register.</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.1</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Pembaruan PWA Otomatis: Aplikasi kini dapat memperbarui versinya (PWA auto-update) di latar belakang tanpa mengganggu atau memunculkan peringatan (pop-up) untuk pengguna.</li>
                                  </ul>
@@ -2448,10 +2453,7 @@ export default function UserApp() {
       <FloatingNav view={view} setView={setView} setProfileTab={setProfileTab} />
       
       {/* Background Decor */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden mix-blend-multiply opacity-50 dark:mix-blend-lighten dark:opacity-20 transition-opacity">
-         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-teal-200 dark:bg-teal-900 blur-3xl opacity-50" />
-         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] rounded-full bg-blue-100 dark:bg-blue-900/50 blur-3xl opacity-50" />
-      </div>
     </div>
+    </>
   );
 }
