@@ -647,6 +647,12 @@ export default function UserApp() {
         if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.readyState === 4) {
           const video = webcamRef.current.video;
           if (video.videoWidth > 0 && video.videoHeight > 0) {
+            // Fix Box.constructor face-api error by setting explicit width/height
+            // face-api.js specifically looks for width and height attributes in some cases
+            if (!video.hasAttribute("width") || video.getAttribute("width") !== video.videoWidth.toString()) {
+              video.setAttribute("width", video.videoWidth.toString());
+              video.setAttribute("height", video.videoHeight.toString());
+            }
             try {
               const detections = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
               
@@ -972,7 +978,7 @@ export default function UserApp() {
       <div className="h-screen flex flex-col text-gray-900 dark:text-gray-100 overflow-hidden font-sans relative">
         <div className="flex-1 overflow-y-auto pb-32 sm:pb-36 xl:pb-40 relative">
              {/* Header */}
-        <div className="relative z-20 pb-12 pt-[50px] px-6 shrink-0">
+        <div className="sticky top-0 z-40 pb-4 pt-[50px] px-6 shrink-0 bg-teal-50/90 dark:bg-gray-900/90 backdrop-blur-lg shadow-sm border-b border-teal-100/50 dark:border-gray-800/50 transition-all">
           <div className="relative z-10 flex justify-between items-center max-w-5xl mx-auto md:px-4">
              <div className="flex items-center gap-4">
                  {user?.avatarUrl ? (
@@ -1007,7 +1013,7 @@ export default function UserApp() {
         </div>
 
         {/* Content Area */}
-        <div className="relative z-30 px-4 -mt-4 space-y-6 w-full mx-auto">
+        <div className="relative z-30 px-4 pt-2 space-y-6 w-full mx-auto">
            {view === "home" && (
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
                 
@@ -2021,7 +2027,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.3 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.4 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2080,7 +2086,15 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.3 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.4 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                                    <li>Penyempurnaan Tampilan: Membuat Header profil pengguna beserta greeting text dan icon notifikasi menjadi fitur "Sticky" agar selalu berada di posisi teratas di setiap menu utama (Home, Riwayat, dan Profil).</li>
+                                 </ul>
+                               </div>
+
+                                 <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                                 <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.3</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Penyempurnaan UI: Menambahkan fitur Show/Hide Peta Visual (GPS) pada menu Kamera Absen dengan efek transisi yang mulus.</li>
                                     <li>Penyempurnaan UI: Membuat Header Menu Kamera menjadi Sticky agar tidak ikut terscroll dan tetap terlihat dengan jelas saat scroll.</li>
