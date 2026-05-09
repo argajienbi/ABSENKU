@@ -848,7 +848,13 @@ export default function UserApp() {
     if (!idCardRef.current) return;
     toast.loading("Menyiapkan dokumen...");
     try {
-      const url = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+      const url = await toPng(idCardRef.current, { 
+        cacheBust: true, 
+        pixelRatio: 3,
+        style: { transform: 'scale(1)', transformOrigin: 'top left', margin: '0' },
+        width: 324,
+        height: 516
+      });
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "mm",
@@ -868,7 +874,13 @@ export default function UserApp() {
   const handleShareIDCard = async () => {
     if (!idCardRef.current) return;
     try {
-      const blob = await toBlob(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+      const blob = await toBlob(idCardRef.current, { 
+        cacheBust: true, 
+        pixelRatio: 3,
+        style: { transform: 'scale(1)', transformOrigin: 'top left', margin: '0' },
+        width: 324,
+        height: 516
+      });
       if (!blob) return;
       const file = new File([blob], `IDCard_${user?.name?.replace(/\s+/g, '_') || 'Karyawan'}.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -1901,112 +1913,126 @@ export default function UserApp() {
                     </div>
 
                     {/* Portrait Name Tag ID Card */}
-                    <div 
-                      className="relative mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl bg-white w-full max-w-[320px] aspect-[54/86] border-2 border-slate-100 dark:border-gray-800 transition-all duration-500 transform" 
-                      ref={idCardRef}
-                      onClick={() => setIdCardSide(idCardSide === 'front' ? 'back' : 'front')}
-                    >
-                      {/* Dominant Tosca Abstract Wave Background */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-teal-500 to-teal-800"></div>
-                      
-                      {/* Decorative Circles */}
-                      <div className="absolute -top-20 -right-20 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-                      <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-teal-300/10 rounded-full blur-3xl"></div>
+                    <div className="flex justify-center w-full px-2 pb-8">
+                       <div 
+                         className="relative origin-top rounded-[2.5rem] overflow-hidden shadow-2xl bg-teal-50 dark:bg-gray-900 border-2 border-white/60 dark:border-white/10 transition-all duration-500 shrink-0 cursor-pointer" 
+                         style={{ 
+                            width: '324px', 
+                            height: '516px', 
+                            transform: `scale(min(1, ${(typeof window !== 'undefined' ? window.innerWidth : 360) - 32} / 324))`
+                         }}
+                         ref={idCardRef}
+                         onClick={() => setIdCardSide(idCardSide === 'front' ? 'back' : 'front')}
+                       >
+                         {/* Wave Background matching UI */}
+                         <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20 mix-blend-overlay">
+                           <svg viewBox="0 0 1440 320" preserveAspectRatio="none" className="absolute top-0 w-full h-32 text-teal-600 dark:text-teal-900">
+                             <path fill="currentColor" fillOpacity="1" d="M0,224L48,213.3C96,203,192,181,288,192C384,203,480,245,576,234.7C672,224,768,160,864,154.7C960,149,1056,203,1152,213.3C1248,224,1344,192,1392,176L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
+                           </svg>
+                           <svg viewBox="0 0 1440 320" preserveAspectRatio="none" className="absolute bottom-0 w-full h-32 text-teal-700 dark:text-teal-800">
+                             <path fill="currentColor" fillOpacity="1" d="M0,192L48,197.3C96,203,192,213,288,213.3C384,213,480,203,576,170.7C672,139,768,85,864,85.3C960,85,1056,139,1152,149.3C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+                           </svg>
+                         </div>
+                         
+                         {/* Decorative Background Accents */}
+                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/60 dark:bg-white/5 rounded-full blur-2xl"></div>
+                         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-teal-300/40 dark:bg-teal-500/10 rounded-full blur-2xl"></div>
 
-                      <div className="relative z-10 w-full h-full flex flex-col items-center px-6 pt-6 pb-10 text-center">
-                         {idCardSide === 'front' ? (
-                            <div className="flex flex-col items-center w-full h-full animate-in slide-in-from-right-2 duration-300">
-                               {/* Header Logo */}
-                               <div className="mb-8 flex flex-col items-center justify-center gap-3 mt-4">
-                                 {settings?.appLogoUrl ? (
-                                    <img src={settings.appLogoUrl} alt="Logo" className="w-14 h-14 object-contain shadow-md filter brightness-0 invert" />
-                                 ) : (
-                                    <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner">
-                                       <Activity className="w-8 h-8 text-white drop-shadow-md" />
-                                    </div>
-                                 )}
-                                 <span className="text-2xl font-black text-white tracking-[0.1em] uppercase drop-shadow-sm">{settings?.appName || "FMI"}</span>
-                               </div>
-
-                               {/* Photo Section */}
-                               <div className="relative mb-8 group">
-                                  <div className="absolute inset-0 bg-white/30 rounded-[3rem] blur-2xl opacity-60 transform scale-110"></div>
-                                  <div className="relative w-44 h-44 rounded-[3rem] bg-white border-4 border-white/40 shadow-2xl overflow-hidden flex items-center justify-center">
-                                     {user?.avatarUrl ? (
-                                        <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-                                     ) : (
-                                        <span className="font-black text-teal-400 text-8xl">{user?.name?.[0]}</span>
-                                      )}
-                                  </div>
-                               </div>
-
-                               {/* Info Section */}
-                               <div className="mt-2 space-y-3 w-full">
-                                  <div className="space-y-1">
-                                    <h2 className="text-3xl font-black text-white uppercase tracking-tight leading-tight drop-shadow-md">{user?.name}</h2>
-                                    <div className="h-1 w-12 bg-teal-300 mx-auto rounded-full opacity-60"></div>
-                                  </div>
-                                  
-                                  <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 border border-white/20 shadow-lg">
-                                    <p className="text-[14px] font-black text-teal-50 uppercase tracking-[0.3em] mb-1">{user?.role}</p>
-                                    <div className="flex items-center justify-center gap-2">
-                                       <span className="text-[11px] font-bold text-teal-200/80 uppercase tracking-widest">ID: {user?.uniqueId}</span>
-                                       <span className="text-teal-400/50">•</span>
-                                       <div className="flex items-center gap-1.5">
-                                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: resolvedShifts[getEffectiveShiftId(user, new Date())]?.color || '#fff' }}></div>
-                                          <p className="text-[11px] font-bold text-teal-200/80 uppercase tracking-widest">
-                                            {resolvedShifts[getEffectiveShiftId(user, new Date())]?.name || "CUSTOM"}
-                                          </p>
+                         <div className="relative z-10 w-full h-full flex flex-col items-center px-6 pt-5 pb-6 text-center overflow-hidden">
+                            {idCardSide === 'front' ? (
+                               <div className="flex flex-col items-center w-full h-full animate-in slide-in-from-right-2 duration-300">
+                                  {/* Header Logo */}
+                                  <div className="mb-5 flex flex-col items-center justify-center gap-1.5 mt-2">
+                                    {settings?.appLogoUrl ? (
+                                       <img src={settings.appLogoUrl} alt="Logo" className="w-12 h-12 object-contain shadow-sm" />
+                                    ) : (
+                                       <div className="w-12 h-12 bg-teal-600 dark:bg-teal-500 rounded-2xl flex items-center justify-center shadow-inner">
+                                          <Activity className="w-6 h-6 text-white" />
                                        </div>
-                                    </div>
+                                    )}
+                                    <span className="text-xl font-black text-teal-950 dark:text-white tracking-[0.1em] uppercase drop-shadow-sm line-clamp-1">{settings?.appName || "FMI"}</span>
                                   </div>
-                               </div>
 
-                               <div className="mt-auto pb-4">
-                                  <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.5em]">EMPLOYEE IDENTIFICATION</p>
-                               </div>
-                            </div>
-                         ) : (
-                            <div className="flex flex-col items-center w-full h-full py-8 animate-in slide-in-from-left-2 duration-300">
-                               <div className="mb-8">
-                                  <div className="w-12 h-1 bg-white/30 rounded-full mx-auto mb-4"></div>
-                                  <h3 className="text-xl font-black text-white uppercase tracking-widest">VERIFIKASI</h3>
-                               </div>
+                                  {/* Photo Section */}
+                                  <div className="relative mb-5 group flex-shrink-0">
+                                     <div className="absolute inset-0 bg-teal-200/60 dark:bg-teal-900/50 rounded-[2.5rem] blur-xl transform scale-110"></div>
+                                     <div className="relative w-36 h-36 rounded-[2.5rem] bg-white dark:bg-gray-800 border-4 border-white dark:border-gray-700 shadow-xl overflow-hidden flex items-center justify-center">
+                                        {user?.avatarUrl ? (
+                                           <img src={user.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                           <span className="font-black text-teal-400 text-6xl">{user?.name?.[0]}</span>
+                                         )}
+                                     </div>
+                                  </div>
 
-                               {/* Large QR Code */}
-                               <div className="bg-white p-6 rounded-[3rem] shadow-2xl border-8 border-teal-400/20 flex flex-col items-center mb-8 transform hover:scale-105 transition-transform duration-300">
-                                  <QRCodeCanvas value={user?.uid || "unknown"} size={180} level="H" className="mb-4" includeMargin={false} />
-                                  <div className="flex items-center gap-2 px-4 py-1 bg-teal-50 rounded-full">
-                                    <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></div>
-                                    <p className="text-[10px] font-black text-teal-700 uppercase tracking-widest">VALID IDENTITY</p>
+                                  {/* Info Section */}
+                                  <div className="mt-1 space-y-2 w-full flex-grow flex flex-col justify-center">
+                                     <div className="space-y-1">
+                                       <h2 className="text-2xl font-black text-teal-950 dark:text-white uppercase tracking-tight leading-tight line-clamp-2">{user?.name}</h2>
+                                       <div className="h-1 w-10 bg-teal-500 mx-auto rounded-full opacity-60"></div>
+                                     </div>
+                                     
+                                     <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-md rounded-2xl p-2.5 border border-white/40 dark:border-white/10 shadow-sm mx-2">
+                                       <p className="text-xs font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] mb-1 line-clamp-1">{user?.role}</p>
+                                       <div className="flex items-center justify-center gap-2">
+                                          <span className="text-[10px] font-bold text-teal-600/80 dark:text-teal-400/80 uppercase tracking-widest line-clamp-1 break-all">ID: {user?.uniqueId}</span>
+                                          <div className="flex items-center gap-1.5 shrink-0">
+                                             <span className="text-teal-400/50">•</span>
+                                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: resolvedShifts[getEffectiveShiftId(user, new Date())]?.color || '#14b8a6' }}></div>
+                                             <p className="text-[10px] font-bold text-teal-600/80 dark:text-teal-400/80 uppercase tracking-widest">
+                                               {resolvedShifts[getEffectiveShiftId(user, new Date())]?.name || "CUSTOM"}
+                                             </p>
+                                          </div>
+                                       </div>
+                                     </div>
                                   </div>
-                               </div>
 
-                               {/* Instructions */}
-                               <div className="mt-4 px-4 space-y-4">
-                                  <div className="p-4 bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 text-center">
-                                    <p className="text-[11px] font-bold text-teal-50 leading-relaxed uppercase tracking-wider">
-                                       Scan kode QR di atas menggunakan aplikasi Scanner di POS Kehadiran untuk melakukan absensi secara otomatis.
-                                    </p>
-                                  </div>
-                                  
-                                  <div className="pt-4 border-t border-white/10">
-                                    <p className="text-[9px] font-bold text-white/40 uppercase tracking-[0.3em] leading-loose">
-                                       KARTU INI MERUPAKAN PROPERTI PERUSAHAAN.<br/>
-                                       JIKA MENEMUKAN KARTU INI, MOHON KEMBALIKAN KE HRD {settings?.appName || "FMI"}.
-                                    </p>
+                                  <div className="mt-auto pt-2">
+                                     <p className="text-[8px] font-bold text-teal-900/30 dark:text-white/30 uppercase tracking-[0.4em]">EMPLOYEE IDENTIFICATION</p>
                                   </div>
                                </div>
+                            ) : (
+                               <div className="flex flex-col items-center w-full h-full py-6 animate-in slide-in-from-left-2 duration-300">
+                                  <div className="mb-6 flex-shrink-0">
+                                     <div className="w-12 h-1 bg-teal-900/10 dark:bg-white/20 rounded-full mx-auto mb-3"></div>
+                                     <h3 className="text-lg font-black text-teal-950 dark:text-white uppercase tracking-widest">VERIFIKASI</h3>
+                                  </div>
 
-                               <div className="mt-auto pb-2">
-                                  <div className="flex items-center gap-2 opacity-30">
-                                    <Activity className="w-4 h-4 text-white" />
-                                    <span className="text-[10px] font-black text-white tracking-tighter uppercase">{settings?.appName || "FMI"} SYSTEM</span>
+                                  {/* Large QR Code */}
+                                  <div className="bg-white p-4 rounded-[2.5rem] shadow-xl border-4 border-teal-100 dark:border-teal-900 flex flex-col items-center mb-6 flex-shrink-0 transform hover:scale-105 transition-transform duration-300">
+                                     <QRCodeCanvas value={user?.uid || "unknown"} size={140} level="H" className="mb-3" includeMargin={false} />
+                                     <div className="flex items-center gap-1.5 px-3 py-1 bg-teal-50 dark:bg-teal-900/30 rounded-full">
+                                       <div className="w-1.5 h-1.5 bg-teal-500 rounded-full animate-pulse"></div>
+                                       <p className="text-[9px] font-black text-teal-700 dark:text-teal-400 uppercase tracking-widest">VALID IDENTITY</p>
+                                     </div>
+                                  </div>
+
+                                  {/* Instructions */}
+                                  <div className="mt-auto px-1 space-y-3 flex flex-col justify-end">
+                                     <div className="p-3 bg-teal-900/5 dark:bg-black/20 backdrop-blur-sm rounded-xl border border-teal-900/10 dark:border-white/5 text-center">
+                                       <p className="text-[9px] font-bold text-teal-900/70 dark:text-teal-100/70 leading-relaxed uppercase tracking-wider">
+                                          Scan kode QR di atas menggunakan aplikasi Scanner di POS Kehadiran untuk merekam absen.
+                                       </p>
+                                     </div>
+                                     
+                                     <div className="pt-3 border-t border-teal-900/10 dark:border-white/10">
+                                       <p className="text-[8px] font-bold text-teal-900/40 dark:text-white/40 uppercase tracking-[0.2em] leading-relaxed">
+                                          KARTU INI MERUPAKAN PROPERTI PERUSAHAAN.<br/>
+                                          MOHON KEMBALIKAN KE HRD {settings?.appName || "FMI"} JIKA MENEMUKANNYA.
+                                       </p>
+                                     </div>
+                                  </div>
+
+                                  <div className="mt-3 pb-1">
+                                     <div className="flex items-center gap-1.5 opacity-30">
+                                       <Activity className="w-3 h-3 text-teal-900 dark:text-white" />
+                                       <span className="text-[8px] font-black text-teal-900 dark:text-white tracking-tighter uppercase">{settings?.appName || "FMI"} SYSTEM</span>
+                                     </div>
                                   </div>
                                </div>
-                            </div>
-                         )}
-                      </div>
+                            )}
+                         </div>
+                       </div>
                     </div>
                     
                     <div className="grid grid-cols-2 gap-2 pt-4 px-2">
@@ -2035,7 +2061,7 @@ export default function UserApp() {
                           <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                         </div>
                         <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.11 (Terbaru)</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.12 (Terbaru)</p>
                       </div>
 
                       <div className="space-y-6">
@@ -2094,15 +2120,16 @@ export default function UserApp() {
                             <div className="space-y-5">
                                  <div className="relative pl-4 border-l-2 border-indigo-500/30">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.11 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-white text-sm">Versi 3.9.12 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
-                                    <li>Penyempurnaan Navigasi: Menerapkan gaya "Expanding Pill Navigation" pada menu utama bawah. Ikon akan merentang menampilkan label secara dinamis saat aktif, memberikan interaksi yang lebih modern dan playful seperti pada konsep desain UI kekinian.</li>
+                                    <li>Penyempurnaan Notifikasi: Seluruh pesan notifikasi yang sebelumnya statis di pojok kanan bawah diubah menjadi pop-up notifikasi melayang di atas-tengah (top-center) menggunakan gaya Glassmorphism tembus pandang yang atraktif.</li>
+                                    <li>Penanganan Error Login: Menambahkan pesan informatif berbahasa Indonesia dengan rincian yang lebih detail ketika pengguna salah memasukkan email, kata sandi, atau ketika akun belum terdaftar, agar pengguna lebih mudah memahaminya.</li>
                                  </ul>
                                </div>
 
                                  <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
                                  <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
-                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.10</h5>
+                                 <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.11</h5>
                                  <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                                     <li>Perbaikan Bug: Menyelesaikan masalah unduhan file Laporan Excel (XLSX) yang berubah format menjadi .bin pada environment WebView Android (seperti aplkasi hasil build Sketchware Pro) dengan menerapkan metode unduhan data URI base64.</li>
                                  </ul>

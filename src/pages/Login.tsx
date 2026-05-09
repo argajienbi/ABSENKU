@@ -101,8 +101,24 @@ export default function Login() {
       setTimeout(() => localStorage.removeItem("suppress_device_logout"), 5000);
       
     } catch (error: any) {
-      toast.error(error.message || "Gagal masuk");
       setLoading(false);
+      let errorMsg = "Gagal masuk. Silakan coba lagi.";
+      let errorTitle = "Login Gagal";
+
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+         errorTitle = "Email atau Kata Sandi Salah";
+         errorMsg = "Periksa kembali penulisan email dan kata sandi Anda. Pastikan tidak ada spasi yang terselip.";
+      } else if (error.code === 'auth/too-many-requests') {
+         errorTitle = "Akses Diblokir Sementara";
+         errorMsg = "Terlalu banyak percobaan masuk yang gagal. Silakan coba lagi beberapa saat untuk alasan keamanan.";
+      } else if (error.code === 'auth/network-request-failed') {
+         errorTitle = "Koneksi Terputus";
+         errorMsg = "Periksa koneksi internet Anda lalu coba lagi.";
+      }
+      
+      toast.error(errorTitle, {
+         description: errorMsg,
+      });
     }
   };
 
@@ -206,11 +222,25 @@ export default function Login() {
     } catch (error: any) {
       setLoading(false);
       
+      let errorTitle = "Pendaftaran Gagal";
+      let errorMsg = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+
       if (error.code === 'auth/email-already-in-use') {
-        toast.error("Email ini sudah terdaftar. Silakan gunakan email lain atau masuk.");
+        errorTitle = "Email Sudah Terdaftar";
+        errorMsg = "Email ini telah digunakan. Silakan log in atau gunakan email lain.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorTitle = "Email Tidak Valid";
+        errorMsg = "Format penulisan email salah. Harap tulis dengan benar.";
+      } else if (error.code === 'auth/weak-password') {
+        errorTitle = "Sandi Terlalu Lemah";
+        errorMsg = "Sandi minimal harus 6 karakter.";
       } else {
-        toast.error(error.message || "Gagal mendaftar");
+         errorMsg = error.message || "Gagal mendaftar";
       }
+
+      toast.error(errorTitle, {
+         description: errorMsg,
+      });
 
       if (!error.code?.startsWith('auth/')) {
         // Find if it was idRefs or users that failed
