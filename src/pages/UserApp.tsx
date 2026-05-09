@@ -1023,15 +1023,15 @@ export default function UserApp() {
                     </div>
 
                   <div className="relative z-10 flex flex-col items-center">
-                    <h2 className="text-[2.5rem] sm:text-5xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.04em] leading-none mb-2 flex items-center justify-center">
+                    <h2 className="text-4xl sm:text-4xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.02em] leading-none mb-1 flex items-center justify-center">
                       {format(currentTime, "HH:mm:ss")}
                     </h2>
-                    <p className="text-slate-800 dark:text-gray-300 font-medium text-[1.1rem] mb-6 tracking-tight">
+                    <p className="text-slate-500 dark:text-gray-400 font-medium text-[0.85rem] mb-5 tracking-tight">
                       {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
                     </p>
                     
                     {/* Shift Info */}
-                    <div className="flex flex-col items-center mb-8 w-full z-10">
+                    <div className="flex flex-col items-center mb-6 w-full z-10">
                       {(() => {
                          const shiftId = getEffectiveShiftId(user, new Date());
                          const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
@@ -1039,12 +1039,12 @@ export default function UserApp() {
                          
                          return (
                            <>
-                             <span className="text-[11px] font-semibold text-slate-700 dark:text-gray-300 uppercase tracking-widest mb-1.5 font-sans">JADWAL HARI INI:</span>
-                             <p className="text-[1.8rem] leading-none font-black text-slate-800 dark:text-white mb-2 tracking-tight">
-                               {todayWork ? `${todayWork.start} - ${todayWork.end}` : (shift?.startTime ? `${shift.startTime} - ${shift.endTime}` : "LIBUR")}
+                             <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1 font-sans bg-teal-50 dark:bg-teal-900/30 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-800/30">INFO SHIFT</span>
+                             <p className="text-[1.4rem] leading-none font-black text-slate-800 dark:text-white mb-2 tracking-tight">
+                               {shift?.name || "Shift Standard"}
                              </p>
                              {shift?.gracePeriod > 0 && (
-                               <p className="text-[11px] font-semibold text-slate-700 dark:text-gray-300 uppercase tracking-[0.1em] font-sans">
+                               <p className="text-[10px] font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-[0.1em] font-sans">
                                   TOLERANSI: {shift.gracePeriod} MENIT
                                </p>
                              )}
