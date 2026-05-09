@@ -25,7 +25,7 @@ import {
   MapPin, LogOut, Code, UserSquare2, Fingerprint, CalendarDays,
   Home, User, Settings as SettingsIcon, Sun, Moon, Briefcase, ArrowLeft,
   Share2, Download, Check, AlertCircle, Activity, ChevronRight, ChevronUp, ChevronDown, Printer, Camera, Key, Phone, Edit, IdCard,
-  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell, Info, Globe
+  Wifi, WifiOff, LogIn, AlarmClock, DoorOpen, TrendingUp, TrendingDown, ShieldAlert, Bell, Info, Globe, Clock
 } from "lucide-react";
 import { WaveBackground } from "../components/WaveBackground";
 import { Card, CardContent } from "../components/ui/card";
@@ -1032,79 +1032,90 @@ export default function UserApp() {
              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300 max-w-5xl mx-auto md:px-8">
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                  <Card className="relative overflow-hidden border-0 shadow-xl shadow-teal-900/5 rounded-[1.5rem] bg-white dark:bg-gray-800 text-center px-4 pt-6 pb-4 w-full">
-                    {/* Inner Wave Background */}
-                    <div className="absolute bottom-0 left-0 right-0 top-1/2 overflow-hidden pointer-events-none rounded-b-[1.75rem]">
-                      <svg viewBox="0 0 1440 320" className="absolute bottom-0 w-full h-auto min-h-[160px] max-h-[85%] object-cover object-bottom" preserveAspectRatio="none">
-                        <path fill="currentColor" className="text-[#f1f2fc] dark:text-gray-900" d="M0,224L48,202.7C96,181,192,139,288,144C384,149,480,203,576,218.7C672,235,768,213,864,181.3C960,149,1056,107,1152,101.3C1248,96,1344,128,1392,144L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-                      </svg>
-                    </div>
-
-                  <div className="relative z-10 flex flex-col items-center">
+                  <div className="group relative w-full rounded-[24px] p-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-sm transition-all text-left overflow-hidden">
                     <button 
                       onClick={() => setIsCardExpanded(!isCardExpanded)}
-                      className="absolute -top-2 -right-2 z-30 p-1.5 text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/40 rounded-full hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors"
+                      className="absolute top-4 right-4 z-30 p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-full transition-colors hidden sm:block"
                     >
-                       {isCardExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                       {isCardExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                     </button>
-
-                    <div className={`grid transition-all duration-300 ease-in-out w-full ${isCardExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
-                      <div className="overflow-hidden flex flex-col items-center w-full">
-                        <div className="pt-2 pb-6 flex flex-col items-center w-full min-h-[min-content]">
-                          <h2 className="text-4xl sm:text-4xl font-black text-slate-800 dark:text-gray-100 tracking-[-0.02em] leading-none mb-1 flex items-center justify-center">
-                            {format(currentTime, "HH:mm:ss")}
-                          </h2>
-                          <p className="text-slate-500 dark:text-gray-400 font-medium text-[0.85rem] mb-5 tracking-tight">
-                            {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
-                          </p>
-                          
-                          {/* Shift Info */}
-                          <div className="flex flex-col items-center w-full z-10">
-                            {(() => {
-                               const shiftId = getEffectiveShiftId(user, new Date());
-                               const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
-                               const todayWork = shift?.workDays[currentTime.getDay()];
-                               
-                               return (
-                                 <>
-                                   <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-1 font-sans bg-teal-50 dark:bg-teal-900/30 px-3 py-1 rounded-full border border-teal-100 dark:border-teal-800/30">INFO SHIFT</span>
-                                   <p className="text-[1.4rem] leading-none font-black text-slate-800 dark:text-white mb-2 tracking-tight">
-                                     {shift?.name || "Shift Standard"}
-                                   </p>
-                                   {shift?.gracePeriod > 0 && (
-                                     <p className="text-[10px] font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-[0.1em] font-sans">
-                                        TOLERANSI: {shift.gracePeriod} MENIT
-                                     </p>
-                                   )}
-                                 </>
-                               )
-                            })()}
-                          </div>
+                    
+                    {/* Inner Time & Shift Card */}
+                    <div 
+                      className="relative w-full rounded-[18px] bg-gradient-to-br from-indigo-500/90 to-cyan-600/90 p-4 text-center shadow-inner overflow-hidden mb-2 cursor-pointer transition-all active:scale-[0.98]"
+                      onClick={() => setIsCardExpanded(!isCardExpanded)}
+                    >
+                      <div className="absolute -top-4 -left-4 opacity-20 pointer-events-none">
+                        <Clock className="w-24 h-24 text-white" />
+                      </div>
+                      
+                      <div className={`grid transition-all duration-300 ease-in-out w-full ${isCardExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}>
+                        <div className="overflow-hidden flex flex-col items-center w-full">
+                           <div className="pt-2 pb-2 flex flex-col items-center w-full">
+                              <h2 className="text-4xl sm:text-5xl font-black text-white tracking-[-0.02em] leading-none mb-1 drop-shadow-md">
+                                {format(currentTime, "HH:mm:ss")}
+                              </h2>
+                              <p className="text-white/80 font-bold text-[11px] uppercase mb-4 tracking-widest drop-shadow-sm">
+                                {format(currentTime, "EEEE, dd MMMM yyyy", { locale: id })}
+                              </p>
+                              
+                              {/* Shift Info */}
+                              <div className="flex flex-col items-center w-full z-10 bg-black/10 rounded-[14px] p-3 backdrop-blur-md border border-white/10">
+                                {(() => {
+                                   const shiftId = getEffectiveShiftId(user, new Date());
+                                   const shift = resolvedShifts[shiftId] || resolvedShifts.shift1;
+                                   return (
+                                     <>
+                                       <span className="text-[10px] font-black text-cyan-100 uppercase tracking-widest mb-1 bg-white/20 px-2 py-0.5 rounded-full shadow-sm">INFO SHIFT</span>
+                                       <p className="text-xl leading-none font-black text-white mb-1.5 tracking-tight drop-shadow-sm">
+                                         {shift?.name || "Shift Standard"}
+                                       </p>
+                                       {shift?.gracePeriod > 0 && (
+                                         <p className="text-[9px] font-bold text-white/70 uppercase tracking-[0.1em]">
+                                            TOLERANSI: {shift.gracePeriod} MENIT
+                                         </p>
+                                       )}
+                                     </>
+                                   )
+                                })()}
+                              </div>
+                           </div>
                         </div>
                       </div>
+                      
+                      {/* Collapsed minimal view */}
+                      {!isCardExpanded && (
+                         <div className="flex items-center justify-center gap-3 py-1 relative z-10">
+                           <Clock className="w-6 h-6 text-white/90 drop-shadow-sm" />
+                           <div className="text-left">
+                             <h2 className="text-2xl font-black text-white leading-none tracking-tight drop-shadow-sm">{format(currentTime, "HH:mm")}</h2>
+                             <p className="text-[10px] text-white/80 font-bold tracking-wider uppercase mt-0.5 leading-none">{format(currentTime, "EEEE, dd MMM", { locale: id })}</p>
+                           </div>
+                         </div>
+                      )}
                     </div>
                     
                     {/* Location Pill */}
-                    <div className="w-full bg-white dark:bg-gray-800 rounded-[1.25rem] shadow-[0_4px_25px_-5px_rgba(0,0,0,0.06)] border border-gray-100 dark:border-gray-700/50 p-2.5 flex items-center justify-between text-left relative z-20">
+                    <div className="w-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-md rounded-[18px] shadow-sm border border-white/80 dark:border-gray-700/50 p-2.5 flex items-center justify-between text-left relative z-20">
                        <div className="flex items-center gap-3 w-full">
-                          <div className="shrink-0 w-[52px] h-[52px] bg-blue-50/50 dark:bg-blue-900/20 rounded-full flex justify-center items-center relative overflow-hidden border border-blue-100/50 dark:border-gray-700">
-                             <MapPin className="w-5 h-5 text-rose-500 absolute -top-1 right-0.5 z-10 fill-rose-500 drop-shadow-sm rotate-[15deg]" />
-                             <Globe className="w-8 h-8 text-blue-500 dark:text-blue-400 stroke-2 translate-y-1" />
+                          <div className="shrink-0 w-[42px] h-[42px] bg-blue-50/80 dark:bg-blue-900/40 rounded-[14px] flex justify-center items-center relative overflow-hidden border border-blue-100/50 dark:border-gray-700">
+                             <MapPin className="w-4 h-4 text-rose-500 absolute -top-1 right-0.5 z-10 fill-rose-500 drop-shadow-sm rotate-[15deg]" />
+                             <Globe className="w-6 h-6 text-blue-500 dark:text-blue-400 stroke-2 translate-y-0.5" />
                           </div>
                           
                           <div className="flex flex-col flex-1 pl-1">
-                             <div className="text-[13px] font-bold text-slate-800 dark:text-white tracking-widest leading-none mb-1">
+                             <div className="text-[11px] font-black text-slate-800 dark:text-white tracking-widest leading-none mb-1">
                                {!settings?.geofenceEnabled 
-                                 ? (location && distance !== null ? `JARAK: ${Math.round(distance)}M (Bebas)` : "GEOFENCE NONAKTIF")
+                                 ? (location && distance !== null ? `JARAK: ${Math.round(distance)}M (BEBAS)` : "GEOFENCE NONAKTIF")
                                  : (locationError ? "GAGAL LOKASI" : (location ? (distance !== null ? `JARAK: ${Math.round(distance)}M` : "MENGHITUNG...") : "MENCARI LOKASI..."))}
                              </div>
                              {location && (
                                <div className="flex flex-col">
-                                 <div className="text-[11px] text-slate-700 dark:text-gray-400 font-medium tracking-tight mb-0.5 font-mono">
+                                 <div className="text-[9px] text-slate-500 dark:text-gray-400 font-medium tracking-tight mb-0.5 font-mono">
                                    LAT: {location.lat.toFixed(6)} <span className="opacity-50 px-0.5">|</span> LNG: {location.lng.toFixed(6)}
                                  </div>
                                  {settings?.geofenceEnabled && (
-                                   <div className="text-[11px] text-slate-700 dark:text-gray-400 font-medium tracking-tight font-sans">
+                                   <div className="text-[9px] text-slate-600 dark:text-gray-400 font-bold tracking-tight uppercase">
                                      Max Radius: {
                                       (() => {
                                         if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
@@ -1121,16 +1132,16 @@ export default function UserApp() {
                              )}
                           </div>
 
-                          <div className="flex items-center gap-1.5 shrink-0 px-3 justify-end text-right border-l border-gray-100 dark:border-gray-700 h-8 max-w-[120px] sm:max-w-[150px] overflow-hidden">
-                            <MapPin className="w-[18px] h-[18px] text-emerald-500 fill-emerald-500 shrink-0" />
+                          <div className="flex items-center gap-1.5 shrink-0 px-3 justify-end text-right border-l border-gray-200 dark:border-gray-700 h-8 max-w-[100px] sm:max-w-[120px] overflow-hidden">
+                            <MapPin className="w-4 h-4 text-emerald-500 fill-emerald-500 shrink-0" />
                             {((currentAreaName || "Area...").length > 7) ? (
                               <div className="marquee-container w-full">
-                                <span className="text-[15px] font-black text-slate-800 dark:text-white animate-marquee pr-8">
+                                <span className="text-[11px] font-black uppercase text-slate-800 dark:text-white animate-marquee pr-8">
                                   {currentAreaName || "Area..."}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-[15px] font-black text-slate-800 dark:text-white truncate">
+                              <span className="text-[11px] font-black uppercase text-slate-800 dark:text-white truncate">
                                 {currentAreaName || "Area..."}
                               </span>
                             )}
@@ -1138,9 +1149,8 @@ export default function UserApp() {
                        </div>
                     </div>
                   </div>
-                </Card>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   {(() => {
                       const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));
                       const inLog = todayLogs.find(log => log.type === 'in');
@@ -1152,32 +1162,37 @@ export default function UserApp() {
                       
                       return (
                         <>
-                          <Button 
+                          <button 
                             onClick={() => { setType("in"); setView("absen"); }}
-                            className="relative overflow-hidden border-0 shadow-lg group rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-600 p-4 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-[6.5rem]"
+                            className="group relative w-full rounded-[24px] p-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-left overflow-hidden"
                           >
-                            <div className="absolute top-0 right-0 p-2 opacity-20">
-                              <AlarmClock className="w-12 h-12" />
+                            <div className="relative w-full rounded-[18px] bg-gradient-to-br from-teal-400 to-emerald-500 p-3 flex flex-col items-center justify-center text-white shadow-inner h-[88px] mb-2 overflow-hidden">
+                                <div className="absolute -top-3 -right-3 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
+                                  <AlarmClock className="w-16 h-16" />
+                                </div>
+                                <AlarmClock className="w-7 h-7 mb-1.5 opacity-90 drop-shadow-sm" />
+                                <span className="font-bold text-xs tracking-wide drop-shadow-sm">Absen Masuk</span>
                             </div>
-                            <AlarmClock className="w-6 h-6 mb-1 opacity-80" />
-                            <span className="text-xs mb-1 leading-none text-center">Absen Masuk</span>
-                            {shiftDay ? (
-                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Jadwal: {shiftDay.start}</span>
-                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${inLog ? 'bg-white text-teal-600' : 'bg-red-500/80 text-white'}`}>
-                                    {inLog ? 'Sudah Absen' : 'Belum Absen'}
-                                 </span>
-                               </div>
-                            ) : (
-                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Libur</span>
-                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${inLog ? 'bg-white text-teal-600' : 'bg-red-500/80 text-white'}`}>
-                                    {inLog ? 'Sudah Absen' : 'Belum Absen'}
-                                 </span>
-                               </div>
-                            )}
-                          </Button>
-                          <Button 
+                            <div className="flex flex-col items-center gap-1.5 px-1 pb-1 text-center">
+                               {shiftDay ? (
+                                  <>
+                                    <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Jadwal: {shiftDay.start}</span>
+                                    <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black tracking-wider uppercase shadow-[0_2px_10px_-2px_rgba(0,0,0,0.1)] ${inLog ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400'}`}>
+                                      {inLog ? 'Sudah Absen' : 'Belum Absen'}
+                                    </span>
+                                  </>
+                               ) : (
+                                  <>
+                                    <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Libur</span>
+                                    <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black tracking-wider uppercase shadow-[0_2px_10px_-2px_rgba(0,0,0,0.1)] ${inLog ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400'}`}>
+                                      {inLog ? 'Sudah Absen' : 'Belum Absen'}
+                                    </span>
+                                  </>
+                               )}
+                            </div>
+                          </button>
+
+                          <button 
                             onClick={() => {
                               if (!inLog) {
                                 toast.error("Anda belum Absen Masuk. Tidak bisa Absen Pulang. Silakan hubungi Admin.");
@@ -1191,54 +1206,78 @@ export default function UserApp() {
                               setType("out"); 
                               setView("absen"); 
                             }}
-                            className="relative overflow-hidden border-0 shadow-lg group rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 p-4 flex flex-col items-center justify-center font-bold text-white transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed h-[6.5rem]"
+                            className="group relative w-full rounded-[24px] p-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-left overflow-hidden"
                           >
-                            <div className="absolute top-0 right-0 p-2 opacity-20">
-                              <DoorOpen className="w-12 h-12" />
+                            <div className="relative w-full rounded-[18px] bg-gradient-to-br from-purple-500 to-violet-500 p-3 flex flex-col items-center justify-center text-white shadow-inner h-[88px] mb-2 overflow-hidden">
+                                <div className="absolute -top-3 -right-3 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
+                                  <DoorOpen className="w-16 h-16" />
+                                </div>
+                                <DoorOpen className="w-7 h-7 mb-1.5 opacity-90 drop-shadow-sm" />
+                                <span className="font-bold text-xs tracking-wide drop-shadow-sm">Absen Pulang</span>
                             </div>
-                            <DoorOpen className="w-6 h-6 mb-1 opacity-80" />
-                            <span className="text-xs mb-1 leading-none text-center">Absen Pulang</span>
-                            {shiftDay ? (
-                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Jadwal: {shiftDay.end}</span>
-                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${outLog ? 'bg-white text-purple-600' : 'bg-red-500/80 text-white'}`}>
-                                    {outLog ? 'Sudah Absen' : 'Belum Absen'}
-                                 </span>
-                               </div>
-                            ) : (
-                               <div className="flex flex-col items-center gap-0.5 mt-0.5">
-                                 <span className="text-[9px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Libur</span>
-                                 <span className={`text-[9px] px-2 py-0.5 rounded-full font-black tracking-wider uppercase mt-1 shadow-sm ${outLog ? 'bg-white text-purple-600' : 'bg-red-500/80 text-white'}`}>
-                                    {outLog ? 'Sudah Absen' : 'Belum Absen'}
-                                 </span>
-                               </div>
-                            )}
-                          </Button>
+                            <div className="flex flex-col items-center gap-1.5 px-1 pb-1 text-center">
+                               {shiftDay ? (
+                                  <>
+                                    <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Jadwal: {shiftDay.end}</span>
+                                    <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black tracking-wider uppercase shadow-[0_2px_10px_-2px_rgba(0,0,0,0.1)] ${outLog ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400'}`}>
+                                      {outLog ? 'Sudah Absen' : 'Belum Absen'}
+                                    </span>
+                                  </>
+                               ) : (
+                                  <>
+                                    <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Libur</span>
+                                    <span className={`text-[9px] px-2.5 py-0.5 rounded-full font-black tracking-wider uppercase shadow-[0_2px_10px_-2px_rgba(0,0,0,0.1)] ${outLog ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400'}`}>
+                                      {outLog ? 'Sudah Absen' : 'Belum Absen'}
+                                    </span>
+                                  </>
+                               )}
+                            </div>
+                          </button>
                         </>
                       );
                   })()}
                   <button 
                     disabled={!canEnableOvertime}
                     onClick={() => { setType("overtime_in"); setView("absen"); }}
-                    className="p-4 bg-amber-500 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group relative w-full rounded-[24px] p-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-left overflow-hidden"
                   >
-                    <TrendingUp className="w-6 h-6 mb-1.5 opacity-80" />
-                    <span className="text-xs text-center">Lembur Masuk</span>
+                    <div className="relative w-full rounded-[18px] bg-gradient-to-br from-amber-400 to-amber-500 p-3 flex flex-col items-center justify-center text-white shadow-inner h-[88px] overflow-hidden">
+                        <div className="absolute -top-3 -right-3 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
+                          <TrendingUp className="w-16 h-16" />
+                        </div>
+                        <TrendingUp className="w-7 h-7 mb-1.5 opacity-90 drop-shadow-sm" />
+                        <span className="font-bold text-xs tracking-wide drop-shadow-sm">Lembur Masuk</span>
+                    </div>
                   </button>
                   <button 
                     disabled={!canEnableOvertime}
                     onClick={() => { setType("overtime_out"); setView("absen"); }}
-                    className="p-4 bg-rose-500 hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="group relative w-full rounded-[24px] p-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-sm transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-left overflow-hidden"
                   >
-                    <TrendingDown className="w-6 h-6 mb-1.5 opacity-80" />
-                    <span className="text-xs text-center">Lembur Pulang</span>
+                    <div className="relative w-full rounded-[18px] bg-gradient-to-br from-rose-400 to-rose-500 p-3 flex flex-col items-center justify-center text-white shadow-inner h-[88px] overflow-hidden">
+                        <div className="absolute -top-3 -right-3 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
+                          <TrendingDown className="w-16 h-16" />
+                        </div>
+                        <TrendingDown className="w-7 h-7 mb-1.5 opacity-90 drop-shadow-sm" />
+                        <span className="font-bold text-xs tracking-wide drop-shadow-sm">Lembur Pulang</span>
+                    </div>
                   </button>
                   <button 
                     onClick={() => { setView("izin_menu"); }}
-                    className="p-4 bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white rounded-2xl flex flex-col items-center justify-center font-bold shadow-lg transition-transform active:scale-95 col-span-2"
+                    className="group relative w-full col-span-2 rounded-[24px] p-2 bg-white/60 dark:bg-gray-800/60 backdrop-blur-xl border border-white/80 dark:border-white/10 shadow-sm transition-all active:scale-95 text-left overflow-hidden"
                   >
-                    <CalendarDays className="w-6 h-6 mb-1.5 opacity-80" />
-                    <span className="text-xs">Lapor Izin / Sakit / Cuti</span>
+                    <div className="relative w-full rounded-[18px] bg-gradient-to-br from-blue-400 to-indigo-500 p-4 flex flex-row items-center justify-between text-white shadow-inner overflow-hidden">
+                        <div className="absolute -top-6 -right-2 opacity-20 transform group-hover:scale-110 transition-transform duration-500">
+                          <CalendarDays className="w-24 h-24" />
+                        </div>
+                        <div className="flex items-center gap-3 relative z-10">
+                          <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
+                             <CalendarDays className="w-6 h-6 drop-shadow-sm" />
+                          </div>
+                          <span className="font-bold text-sm tracking-wide drop-shadow-sm">Lapor Izin / Sakit / Cuti</span>
+                        </div>
+                        <ChevronRight className="w-6 h-6 opacity-70 relative z-10" />
+                    </div>
                   </button>
                 </div>
                 </div>
