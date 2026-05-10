@@ -512,67 +512,31 @@ export default function Dashboard() {
   };
 
   return (
-    <>
-      <div className="px-4 max-w-7xl mx-auto pb-8">
-        {/* Header (Not Sticky) */}
-        <div className="pt-[50px] pb-2 mb-4 sm:mb-6">
-           <header className="relative h-auto sm:h-32 bg-gradient-to-r from-teal-600 via-emerald-600 to-teal-700 dark:from-teal-900 dark:via-emerald-900 dark:to-teal-950 overflow-hidden shrink-0 rounded-3xl shadow-lg border border-white/10">
-          <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
-          <div className="absolute -bottom-8 -left-8 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-          <div className="absolute -top-16 -right-16 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl"></div>
-          
-          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none transform translate-y-[2px] opacity-20">
-            <svg viewBox="0 0 1440 320" className="w-full h-16 md:h-24" preserveAspectRatio="none">
-              <path fill="currentColor" className="text-teal-900 dark:text-black" d="M0,160L48,176C96,192,192,224,288,208C384,192,480,128,576,133.3C672,139,768,213,864,224C960,235,1056,181,1152,165.3C1248,149,1344,171,1392,181.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-            </svg>
-          </div>
-          <div className="relative z-10 p-6 flex flex-col sm:flex-row justify-between items-start text-white gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center shadow-inner border border-white/30">
-                {settings?.appLogoUrl ? (
-                    <img src={settings.appLogoUrl} alt="Logo" className="w-8 h-8 object-contain brightness-0 invert" />
-                  ) : (
-                    <Activity className="w-8 h-8 text-white" />
-                  )}
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight drop-shadow-lg leading-tight">
-                  {settings?.appName || "ABSENKU"} 
-                  <span className="text-emerald-200 block text-xs font-semibold tracking-widest uppercase mt-0.5">Admin Management</span>
-                </h1>
-              </div>
-            </div>
-            
-            <div className="relative z-20 flex gap-4 text-right items-center self-end sm:self-auto shrink-0">
-               <div className="hidden sm:flex flex-col justify-center text-right mr-2">
-                <span className="font-bold text-sm tracking-tight">{user?.name}</span>
-                <span className="text-[10px] text-teal-100 uppercase tracking-widest font-black bg-white/20 px-2 py-0.5 rounded-full">{user?.role}</span>
-               </div>
-               
-               <div className="flex gap-2">
-                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 rounded-xl backdrop-blur-md transition-all px-4" onClick={() => navigate('/app')}>
-                    App
-                 </Button>
-
-                 <Button variant="outline" size="sm" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-10 w-10 p-0 rounded-full backdrop-blur-md transition-all" onClick={() => auth.signOut()} title="Keluar">
-                    <LogOut className="w-5 h-5" />
-                 </Button>
-               </div>
-            </div>
-          </div>
-        </header>
+    <div className="flex bg-slate-50 dark:bg-gray-950 min-h-screen font-sans">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-slate-200 dark:border-gray-800 sticky top-0 h-screen z-50 shrink-0 shadow-sm">
+        <div className="p-6 border-b border-slate-200 dark:border-gray-800 flex items-center gap-3">
+           <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-inner">
+             {settings?.appLogoUrl ? (
+                <img src={settings.appLogoUrl} alt="Logo" className="w-6 h-6 object-contain brightness-0 invert" />
+              ) : (
+                <Activity className="w-6 h-6 text-white" />
+              )}
+           </div>
+           <div className="overflow-hidden">
+              <h1 className="text-lg font-black tracking-tight text-teal-900 dark:text-white leading-none truncate">{settings?.appName || "ABSENKU"}</h1>
+              <p className="text-[10px] text-teal-600 dark:text-teal-400 font-bold uppercase tracking-widest mt-1">Admin Panel</p>
+           </div>
         </div>
 
-        {/* Sticky Header Nav Tabs */}
-        <div className="sticky top-0 z-50 pt-2 pb-6 -mx-4 px-4 bg-teal-50/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-teal-100/50 dark:border-gray-800/50 shadow-sm mb-4">
-          <div className="flex sm:grid overflow-x-auto sm:overflow-visible sm:grid-cols-8 gap-3 sm:gap-4 snap-x no-scrollbar">
+        <div className="flex-1 overflow-y-auto px-3 py-6 space-y-1 no-scrollbar">
           {[
             { value: "overview", label: "Overview", icon: Activity },
-            { value: "users", label: "User", icon: Users },
-            { value: "announcements", label: "Portal", icon: Briefcase },
+            { value: "users", label: "User Management", icon: Users },
+            { value: "announcements", label: "Portal Informasi", icon: Briefcase },
             { value: "analytics", label: "Performance", icon: Activity },
             { value: "live-map", label: "Peta Live", icon: MapPin },
-            { value: "rekap", label: "Rekap", icon: ClipboardList },
+            { value: "rekap", label: "Rekap Kehadiran", icon: ClipboardList },
             { value: "settings", label: "Pengaturan", icon: Settings },
             ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log Keamanan", icon: ShieldAlert }] : []),
           ].map((item) => {
@@ -582,20 +546,79 @@ export default function Dashboard() {
               <button
                 key={item.value}
                 onClick={() => setActiveTab(item.value)}
-                className={`snap-center flex-shrink-0 flex flex-col items-center gap-2 p-3 sm:p-4 rounded-3xl transition-all border-2 ${isActive ? 'bg-white dark:bg-gray-800 border-teal-500 shadow-md transform scale-[1.02]' : 'bg-white/60 dark:bg-gray-800/60 border-transparent hover:bg-white dark:hover:bg-gray-800 hover:shadow-sm'}`}
-                style={{ width: '84px', minWidth: '84px' }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive ? 'bg-teal-50 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-bold' : 'text-slate-600 dark:text-gray-400 hover:bg-slate-50 dark:hover:bg-gray-800 font-medium'}`}
               >
-                <div className={`p-3 rounded-[1.25rem] transition-colors ${isActive ? (item.value === 'overview' ? 'bg-teal-500 text-white' : item.value === 'users' ? 'bg-sky-500 text-white' : item.value === 'announcements' ? 'bg-teal-600 text-white' : item.value === 'analytics' ? 'bg-purple-500 text-white' : item.value === 'live-map' ? 'bg-amber-500 text-white' : item.value === 'rekap' ? 'bg-rose-500 text-white' : item.value === 'logs' ? 'bg-rose-600 text-white' : 'bg-slate-700 text-white') : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 group-hover:bg-gray-200 dark:group-hover:bg-gray-600'}`}>
-                  <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-                </div>
-                <span className={`text-[10px] sm:text-xs font-bold text-center leading-tight ${isActive ? 'text-teal-700 dark:text-teal-400' : 'text-slate-600 dark:text-gray-400'}`}>{item.label}</span>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-teal-600 dark:text-teal-400' : 'text-slate-400 dark:text-gray-500'}`} />
+                <span className="text-sm">{item.label}</span>
               </button>
             );
           })}
-          </div>
         </div>
         
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="p-4 border-t border-slate-200 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-900/50">
+           <div className="mb-4 px-2 overflow-hidden">
+             <p className="font-bold text-sm truncate text-slate-800 dark:text-gray-200">{user?.name}</p>
+             <p className="text-xs text-teal-600 dark:text-teal-400 uppercase font-black tracking-widest">{user?.role}</p>
+           </div>
+           <div className="flex gap-2">
+             <Button variant="outline" className="flex-1 rounded-xl font-bold bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:bg-teal-50 hover:text-teal-700" onClick={() => navigate('/app')}>App Absen</Button>
+             <Button variant="outline" className="px-3 rounded-xl bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200" onClick={() => auth.signOut()} title="Logout"><LogOut className="w-4 h-4" /></Button>
+           </div>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 max-w-full h-screen overflow-hidden">
+        
+        {/* Mobile Header */}
+        <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between shadow-sm">
+            <div className="flex items-center gap-2 overflow-hidden w-[70%]">
+               <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center shrink-0">
+                 {settings?.appLogoUrl ? (
+                    <img src={settings.appLogoUrl} alt="Logo" className="w-5 h-5 object-contain brightness-0 invert" />
+                  ) : (
+                    <Activity className="w-5 h-5 text-white" />
+                  )}
+               </div>
+               <span className="font-black text-slate-800 dark:text-white uppercase tracking-tight truncate">{settings?.appName || "ABSENKU"} Admin</span>
+            </div>
+            <div className="flex gap-2 shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/app')} className="h-8 w-8 p-0 rounded-full bg-slate-100 dark:bg-gray-800"><Briefcase className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => auth.signOut()} className="h-8 w-8 p-0 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-900/30"><LogOut className="w-4 h-4" /></Button>
+            </div>
+        </div>
+
+        {/* Mobile Nav Tabs (Horizontal Scroll) */}
+        <div className="md:hidden bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-gray-800 px-2 py-2 sticky top-[57px] z-40 shadow-sm overflow-x-auto no-scrollbar">
+           <div className="flex gap-2 w-max px-2">
+             {[
+                { value: "overview", label: "Overview", icon: Activity },
+                { value: "users", label: "User", icon: Users },
+                { value: "announcements", label: "Portal", icon: Briefcase },
+                { value: "analytics", label: "Analytics", icon: Activity },
+                { value: "live-map", label: "Peta", icon: MapPin },
+                { value: "rekap", label: "Rekap", icon: ClipboardList },
+                { value: "settings", label: "Pengaturan", icon: Settings },
+                ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log", icon: ShieldAlert }] : []),
+              ].map(item => {
+                 const isActive = activeTab === item.value;
+                 return (
+                    <button
+                      key={item.value}
+                      onClick={() => setActiveTab(item.value)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs transition-all ${isActive ? 'bg-teal-100 dark:bg-teal-900 text-teal-800 dark:text-teal-200 font-bold shadow-sm border border-teal-200 dark:border-teal-800' : 'bg-white dark:bg-gray-800 text-slate-600 dark:text-gray-400 border border-slate-200 dark:border-gray-700'}`}
+                    >
+                      <item.icon className="w-3.5 h-3.5" />
+                      {item.label}
+                    </button>
+                 );
+              })}
+           </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full relative">
+           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 w-full max-w-6xl mx-auto pb-12">
           <TabsList className="hidden">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="users">User</TabsTrigger>
@@ -1170,7 +1193,8 @@ export default function Dashboard() {
             )}
           </DialogContent>
         </Dialog>
+        </main>
       </div>
-    </>
+    </div>
   );
 }
