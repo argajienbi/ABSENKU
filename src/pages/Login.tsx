@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Webcam from "react-webcam";
-import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { auth, db, rtdb, handleFirestoreError, OperationType } from "../lib/firebase";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc, getDocs, collection, query, where } from "firebase/firestore";
+import { ref, set } from "firebase/database";
 import { uploadBase64Image } from "../lib/storage";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../settingsObject";
@@ -90,6 +91,14 @@ export default function Login() {
                     type: "danger", 
                     createdAt: Date.now(),
                     read: false
+                  });
+                  // Notif RTDB untuk admin/superadmin Sketchware
+                  const adminRef = ref(rtdb, `notifications/users/admin_only/broadcast`);
+                  await set(adminRef, {
+                    title: "Peringatan Keamanan Sistem",
+                    message: `Pengguna ${data.name || email} (${email}) login dari perangkat baru.`,
+                    read: false,
+                    createdAt: Date.now()
                   });
                } catch (e) {
                   console.error("Failed to write device log", e);

@@ -13,7 +13,8 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { updateDoc, doc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "../../lib/firebase";
+import { db, rtdb } from "../../lib/firebase";
+import { ref, set } from "firebase/database";
 import { SHIFTS } from "../../constants";
 import { deleteFileFromStorage } from "../../lib/storage";
 import { CheckCircle2 } from "lucide-react";
@@ -276,6 +277,12 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                                           read: false,
                                           type: "success"
                                         });
+                                        await set(ref(rtdb, `notifications/users/${log.userId}/broadcast`), {
+                                          title: "Absensi Disetujui",
+                                          message: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} telah disetujui.`,
+                                          read: false,
+                                          createdAt: Date.now()
+                                        });
                                         toast.success("Absensi disetujui");
                                       } catch (e) {
                                         console.error("Approve error:", e);
@@ -295,6 +302,12 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                                           createdAt: Date.now(),
                                           read: false,
                                           type: "danger"
+                                        });
+                                        await set(ref(rtdb, `notifications/users/${log.userId}/broadcast`), {
+                                          title: "Absensi Ditolak",
+                                          message: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} ditolak oleh Admin.`,
+                                          read: false,
+                                          createdAt: Date.now()
                                         });
                                         toast.success("Absensi ditolak");
                                       } catch (e) {

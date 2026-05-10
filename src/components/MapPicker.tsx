@@ -7,6 +7,7 @@ interface MapPickerProps {
   radius: number;
   onLocationSelect?: (lat: number, lng: number) => void;
   readonly?: boolean;
+  userLocation?: { lat: number; lng: number };
 }
 
 const containerStyle = {
@@ -77,7 +78,7 @@ const AutocompleteComponent = ({ onLocationSelect, map }: { onLocationSelect: (l
   );
 }
 
-function MapPickerInternal({ center, radius, onLocationSelect, readonly = false, apiKey }: MapPickerProps & { apiKey: string }) {
+function MapPickerInternal({ center, radius, onLocationSelect, readonly = false, apiKey, userLocation }: MapPickerProps & { apiKey: string }) {
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
   const safeCenter = {
@@ -85,11 +86,13 @@ function MapPickerInternal({ center, radius, onLocationSelect, readonly = false,
     lng: isNaN(parseFloat(center.lng as any)) ? 106.8456 : parseFloat(center.lng as any)
   };
 
+  const currentCenter = userLocation || safeCenter;
+
   useEffect(() => {
-    if (map && safeCenter) {
-      map.panTo(safeCenter);
+    if (map && currentCenter) {
+      map.panTo(currentCenter);
     }
-  }, [center, map]); // Need to watch original center for reference changes, pan to safeCenter
+  }, [center, userLocation, map]); // Need to watch original center for reference changes, pan to currentCenter
 
   const onMapClick = (e: any) => {
     if (readonly || !onLocationSelect || !e.detail.latLng) return;
@@ -101,7 +104,7 @@ function MapPickerInternal({ center, radius, onLocationSelect, readonly = false,
       <APIProvider apiKey={apiKey}>
         <Map
           style={containerStyle}
-          defaultCenter={safeCenter}
+          defaultCenter={currentCenter}
           defaultZoom={15}
           mapId="DEMO_MAP_ID"
           onClick={onMapClick}
@@ -119,9 +122,14 @@ function MapPickerInternal({ center, radius, onLocationSelect, readonly = false,
               <AutocompleteComponent onLocationSelect={onLocationSelect} map={map} />
             </div>
           )}
-          <AdvancedMarker position={safeCenter}>
+          <AdvancedMarker position={safeCenter} zIndex={1}>
             <Pin background={"#0d9488"} borderColor={"#ffffff"} glyphColor={"#ffffff"} />
           </AdvancedMarker>
+          {userLocation && (
+             <AdvancedMarker position={userLocation} zIndex={2}>
+               <Pin background={"#3b82f6"} borderColor={"#ffffff"} glyphColor={"#ffffff"} />
+             </AdvancedMarker>
+          )}
           <CircleComponent center={safeCenter} radius={radius} />
         </Map>
       </APIProvider>

@@ -6,6 +6,7 @@ import {
   persistentMultipleTabManager 
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getDatabase } from "firebase/database";
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -15,6 +16,8 @@ export const app = initializeApp(firebaseConfig);
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
 }, firebaseConfig.firestoreDatabaseId);
+
+export const rtdb = getDatabase(app);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);

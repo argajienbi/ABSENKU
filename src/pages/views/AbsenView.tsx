@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Input } from '../../components/ui/input';
 import { useUserAppContext } from './UserAppContext';
+import { calculateDistance } from '../../settingsObject';
 
 export const AbsenView = () => {
   const { 
@@ -72,8 +73,13 @@ export const AbsenView = () => {
                           </div>
                           <div>
                             <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest block leading-none mb-1">Peta Visual (GPS)</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
+                            <span className={`text-[10px] items-center gap-1 inline-flex font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
                               {isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence'}
+                              {location && user?.areaId && settings?.areas?.[user.areaId] && (
+                                <span className="ml-1 opacity-70">
+                                  ({Math.round(calculateDistance(location.lat, location.lng, settings.areas[user.areaId].lat, settings.areas[user.areaId].lng))}m)
+                                </span>
+                              )}
                             </span>
                           </div>
                         </div>
@@ -88,6 +94,7 @@ export const AbsenView = () => {
                               lat: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lat : (location?.lat || -6.2088), 
                               lng: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lng : (location?.lng || 106.8456)
                             }} 
+                            userLocation={location ? { lat: location.lat, lng: location.lng } : undefined}
                             radius={(() => {
                               if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
                                 return settings.areas[user.areaId].radius;

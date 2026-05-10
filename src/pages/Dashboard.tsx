@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { collection, query, orderBy, limit, onSnapshot, doc, updateDoc, setDoc, deleteDoc, getDocs, writeBatch, where } from "firebase/firestore";
-import { db, auth, handleFirestoreError, OperationType } from "../lib/firebase";
+import { ref, set } from "firebase/database";
+import { db, rtdb, auth, handleFirestoreError, OperationType } from "../lib/firebase";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../settingsObject";
 import { LiveMap } from "../components/LiveMap";
@@ -273,6 +274,19 @@ export default function Dashboard() {
           read: false,
           type: announcementType
        });
+
+       // Also spread to RTDB so sketchware users get notified
+       if (filteredUsersList) {
+          const promises = filteredUsersList.map((u: any) => 
+            set(ref(rtdb, `notifications/users/${u.id}/broadcast`), {
+              title: `Pengumuman: ${announcementTitle}`,
+              message: announcementContent.length > 50 ? announcementContent.substring(0, 50) + "..." : announcementContent,
+              read: false,
+              createdAt: Date.now()
+            })
+          );
+          await Promise.all(promises);
+       }
 
        toast.success("Pengumuman berhasil dipublikasikan");
        setAnnouncementTitle("");
