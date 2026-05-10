@@ -538,9 +538,8 @@ export default function Dashboard() {
             { value: "users", label: "User Management", icon: Users },
             { value: "announcements", label: "Portal Informasi", icon: Briefcase },
             { value: "analytics", label: "Performance", icon: Activity },
-            { value: "live-map", label: "Peta Live", icon: MapPin },
+            { value: "live-map", label: "Peta & Lokasi", icon: MapPin },
             { value: "rekap", label: "Rekap Kehadiran", icon: ClipboardList },
-            { value: "settings-location", label: "Pengaturan Lokasi", icon: MapPin },
             { value: "settings-shift", label: "Pengaturan Shift", icon: Briefcase },
             { value: "settings-system", label: "Sistem & Branding", icon: Settings },
             { value: "guide", label: "Buku Petunjuk", icon: BookOpen },
@@ -602,9 +601,8 @@ export default function Dashboard() {
                 { value: "users", label: "User", icon: Users },
                 { value: "announcements", label: "Portal", icon: Briefcase },
                 { value: "analytics", label: "Analytics", icon: Activity },
-                { value: "live-map", label: "Peta", icon: MapPin },
+                { value: "live-map", label: "Lokasi", icon: MapPin },
                 { value: "rekap", label: "Rekap", icon: ClipboardList },
-                { value: "settings-location", label: "Lokasi", icon: MapPin },
                 { value: "settings-shift", label: "Shift", icon: Briefcase },
                 { value: "settings-system", label: "Sistem", icon: Settings },
                 { value: "guide", label: "Informasi", icon: BookOpen },
@@ -633,9 +631,8 @@ export default function Dashboard() {
             <TabsTrigger value="users">User</TabsTrigger>
             <TabsTrigger value="announcements">Portal</TabsTrigger>
             <TabsTrigger value="analytics">Performance</TabsTrigger>
-            <TabsTrigger value="live-map">Peta Live</TabsTrigger>
+            <TabsTrigger value="live-map">Peta & Lokasi</TabsTrigger>
             <TabsTrigger value="rekap">Rekap</TabsTrigger>
-            <TabsTrigger value="settings-location">Pengaturan Lokasi</TabsTrigger>
             <TabsTrigger value="settings-shift">Pengaturan Shift</TabsTrigger>
             <TabsTrigger value="settings-system">Sistem</TabsTrigger>
             <TabsTrigger value="guide">Guide</TabsTrigger>
@@ -700,8 +697,8 @@ export default function Dashboard() {
              <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
           </TabsContent>
 
-          <TabsContent value="live-map" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out h-[700px]">
-              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden h-full flex flex-col">
+          <TabsContent value="live-map" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out space-y-6">
+              <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden min-h-[500px] flex flex-col">
                 <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
                   <div className="flex justify-between items-center">
                     <div>
@@ -733,13 +730,7 @@ export default function Dashboard() {
                      )}
                 </CardContent>
               </Card>
-          </TabsContent>
 
-          <TabsContent value="rekap" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
-             <RekapAbsensi usersList={filteredUsersList} settings={settings} />
-          </TabsContent>
-
-          <TabsContent value="settings-location">
               <SettingsLocationTab 
                   settings={settings} loadingConfig={loadingConfig} areasInput={areasInput}
                   setAreasInput={setAreasInput} newAreaLatInput={newAreaLatInput}
@@ -749,6 +740,10 @@ export default function Dashboard() {
                   setEditingAreaId={setEditingAreaId} toggleGeofence={toggleGeofence}
                   saveSettings={saveSettings}
               />
+          </TabsContent>
+
+          <TabsContent value="rekap" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
+             <RekapAbsensi usersList={filteredUsersList} settings={settings} />
           </TabsContent>
 
           <TabsContent value="settings-shift">

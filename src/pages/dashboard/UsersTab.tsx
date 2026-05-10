@@ -4,9 +4,12 @@ import { Button } from "../../components/ui/button";
 import { Badge } from "../../components/ui/badge";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "../../components/ui/dropdown-menu";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "../../components/ui/table";
-import { Download, ChevronDown, Trash2, MapPin, Search, Printer } from "lucide-react";
+import { Download, ChevronDown, Trash2, MapPin, Search, Printer, UserPlus, LogOut } from "lucide-react";
 import { format } from "date-fns";
 import { Input } from "../../components/ui/input";
+import { toast } from "sonner";
+import { setDoc, doc, deleteDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 
 export function UsersTab({
   user, filteredUsersList, setDeleteUserTarget, setSelectedUserForEdit, 
@@ -14,7 +17,7 @@ export function UsersTab({
   setOvertimeUser, setShowOvertimeModal, setEditName, setEditRole, 
   setEditShift, setEditUniqueId, setEditArea, setEditIsBanned, 
   setEditWorkStartDate, setEditWorkEndDate, setEditMonthlyShifts, 
-  setEditWeeklyShiftPattern, setEditShiftMode, settings, handleEditUser, shiftsInput, areasInput, handleKoreksiAlpa, handleAddManualOvertime
+  setEditWeeklyShiftPattern, setEditShiftMode, settings, handleEditUser, shiftsInput, areasInput, handleKoreksiAlpa, handleAddManualOvertime, idRefsList
 }: any) {
   const [searchTerm, setSearchTerm] = React.useState("");
 
@@ -126,6 +129,113 @@ export function UsersTab({
                 </div>
               </CardContent>
             </Card>
+      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0 mt-6 pt-6">
+        <div className="px-6 text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+            <UserPlus className="w-4 h-4" /> Registration ID REF Manager
+        </div>
+        <CardContent className="px-6 pb-6">
+        <div className="space-y-6">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <Button 
+              onClick={async () => {
+                  if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                  const role = "crew";
+                  const refId = `USER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+              }}
+              className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+            >Generate Crew REF</Button>
+            <Button 
+              onClick={async () => {
+                  if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                  const role = "staff";
+                  const refId = `STAFF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+              }}
+              className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+            >Generate Staff REF</Button>
+            <Button 
+              onClick={async () => {
+                  if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                  const role = "admin";
+                  const refId = `ADMIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+              }}
+              className="bg-rose-500 hover:bg-rose-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+            >Generate Admin REF</Button>
+            <Button 
+              onClick={async () => {
+                  if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                  const role = "demo";
+                  const refId = `DEMO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+              }}
+              className="bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+            >Generate Demo REF</Button>
+            <Button 
+              onClick={async () => {
+                  if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                  const role = "demouser";
+                  const refId = `DEMOUSER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+              }}
+              className="bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
+            >Generate DemoUser REF</Button>
+          </div>
+          
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-1 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-100 dark:border-gray-800">
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">ID REF</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Dibuat</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Role</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Status</TableHead>
+                  <TableHead className="text-right relative bg-white dark:bg-gray-900"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {idRefsList?.map((refData: any) => (
+                  <TableRow key={refData.id} className="border-gray-100 dark:border-gray-800">
+                    <TableCell className="font-mono font-bold text-teal-600">{refData.id}</TableCell>
+                    <TableCell className="text-xs text-slate-500">{format(new Date(refData.createdAt), "dd MMM yyyy, HH:mm")}</TableCell>
+                    <TableCell>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${refData.role === 'admin' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
+                          {refData.role}
+                        </span>
+                    </TableCell>
+                    <TableCell>
+                        {refData.used ? 
+                          <span className="text-[10px] font-black tracking-widest uppercase text-slate-400">Terpakai</span> : 
+                          <span className="text-[10px] font-black tracking-widest uppercase text-teal-500">Tersedia</span>
+                        }
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                          onClick={async () => {
+                            if (user?.role === "demo") { toast.error("Akun demo."); return; }
+                            await deleteDoc(doc(db, "idRefs", refData.id));
+                          }}
+                        >
+                          <LogOut className="w-4 h-4 rotate-45" />
+                        </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {(!idRefsList || idRefsList.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-xs text-slate-400 italic">Belum ada ID REF yang dibuat.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+        </CardContent>
+      </Card>
           </div>
   );
 }
