@@ -40,7 +40,7 @@ export const ProfileChangelog = () => {
                   <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.15 (Terbaru)</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.16 (Terbaru)</p>
               </div>
 
               <div className="space-y-6">
@@ -99,7 +99,15 @@ export const ProfileChangelog = () => {
                     <div className="space-y-5">
                           <div className="relative pl-4 border-l-2 border-indigo-500/30">
                           <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.15 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.16 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Penyempurnaan Visual: Mengganti ikon Map SVG standar dengan ikon gambar Map 3D berwarna-warni sesuai dengan referensi Anda untuk memberikan tampilan UI yang lebih menarik dan meriah di halaman utama.</li>
+                          </ul>
+                        </div>
+                        
+                          <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.15</h5>
                           <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                             <li>Refactor Lanjutan: Memecah view Profil Karyawan menjadi komponen-komponen terpisah (Menu Profil, ID Card, Tentang Aplikasi/Changelog, & Edit Profil) agar kode lebih bersih, cepat, terstruktur, dan terhindar dari conflict atau error.</li>
                           </ul>

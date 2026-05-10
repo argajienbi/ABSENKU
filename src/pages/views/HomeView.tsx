@@ -83,9 +83,13 @@ export const HomeView = () => {
           {/* Location Pill */}
           <div className="relative w-full rounded-[18px] bg-white/70 dark:bg-gray-800/70 p-3 shadow-inner border border-white/60 dark:border-white/5 overflow-hidden flex flex-col gap-2">
               <div className="flex items-start gap-3 w-full relative z-10">
-                <div className="shrink-0 w-10 h-10 bg-blue-50/80 dark:bg-blue-900/40 rounded-xl flex justify-center items-center relative shadow-sm border border-blue-100 dark:border-blue-900/60">
-                    <MapPin className="w-4 h-4 text-rose-500 absolute -top-1 -right-1 z-10 fill-rose-500 drop-shadow-md rotate-[15deg]" />
-                    <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400 stroke-[2.5px] translate-y-[1px]" />
+                <div className="shrink-0 w-10 h-10 bg-blue-50/80 dark:bg-blue-900/40 rounded-xl flex justify-center items-center relative shadow-sm border border-blue-100 dark:border-blue-900/60 overflow-hidden">
+                    <img 
+                      src="https://cdn-icons-png.flaticon.com/512/2838/2838912.png" 
+                      alt="Map Icon" 
+                      className="w-7 h-7 object-contain drop-shadow-md hover:scale-110 transition-transform"
+                      referrerPolicy="no-referrer"
+                    />
                 </div>
                 
                 <div className="flex flex-col flex-1 min-w-0">
