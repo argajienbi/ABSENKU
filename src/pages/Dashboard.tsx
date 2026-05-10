@@ -22,7 +22,7 @@ import { id } from "date-fns/locale";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle, Download, ChevronDown, ClipboardList } from "lucide-react";
+import { MapPin, Settings, Users, Activity, CheckCircle2, LogOut, Briefcase, CalendarDays, Printer, UserPlus, Trash2, ShieldAlert, Ban, AlertCircle, Download, ChevronDown, ClipboardList, BookOpen } from "lucide-react";
 
 import { QRCodeCanvas } from 'qrcode.react';
 import { SHIFTS } from "../constants";
@@ -33,8 +33,11 @@ import { BankingStyleDashboardCards } from "../components/BankingStyleDashboardC
 import { OverviewTab } from "./dashboard/OverviewTab";
 import { UsersTab } from "./dashboard/UsersTab";
 import { AnnouncementsTab } from "./dashboard/AnnouncementsTab";
-import { SettingsTab } from "./dashboard/SettingsTab";
+import { SettingsLocationTab } from "./dashboard/SettingsLocationTab";
+import { SettingsShiftTab } from "./dashboard/SettingsShiftTab";
+import { SettingsSystemTab } from "./dashboard/SettingsSystemTab";
 import { LogsTab } from "./dashboard/LogsTab";
+import { GuideTab } from "./dashboard/GuideTab";
 import { uploadFileToStorage, deleteFileFromStorage } from "../lib/storage";
 
 export default function Dashboard() {
@@ -537,7 +540,10 @@ export default function Dashboard() {
             { value: "analytics", label: "Performance", icon: Activity },
             { value: "live-map", label: "Peta Live", icon: MapPin },
             { value: "rekap", label: "Rekap Kehadiran", icon: ClipboardList },
-            { value: "settings", label: "Pengaturan", icon: Settings },
+            { value: "settings-location", label: "Pengaturan Lokasi", icon: MapPin },
+            { value: "settings-shift", label: "Pengaturan Shift", icon: Briefcase },
+            { value: "settings-system", label: "Sistem & Branding", icon: Settings },
+            { value: "guide", label: "Buku Petunjuk", icon: BookOpen },
             ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log Keamanan", icon: ShieldAlert }] : []),
           ].map((item) => {
             const Icon = item.icon;
@@ -598,7 +604,10 @@ export default function Dashboard() {
                 { value: "analytics", label: "Analytics", icon: Activity },
                 { value: "live-map", label: "Peta", icon: MapPin },
                 { value: "rekap", label: "Rekap", icon: ClipboardList },
-                { value: "settings", label: "Pengaturan", icon: Settings },
+                { value: "settings-location", label: "Lokasi", icon: MapPin },
+                { value: "settings-shift", label: "Shift", icon: Briefcase },
+                { value: "settings-system", label: "Sistem", icon: Settings },
+                { value: "guide", label: "Informasi", icon: BookOpen },
                 ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log", icon: ShieldAlert }] : []),
               ].map(item => {
                  const isActive = activeTab === item.value;
@@ -626,7 +635,10 @@ export default function Dashboard() {
             <TabsTrigger value="analytics">Performance</TabsTrigger>
             <TabsTrigger value="live-map">Peta Live</TabsTrigger>
             <TabsTrigger value="rekap">Rekap</TabsTrigger>
-            <TabsTrigger value="settings">Pengaturan</TabsTrigger>
+            <TabsTrigger value="settings-location">Pengaturan Lokasi</TabsTrigger>
+            <TabsTrigger value="settings-shift">Pengaturan Shift</TabsTrigger>
+            <TabsTrigger value="settings-system">Sistem</TabsTrigger>
+            <TabsTrigger value="guide">Guide</TabsTrigger>
           </TabsList>
 
           
@@ -727,21 +739,34 @@ export default function Dashboard() {
              <RekapAbsensi usersList={filteredUsersList} settings={settings} />
           </TabsContent>
 
-          <TabsContent value="settings">
-              <SettingsTab
-                  settings={settings} loadingConfig={loadingConfig} appNameInput={appNameInput}
-                  setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
-                  setAppLogoUrlInput={setAppLogoUrlInput} fcmVapidKeyInput={fcmVapidKeyInput}
-                  setFcmVapidKeyInput={setFcmVapidKeyInput} googleMapsApiKeyInput={googleMapsApiKeyInput}
-                  setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput} shiftsInput={shiftsInput}
-                  setShiftsInput={setShiftsInput} holidaysInput={holidaysInput}
-                  setHolidaysInput={setHolidaysInput} areasInput={areasInput}
+          <TabsContent value="settings-location">
+              <SettingsLocationTab 
+                  settings={settings} loadingConfig={loadingConfig} areasInput={areasInput}
                   setAreasInput={setAreasInput} newAreaLatInput={newAreaLatInput}
                   setNewAreaLatInput={setNewAreaLatInput} newAreaLngInput={newAreaLngInput}
                   setNewAreaLngInput={setNewAreaLngInput} newArea={newArea}
                   setNewArea={setNewArea} editingAreaId={editingAreaId}
-                  setEditingAreaId={setEditingAreaId} newHoliday={newHoliday}
-                  setNewHoliday={setNewHoliday} toggleGeofence={toggleGeofence}
+                  setEditingAreaId={setEditingAreaId} toggleGeofence={toggleGeofence}
+                  saveSettings={saveSettings}
+              />
+          </TabsContent>
+
+          <TabsContent value="settings-shift">
+              <SettingsShiftTab
+                  loadingConfig={loadingConfig} shiftsInput={shiftsInput}
+                  setShiftsInput={setShiftsInput} holidaysInput={holidaysInput}
+                  setHolidaysInput={setHolidaysInput} newHoliday={newHoliday}
+                  setNewHoliday={setNewHoliday} saveSettings={saveSettings}
+              />
+          </TabsContent>
+
+          <TabsContent value="settings-system">
+              <SettingsSystemTab
+                  loadingConfig={loadingConfig} appNameInput={appNameInput}
+                  setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
+                  setAppLogoUrlInput={setAppLogoUrlInput} fcmVapidKeyInput={fcmVapidKeyInput}
+                  setFcmVapidKeyInput={setFcmVapidKeyInput} googleMapsApiKeyInput={googleMapsApiKeyInput}
+                  setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput}
                   saveSettings={saveSettings} user={user} idRefsList={idRefsList}
               />
           </TabsContent>
@@ -751,6 +776,10 @@ export default function Dashboard() {
                   <LogsTab securityLogs={securityLogs} />
               </TabsContent>
             )}
+
+          <TabsContent value="guide" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
+            <GuideTab />
+          </TabsContent>
           
         </Tabs>
 
