@@ -512,9 +512,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex bg-slate-50 dark:bg-gray-950 min-h-screen font-sans">
+    <div className="flex bg-slate-50 dark:bg-gray-950 min-h-screen font-sans pt-[50px]">
       {/* Sidebar - Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-slate-200 dark:border-gray-800 sticky top-0 h-screen z-50 shrink-0 shadow-sm">
+      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-gray-900 border-r border-slate-200 dark:border-gray-800 sticky top-[50px] h-[calc(100vh-50px)] z-50 shrink-0 shadow-sm">
         <div className="p-6 border-b border-slate-200 dark:border-gray-800 flex items-center gap-3">
            <div className="w-10 h-10 bg-teal-600 rounded-xl flex items-center justify-center shadow-inner">
              {settings?.appLogoUrl ? (
@@ -568,7 +568,7 @@ export default function Dashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 max-w-full h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 max-w-full h-[calc(100vh-50px)] overflow-hidden">
         
         {/* Mobile Header */}
         <div className="md:hidden sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-slate-200 dark:border-gray-800 px-4 py-3 flex items-center justify-between shadow-sm">
