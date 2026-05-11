@@ -40,7 +40,7 @@ export const ProfileChangelog = () => {
                   <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.23 (Terbaru)</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.24 (Terbaru)</p>
               </div>
 
               <div className="space-y-6">
@@ -52,6 +52,10 @@ export const ProfileChangelog = () => {
                       <li className="flex gap-2.5">
                         <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
                         <span>Absensi Foto Selfie Otomatis dengan Deteksi Wajah AI & Geolocation.</span>
+                      </li>
+                      <li className="flex gap-2.5">
+                        <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        <span>Sistem Build Teroptimasi: Code-splitting manual untuk load data super cepat.</span>
                       </li>
                       <li className="flex gap-2.5">
                         <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
@@ -99,7 +103,17 @@ export const ProfileChangelog = () => {
                     <div className="space-y-5">
                         <div className="relative pl-4 border-l-2 border-indigo-500/30">
                           <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.23 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.24 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Optimalisasi Build & Performa: Mengimplementasikan manual code-splitting (manualChunks) pada konfigurasi Vite untuk membagi pustaka besar (Firebase, Recharts, FaceAPI, dll) menjadi beberapa bagian kecil.</li>
+                            <li>Lazy Loading Berjenjang: Menerapkan React.lazy dan Suspense pada Dashoard Admin, rute utama aplikasi, dan view UserApp untuk mempercepat waktu pemuatan halaman awal secara drastis.</li>
+                            <li>Fix Vercel Warning: Menyelesaikan peringatan "chunk size limit" pada hosting Vercel dengan optimasi bundle produksi yang lebih efisien.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/50">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-300 dark:bg-indigo-700"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.23</h5>
                           <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                             <li>Reorganisasi Navigasi: Memindahkan tombol Home ke posisi tengah pada bilah navigasi bawah (Floating Navigation) untuk akses yang lebih ergonomis dan tampilan yang lebih seimbang secara visual.</li>
                           </ul>

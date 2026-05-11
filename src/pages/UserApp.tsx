@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../settingsObject";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
@@ -9,27 +9,36 @@ import { format } from "date-fns";
 import { useTheme } from "next-themes";
 import { SHIFTS } from "../constants";
 import { doc, setDoc } from "firebase/firestore";
-import { Bell, Wifi, WifiOff, ShieldAlert, ArrowLeft } from "lucide-react";
+import { Bell, Wifi, WifiOff, ShieldAlert, ArrowLeft, Loader2 } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { FloatingNav } from "../components/FloatingNav";
 import { Button } from "../components/ui/button";
 import { HrisSettings } from "../components/HrisSettings";
-import { HomeView } from './views/HomeView';
-import { AbsenView } from './views/AbsenView';
-import { HistoryView } from './views/HistoryView';
-import { NotificationsView } from './views/NotificationsView';
-import { IzinMenuView } from './views/IzinMenuView';
 import { useUserLocation } from '../hooks/useUserLocation';
 import { useAttendanceData } from '../hooks/useAttendanceData';
 import { useQRScanner } from '../hooks/useQRScanner';
-import { ProfileView } from './views/ProfileView';
 import { UserAppProvider } from './views/UserAppContext';
 import { uploadBase64Image } from "../lib/storage";
 import { setCustomHolidays } from "../lib/dateUtils";
 
+// Lazy Loaded Views
+const HomeView = lazy(() => import('./views/HomeView').then(m => ({ default: m.HomeView })));
+const AbsenView = lazy(() => import('./views/AbsenView').then(m => ({ default: m.AbsenView })));
+const HistoryView = lazy(() => import('./views/HistoryView').then(m => ({ default: m.HistoryView })));
+const NotificationsView = lazy(() => import('./views/NotificationsView').then(m => ({ default: m.NotificationsView })));
+const IzinMenuView = lazy(() => import('./views/IzinMenuView').then(m => ({ default: m.IzinMenuView })));
+const ProfileView = lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
+
 // New Hooks & Components
 import { useUserAppLogic } from "../hooks/useUserAppLogic";
 import { ConfirmAbsenDialog } from "./views/ConfirmAbsenDialog";
+
+const ViewLoading = () => (
+  <div className="flex flex-col items-center justify-center p-20 animate-in fade-in duration-500">
+    <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
+    <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Memuat...</p>
+  </div>
+);
 
 export default function UserApp() {
   const { user } = useAuth();
@@ -164,12 +173,14 @@ export default function UserApp() {
           </div>
 
           <div className="relative z-30 px-4 pt-2 space-y-6 w-full mx-auto">
-             {view === "home" && <HomeView />}
-             {view === "izin_menu" && <IzinMenuView />}
-             {view === "absen" && <AbsenView />}
-             {view === "history" && <HistoryView />}
-             {view === "notifications" && <NotificationsView />}
-             {view === "profile" && <ProfileView />}
+             <Suspense fallback={<ViewLoading />}>
+               {view === "home" && <HomeView />}
+               {view === "izin_menu" && <IzinMenuView />}
+               {view === "absen" && <AbsenView />}
+               {view === "history" && <HistoryView />}
+               {view === "notifications" && <NotificationsView />}
+               {view === "profile" && <ProfileView />}
+             </Suspense>
           </div>
         </div>
 

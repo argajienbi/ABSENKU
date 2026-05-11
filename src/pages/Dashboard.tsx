@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../settingsObject";
@@ -10,27 +10,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { MapPin, Settings, Users, Activity, LogOut, Briefcase, ClipboardList, BookOpen, ShieldAlert, AlertCircle } from "lucide-react";
+import { MapPin, Settings, Users, Activity, LogOut, Briefcase, ClipboardList, BookOpen, ShieldAlert, AlertCircle, Loader2 } from "lucide-react";
 
 import { SHIFTS } from "../constants";
-import { PerformanceAnalytics } from "../components/Analytics";
-import { RekapAbsensi } from "../components/RekapAbsensi";
-import { BankingStyleDashboardCards } from "../components/BankingStyleDashboardCards";
-import { OverviewTab } from "./dashboard/OverviewTab";
-import { UsersTab } from "./dashboard/UsersTab";
-import { AnnouncementsTab } from "./dashboard/AnnouncementsTab";
-import { SettingsLocationTab } from "./dashboard/SettingsLocationTab";
-import { SettingsShiftTab } from "./dashboard/SettingsShiftTab";
-import { SettingsSystemTab } from "./dashboard/SettingsSystemTab";
-import { LogsTab } from "./dashboard/LogsTab";
-import { GuideTab } from "./dashboard/GuideTab";
+
+// Lazy Loaded Components
+const PerformanceAnalytics = lazy(() => import("../components/Analytics").then(m => ({ default: m.PerformanceAnalytics })));
+const RekapAbsensi = lazy(() => import("../components/RekapAbsensi").then(m => ({ default: m.RekapAbsensi })));
+const OverviewTab = lazy(() => import("./dashboard/OverviewTab").then(m => ({ default: m.OverviewTab })));
+const UsersTab = lazy(() => import("./dashboard/UsersTab").then(m => ({ default: m.UsersTab })));
+const AnnouncementsTab = lazy(() => import("./dashboard/AnnouncementsTab").then(m => ({ default: m.AnnouncementsTab })));
+const SettingsLocationTab = lazy(() => import("./dashboard/SettingsLocationTab").then(m => ({ default: m.SettingsLocationTab })));
+const SettingsShiftTab = lazy(() => import("./dashboard/SettingsShiftTab").then(m => ({ default: m.SettingsShiftTab })));
+const SettingsSystemTab = lazy(() => import("./dashboard/SettingsSystemTab").then(m => ({ default: m.SettingsSystemTab })));
+const LogsTab = lazy(() => import("./dashboard/LogsTab").then(m => ({ default: m.LogsTab })));
+const GuideTab = lazy(() => import("./dashboard/GuideTab").then(m => ({ default: m.GuideTab })));
 
 // New Dialog Components
-import { MemberCardDialog } from "./dashboard/MemberCardDialog";
-import { ManualOvertimeDialog } from "./dashboard/ManualOvertimeDialog";
-import { KoreksiAlpaDialog } from "./dashboard/KoreksiAlpaDialog";
-import { EditUserDialog } from "./dashboard/EditUserDialog";
-import { ConfirmDeleteDialog } from "./dashboard/ConfirmDeleteDialog";
+const MemberCardDialog = lazy(() => import("./dashboard/MemberCardDialog").then(m => ({ default: m.MemberCardDialog })));
+const ManualOvertimeDialog = lazy(() => import("./dashboard/ManualOvertimeDialog").then(m => ({ default: m.ManualOvertimeDialog })));
+const KoreksiAlpaDialog = lazy(() => import("./dashboard/KoreksiAlpaDialog").then(m => ({ default: m.KoreksiAlpaDialog })));
+const EditUserDialog = lazy(() => import("./dashboard/EditUserDialog").then(m => ({ default: m.EditUserDialog })));
+const ConfirmDeleteDialog = lazy(() => import("./dashboard/ConfirmDeleteDialog").then(m => ({ default: m.ConfirmDeleteDialog })));
+
+const TabLoading = () => (
+  <div className="flex flex-col items-center justify-center p-20 animate-in fade-in duration-500">
+    <Loader2 className="w-8 h-8 text-teal-600 animate-spin mb-4" />
+    <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Sistem sedang memuat data...</p>
+  </div>
+);
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -255,192 +263,196 @@ export default function Dashboard() {
         {/* Scrollable Content */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full relative">
            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 w-full max-w-6xl mx-auto pb-12">
-            <TabsContent value="overview">
-                <OverviewTab 
-                    user={user} 
-                    filteredAttendances={filteredAttendances} 
-                    filteredUsersList={filteredUsersList} 
-                    setConfirmDeleteGlobal={setConfirmDeleteGlobal} 
-                />
-            </TabsContent>
-            
-            <TabsContent value="users">
-                <UsersTab 
-                    user={user} 
-                    filteredUsersList={filteredUsersList} 
-                    setDeleteUserTarget={setDeleteUserTarget}
-                    setSelectedUserForEdit={setSelectedUserForEdit}
-                    setSelectedUserForCard={setSelectedUserForCard}
-                    settings={settings}
-                    shiftsInput={shiftsInput}
-                    areasInput={settings?.areas}
-                    handleEditUser={handleEditUser}
-                    handleKoreksiAlpa={(u: any) => { setKoreksiUser(u); setKoreksiDate(format(new Date(), "yyyy-MM-dd")); setShowKoreksiModal(true); }}
-                    handleAddManualOvertime={(u: any) => { setOvertimeUser(u); setOvertimeDate(format(new Date(), "yyyy-MM-dd")); setOvertimeStartTime("17:00"); setOvertimeEndTime("19:00"); setOvertimeNotes("Lembur tambahan dari admin"); setShowOvertimeModal(true); }}
-                />
-            </TabsContent>
-
-            <TabsContent value="announcements">
-               <AnnouncementsTab
-                    announcementTitle={announcementTitle} setAnnouncementTitle={setAnnouncementTitle}
-                    announcementContent={announcementContent} setAnnouncementContent={setAnnouncementContent}
-                    announcementType={announcementType} setAnnouncementType={setAnnouncementType}
-                    announcements={announcements}
-                    publishAnnouncement={() => publishAnnouncement(announcementTitle, announcementContent, announcementType).then(success => { if(success) { setAnnouncementTitle(""); setAnnouncementContent(""); }})}
-                    deleteAnnouncement={deleteAnnouncement}
-                    loadingConfig={loadingConfig}
-               />
-            </TabsContent>
-            
-            <TabsContent value="analytics">
-               <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
-            </TabsContent>
-
-            <TabsContent value="live-map" className="space-y-6">
-                <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden min-h-[500px] flex flex-col">
-                  <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <CardTitle className="text-xl font-black tracking-tight">Peta Pantauan Langsung</CardTitle>
-                        <CardDescription className="text-blue-100 font-medium">Lokasi absen karyawan hari ini secara real-time</CardDescription>
-                      </div>
-                      <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                         <MapPin className="w-6 h-6 text-white" />
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0 flex-1 relative min-h-[500px] h-[60vh]">
-                       {!settings?.googleMapsApiKey ? (
-                          <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
-                            <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
-                            <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">API Key Belum Diatur</h3>
-                            <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
-                          </div>
-                       ) : (
-                         <LiveMap 
-                           attendances={attendances} 
-                           users={usersList} 
-                           apiKey={settings.googleMapsApiKey}
-                           center={{ 
-                             lat: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lat !== undefined) ? (Object.values(settings.subareas)[0] as any).lat! : -6.2088, 
-                             lng: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lng !== undefined) ? (Object.values(settings.subareas)[0] as any).lng! : 106.8456 
-                           }}
-                         />
-                       )}
-                  </CardContent>
-                </Card>
-
-                {user?.role === 'superadmin' && (
-                    <SettingsLocationTab 
-                        settings={settings} loadingConfig={loadingConfig}
-                        areas={settings?.areas} companies={settings?.companies} branches={settings?.branches} subareas={settings?.subareas}
-                        toggleGeofence={toggleGeofence} user={user}
-                    />
-                )}
-            </TabsContent>
-
-            <TabsContent value="rekap">
-               <RekapAbsensi usersList={filteredUsersList} settings={settings} />
-            </TabsContent>
-
-            <TabsContent value="settings-shift">
-                <SettingsShiftTab
-                    loadingConfig={loadingConfig} shiftsInput={shiftsInput}
-                    setShiftsInput={setShiftsInput} holidaysInput={holidaysInput}
-                    setHolidaysInput={setHolidaysInput} newHoliday={newHoliday}
-                    setNewHoliday={setNewHoliday} 
-                    saveSettings={() => saveSettings({ shifts: shiftsInput, holidays: holidaysInput })}
-                />
-            </TabsContent>
-
-            <TabsContent value="settings-system">
-                <SettingsSystemTab
-                    loadingConfig={loadingConfig} appNameInput={appNameInput}
-                    setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
-                    setAppLogoUrlInput={setAppLogoUrlInput} fcmVapidKeyInput={fcmVapidKeyInput}
-                    setFcmVapidKeyInput={setFcmVapidKeyInput} googleMapsApiKeyInput={googleMapsApiKeyInput}
-                    setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput}
-                    saveSettings={() => saveSettings({ appName: appNameInput, appLogoUrl: appLogoUrlInput, fcmVapidKey: fcmVapidKeyInput, googleMapsApiKey: googleMapsApiKeyInput })} 
-                    user={user} idRefsList={idRefsList}
-                />
-            </TabsContent>
-              
-            {user?.role === 'superadmin' && (
-              <TabsContent value="logs">
-                  <LogsTab securityLogs={securityLogs} />
+            <Suspense fallback={<TabLoading />}>
+              <TabsContent value="overview">
+                  <OverviewTab 
+                      user={user} 
+                      filteredAttendances={filteredAttendances} 
+                      filteredUsersList={filteredUsersList} 
+                      setConfirmDeleteGlobal={setConfirmDeleteGlobal} 
+                  />
               </TabsContent>
-            )}
+              
+              <TabsContent value="users">
+                  <UsersTab 
+                      user={user} 
+                      filteredUsersList={filteredUsersList} 
+                      setDeleteUserTarget={setDeleteUserTarget}
+                      setSelectedUserForEdit={setSelectedUserForEdit}
+                      setSelectedUserForCard={setSelectedUserForCard}
+                      settings={settings}
+                      shiftsInput={shiftsInput}
+                      areasInput={settings?.areas}
+                      handleEditUser={handleEditUser}
+                      handleKoreksiAlpa={(u: any) => { setKoreksiUser(u); setKoreksiDate(format(new Date(), "yyyy-MM-dd")); setShowKoreksiModal(true); }}
+                      handleAddManualOvertime={(u: any) => { setOvertimeUser(u); setOvertimeDate(format(new Date(), "yyyy-MM-dd")); setOvertimeStartTime("17:00"); setOvertimeEndTime("19:00"); setOvertimeNotes("Lembur tambahan dari admin"); setShowOvertimeModal(true); }}
+                  />
+              </TabsContent>
 
-            <TabsContent value="guide">
-              <GuideTab />
-            </TabsContent>
+              <TabsContent value="announcements">
+                <AnnouncementsTab
+                      announcementTitle={announcementTitle} setAnnouncementTitle={setAnnouncementTitle}
+                      announcementContent={announcementContent} setAnnouncementContent={setAnnouncementContent}
+                      announcementType={announcementType} setAnnouncementType={setAnnouncementType}
+                      announcements={announcements}
+                      publishAnnouncement={() => publishAnnouncement(announcementTitle, announcementContent, announcementType).then(success => { if(success) { setAnnouncementTitle(""); setAnnouncementContent(""); }})}
+                      deleteAnnouncement={deleteAnnouncement}
+                      loadingConfig={loadingConfig}
+                />
+              </TabsContent>
+              
+              <TabsContent value="analytics">
+                <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
+              </TabsContent>
+
+              <TabsContent value="live-map" className="space-y-6">
+                  <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden min-h-[500px] flex flex-col">
+                    <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-xl font-black tracking-tight">Peta Pantauan Langsung</CardTitle>
+                          <CardDescription className="text-blue-100 font-medium">Lokasi absen karyawan hari ini secara real-time</CardDescription>
+                        </div>
+                        <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                          <MapPin className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-1 relative min-h-[500px] h-[60vh]">
+                        {!settings?.googleMapsApiKey ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
+                              <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
+                              <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">API Key Belum Diatur</h3>
+                              <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
+                            </div>
+                        ) : (
+                          <LiveMap 
+                            attendances={attendances} 
+                            users={usersList} 
+                            apiKey={settings.googleMapsApiKey}
+                            center={{ 
+                              lat: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lat !== undefined) ? (Object.values(settings.subareas)[0] as any).lat! : -6.2088, 
+                              lng: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lng !== undefined) ? (Object.values(settings.subareas)[0] as any).lng! : 106.8456 
+                            }}
+                          />
+                        )}
+                    </CardContent>
+                  </Card>
+
+                  {user?.role === 'superadmin' && (
+                      <SettingsLocationTab 
+                          settings={settings} loadingConfig={loadingConfig}
+                          areas={settings?.areas} companies={settings?.companies} branches={settings?.branches} subareas={settings?.subareas}
+                          toggleGeofence={toggleGeofence} user={user}
+                      />
+                  )}
+              </TabsContent>
+
+              <TabsContent value="rekap">
+                <RekapAbsensi usersList={filteredUsersList} settings={settings} />
+              </TabsContent>
+
+              <TabsContent value="settings-shift">
+                  <SettingsShiftTab
+                      loadingConfig={loadingConfig} shiftsInput={shiftsInput}
+                      setShiftsInput={setShiftsInput} holidaysInput={holidaysInput}
+                      setHolidaysInput={setHolidaysInput} newHoliday={newHoliday}
+                      setNewHoliday={setNewHoliday} 
+                      saveSettings={() => saveSettings({ shifts: shiftsInput, holidays: holidaysInput })}
+                  />
+              </TabsContent>
+
+              <TabsContent value="settings-system">
+                  <SettingsSystemTab
+                      loadingConfig={loadingConfig} appNameInput={appNameInput}
+                      setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
+                      setAppLogoUrlInput={setAppLogoUrlInput} fcmVapidKeyInput={fcmVapidKeyInput}
+                      setFcmVapidKeyInput={setFcmVapidKeyInput} googleMapsApiKeyInput={googleMapsApiKeyInput}
+                      setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput}
+                      saveSettings={() => saveSettings({ appName: appNameInput, appLogoUrl: appLogoUrlInput, fcmVapidKey: fcmVapidKeyInput, googleMapsApiKey: googleMapsApiKeyInput })} 
+                      user={user} idRefsList={idRefsList}
+                  />
+              </TabsContent>
+                
+              {user?.role === 'superadmin' && (
+                <TabsContent value="logs">
+                    <LogsTab securityLogs={securityLogs} />
+                </TabsContent>
+              )}
+
+              <TabsContent value="guide">
+                <GuideTab />
+              </TabsContent>
+            </Suspense>
           </Tabs>
 
           {/* Dialogs Components moved to separate files */}
-          <MemberCardDialog 
-            selectedUserForCard={selectedUserForCard} 
-            setSelectedUserForCard={setSelectedUserForCard} 
-            settings={settings} shiftsInput={shiftsInput} 
-          />
+          <Suspense fallback={null}>
+            <MemberCardDialog 
+              selectedUserForCard={selectedUserForCard} 
+              setSelectedUserForCard={setSelectedUserForCard} 
+              settings={settings} shiftsInput={shiftsInput} 
+            />
 
-          <ManualOvertimeDialog 
-            showOvertimeModal={showOvertimeModal} setShowOvertimeModal={setShowOvertimeModal}
-            overtimeUser={overtimeUser} overtimeDate={overtimeDate} setOvertimeDate={setOvertimeDate}
-            overtimeStartTime={overtimeStartTime} setOvertimeStartTime={setOvertimeStartTime}
-            overtimeEndTime={overtimeEndTime} setOvertimeEndTime={setEditWorkEndDate}
-            overtimeNotes={overtimeNotes} setOvertimeNotes={setOvertimeNotes}
-            saveManualOvertime={() => saveManualOvertime(overtimeUser, overtimeDate, overtimeStartTime, overtimeEndTime, overtimeNotes).then(s => s && setShowOvertimeModal(false))}
-          />
+            <ManualOvertimeDialog 
+              showOvertimeModal={showOvertimeModal} setShowOvertimeModal={setShowOvertimeModal}
+              overtimeUser={overtimeUser} overtimeDate={overtimeDate} setOvertimeDate={setOvertimeDate}
+              overtimeStartTime={overtimeStartTime} setOvertimeStartTime={setOvertimeStartTime}
+              overtimeEndTime={overtimeEndTime} setOvertimeEndTime={setEditWorkEndDate}
+              overtimeNotes={overtimeNotes} setOvertimeNotes={setOvertimeNotes}
+              saveManualOvertime={() => saveManualOvertime(overtimeUser, overtimeDate, overtimeStartTime, overtimeEndTime, overtimeNotes).then(s => s && setShowOvertimeModal(false))}
+            />
 
-          <KoreksiAlpaDialog 
-            showKoreksiModal={showKoreksiModal} setShowKoreksiModal={setShowKoreksiModal}
-            koreksiUser={koreksiUser} koreksiDate={koreksiDate} setKoreksiDate={setKoreksiDate}
-            koreksiNotes={koreksiNotes} setKoreksiNotes={setKoreksiNotes}
-            submitKoreksiAlpa={() => submitKoreksiAlpa(koreksiUser, koreksiDate, koreksiNotes).then(s => s && setShowKoreksiModal(false))}
-          />
+            <KoreksiAlpaDialog 
+              showKoreksiModal={showKoreksiModal} setShowKoreksiModal={setShowKoreksiModal}
+              koreksiUser={koreksiUser} koreksiDate={koreksiDate} setKoreksiDate={setKoreksiDate}
+              koreksiNotes={koreksiNotes} setKoreksiNotes={setKoreksiNotes}
+              submitKoreksiAlpa={() => submitKoreksiAlpa(koreksiUser, koreksiDate, koreksiNotes).then(s => s && setShowKoreksiModal(false))}
+            />
 
-          <EditUserDialog 
-            selectedUserForEdit={selectedUserForEdit} setSelectedUserForEdit={setSelectedUserForEdit}
-            editName={editName} setEditName={setEditName} editRole={editRole} setEditRole={setEditRole}
-            editCompany={editCompany} setEditCompany={setEditCompany} editArea={editArea} setEditArea={setEditArea}
-            editBranch={editBranch} setEditBranch={setEditBranch} editSubArea={editSubArea} setEditSubArea={setEditSubArea}
-            editShift={editShift} setEditShift={setEditShift} editUniqueId={editUniqueId} setEditUniqueId={setEditUniqueId}
-            editWorkStartDate={editWorkStartDate} setEditWorkStartDate={setEditWorkStartDate}
-            editWorkEndDate={editWorkEndDate} setEditWorkEndDate={setEditWorkEndDate}
-            editWeeklyShiftPattern={editWeeklyShiftPattern} setEditWeeklyShiftPattern={setEditWeeklyShiftPattern}
-            editMonthlyShifts={editMonthlyShifts} setEditMonthlyShifts={setEditMonthlyShifts}
-            editIsBanned={editIsBanned} setEditIsBanned={setEditIsBanned}
-            saveUserChanges={() => saveUserChanges(selectedUserForEdit.id, {
-              name: editName, role: editRole, shiftId: editShift, uniqueId: editUniqueId,
-              areaId: editArea === "global" ? null : editArea,
-              companyId: editCompany === "global" ? null : editCompany,
-              branchId: editBranch === "global" ? null : editBranch,
-              subareaId: editSubArea === "global" ? null : editSubArea,
-              isBanned: editIsBanned,
-              workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
-              workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null,
-              monthlyShifts: editMonthlyShifts,
-              weeklyShiftPattern: editWeeklyShiftPattern
-            }).then(s => s && setSelectedUserForEdit(null))}
-            deleteUser={() => deleteUser(selectedUserForEdit).then(s => s && setSelectedUserForEdit(null))}
-            settings={settings} shiftsInput={shiftsInput} currentUser={user}
-          />
+            <EditUserDialog 
+              selectedUserForEdit={selectedUserForEdit} setSelectedUserForEdit={setSelectedUserForEdit}
+              editName={editName} setEditName={setEditName} editRole={editRole} setEditRole={setEditRole}
+              editCompany={editCompany} setEditCompany={setEditCompany} editArea={editArea} setEditArea={setEditArea}
+              editBranch={editBranch} setEditBranch={setEditBranch} editSubArea={editSubArea} setEditSubArea={setEditSubArea}
+              editShift={editShift} setEditShift={setEditShift} editUniqueId={editUniqueId} setEditUniqueId={setEditUniqueId}
+              editWorkStartDate={editWorkStartDate} setEditWorkStartDate={setEditWorkStartDate}
+              editWorkEndDate={editWorkEndDate} setEditWorkEndDate={setEditWorkEndDate}
+              editWeeklyShiftPattern={editWeeklyShiftPattern} setEditWeeklyShiftPattern={setEditWeeklyShiftPattern}
+              editMonthlyShifts={editMonthlyShifts} setEditMonthlyShifts={setEditMonthlyShifts}
+              editIsBanned={editIsBanned} setEditIsBanned={setEditIsBanned}
+              saveUserChanges={() => saveUserChanges(selectedUserForEdit.id, {
+                name: editName, role: editRole, shiftId: editShift, uniqueId: editUniqueId,
+                areaId: editArea === "global" ? null : editArea,
+                companyId: editCompany === "global" ? null : editCompany,
+                branchId: editBranch === "global" ? null : editBranch,
+                subareaId: editSubArea === "global" ? null : editSubArea,
+                isBanned: editIsBanned,
+                workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
+                workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null,
+                monthlyShifts: editMonthlyShifts,
+                weeklyShiftPattern: editWeeklyShiftPattern
+              }).then(s => s && setSelectedUserForEdit(null))}
+              deleteUser={() => deleteUser(selectedUserForEdit).then(s => s && setSelectedUserForEdit(null))}
+              settings={settings} shiftsInput={shiftsInput} currentUser={user}
+            />
 
-          <ConfirmDeleteDialog 
-            open={confirmDeleteGlobal} onOpenChange={setConfirmDeleteGlobal}
-            title="Peringatan Penghapusan"
-            description={<>Anda akan menghapus <strong className="text-rose-600">SEMUA</strong> riwayat absensi dari seluruh user. Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin melanjutkan?</>}
-            onConfirm={() => handleDeleteAllHistory().then(s => s && setConfirmDeleteGlobal(false))}
-            confirmLabel="Ya, Hapus Semua"
-          />
+            <ConfirmDeleteDialog 
+              open={confirmDeleteGlobal} onOpenChange={setConfirmDeleteGlobal}
+              title="Peringatan Penghapusan"
+              description={<>Anda akan menghapus <strong className="text-rose-600">SEMUA</strong> riwayat absensi dari seluruh user. Tindakan ini tidak dapat dibatalkan. Apakah Anda yakin ingin melanjutkan?</>}
+              onConfirm={() => handleDeleteAllHistory().then(s => s && setConfirmDeleteGlobal(false))}
+              confirmLabel="Ya, Hapus Semua"
+            />
 
-          <ConfirmDeleteDialog 
-            open={!!deleteUserTarget} onOpenChange={(open) => !open && setDeleteUserTarget(null)}
-            title="Peringatan Penghapusan"
-            description={<>Hapus semua riwayat absensi untuk user <strong className="text-rose-600">{deleteUserTarget?.name}</strong>? Tindakan ini tidak bisa dibatalkan.</>}
-            onConfirm={() => handleDeleteUserHistory(deleteUserTarget).then(s => s && setDeleteUserTarget(null))}
-            confirmLabel="Ya, Hapus Riwayat"
-          />
+            <ConfirmDeleteDialog 
+              open={!!deleteUserTarget} onOpenChange={(open) => !open && setDeleteUserTarget(null)}
+              title="Peringatan Penghapusan"
+              description={<>Hapus semua riwayat absensi untuk user <strong className="text-rose-600">{deleteUserTarget?.name}</strong>? Tindakan ini tidak bisa dibatalkan.</>}
+              onConfirm={() => handleDeleteUserHistory(deleteUserTarget).then(s => s && setDeleteUserTarget(null))}
+              confirmLabel="Ya, Hapus Riwayat"
+            />
+          </Suspense>
         </main>
       </div>
     </div>
