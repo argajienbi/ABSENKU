@@ -410,7 +410,11 @@ export default function Dashboard() {
       const day = parseInt(parts[2], 10);
       const dateObj = new Date(year, month, day, 8, 0, 0); // insert at 8:00 AM
 
-      await setDoc(doc(collection(db, "attendance")), {
+      const attId = `att_${Date.now()}_${koreksiUser.id}`;
+      const batch = writeBatch(db);
+
+      const attRef = doc(db, "attendance", attId);
+      batch.set(attRef, {
         userId: koreksiUser.uid || koreksiUser.id,
         timestamp: dateObj.getTime(),
         type: "dispensasi",
@@ -421,6 +425,28 @@ export default function Dashboard() {
         status: "approved",
         extraData: koreksiNotes
       });
+
+      const notifId = `notif_${Date.now()}_${koreksiUser.id}`;
+      const notifRef = doc(db, "notifications", notifId);
+      batch.set(notifRef, {
+        userId: koreksiUser.uid || koreksiUser.id,
+        title: "Dispensasi Kehadiran",
+        body: `Admin telah menambahkan data kehadiran manual untuk Anda pada tanggal ${format(dateObj, "dd MMMM yyyy", { locale: id })}.`,
+        createdAt: Date.now(),
+        read: false,
+        type: "success"
+      });
+
+      await batch.commit();
+
+      // RTDB broadcast for mobile apps
+      await set(ref(rtdb, `notifications/users/${koreksiUser.id}/broadcast`), {
+        title: "Dispensasi Kehadiran",
+        message: `Admin telah menambahkan data kehadiran manual (Koreksi Alpa) untuk Anda.`,
+        read: false,
+        createdAt: Date.now()
+      });
+
       toast.success("Dispensasi alpa berhasil ditambahkan!");
       setShowKoreksiModal(false);
     } catch (err: any) {
@@ -463,6 +489,8 @@ export default function Dashboard() {
       }
 
       const uId = overtimeUser.uid || overtimeUser.id;
+      const batch = writeBatch(db);
+      
       const inId = `att_${Date.now()}_in_${uId}`;
       const outId = `att_${Date.now() + 100}_out_${uId}`;
 
@@ -476,16 +504,37 @@ export default function Dashboard() {
         withinRadius: true
       };
 
-      await setDoc(doc(db, "attendance", inId), {
+      batch.set(doc(db, "attendance", inId), {
          ...basePayload,
          timestamp: startDate.getTime(),
          type: "overtime_in",
       });
 
-      await setDoc(doc(db, "attendance", outId), {
+      batch.set(doc(db, "attendance", outId), {
          ...basePayload,
          timestamp: endDate.getTime(),
          type: "overtime_out",
+      });
+
+      // Notification
+      const notifId = `notif_${Date.now()}_ov_${uId}`;
+      batch.set(doc(db, "notifications", notifId), {
+        userId: uId,
+        title: "Data Lembur Ditambahkan",
+        body: `Admin telah menambahkan data lembur manual untuk Anda pada tanggal ${format(new Date(overtimeDate), "dd MMMM yyyy", { locale: id })} (${overtimeStartTime} - ${overtimeEndTime}).`,
+        createdAt: Date.now(),
+        read: false,
+        type: "success"
+      });
+
+      await batch.commit();
+
+      // RTDB broadcast
+      await set(ref(rtdb, `notifications/users/${uId}/broadcast`), {
+        title: "Data Lembur Ditambahkan",
+        message: `Admin telah menambahkan data lembur manual untuk Anda (${overtimeStartTime} - ${overtimeEndTime}).`,
+        read: false,
+        createdAt: Date.now()
       });
 
       toast.success("Lembur ditambahkan dan tersimpan di riwayat user");
