@@ -54,9 +54,21 @@ export default function Dashboard() {
   const [selectedUserForCard, setSelectedUserForCard] = useState<any | null>(null);
 
   // Filter based on area 
-  const filteredUsersList = user?.role === 'superadmin' 
+  const filteredUsersList = (user?.role === 'superadmin' || user?.role === 'demo')
     ? usersList 
-    : usersList.filter(u => u.areaId === user?.areaId || (!u.areaId && !user?.areaId));
+    : usersList.filter(u => {
+        let match = true;
+        if (user?.companyId && user?.companyId !== 'global') {
+          match = match && u.companyId === user.companyId;
+        }
+        if (user?.areaId && user?.areaId !== 'global') {
+          match = match && u.areaId === user.areaId;
+        }
+        if (user?.branchId && user?.branchId !== 'global') {
+          match = match && u.branchId === user.branchId;
+        }
+        return match;
+      });
   
   const filteredUsersRecordIds = new Set(filteredUsersList.map(u => u.uid || u.id));
   const filteredAttendances = user?.role === 'superadmin'
@@ -86,10 +98,17 @@ export default function Dashboard() {
   const [shiftsInput, setShiftsInput] = useState<any>({});
   const [holidaysInput, setHolidaysInput] = useState<string[]>([]);
   const [areasInput, setAreasInput] = useState<any>({});
+  const [companiesInput, setCompaniesInput] = useState<any>({});
+  const [branchesInput, setBranchesInput] = useState<any>({});
+  
   const [newAreaLatInput, setNewAreaLatInput] = useState("-6.2088");
   const [newAreaLngInput, setNewAreaLngInput] = useState("106.8456");
   const [newArea, setNewArea] = useState({ name: "", radius: 100 });
   const [editingAreaId, setEditingAreaId] = useState<string | null>(null);
+  
+  const [newCompany, setNewCompany] = useState({ name: "" });
+  const [newBranch, setNewBranch] = useState({ name: "", areaId: "" });
+
   const [newHoliday, setNewHoliday] = useState("");
   const [idRefsList, setIdRefsList] = useState<any[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -130,6 +149,8 @@ export default function Dashboard() {
       setShiftsInput(settings.shifts && Object.keys(settings.shifts).length > 0 ? settings.shifts : SHIFTS);
       setHolidaysInput(settings.holidays || []);
       setAreasInput(settings.areas || {});
+      setCompaniesInput(settings.companies || {});
+      setBranchesInput(settings.branches || {});
     }
   }, [settings]);
 
@@ -208,6 +229,8 @@ export default function Dashboard() {
         googleMapsApiKey: googleMapsApiKeyInput,
         shifts: shiftsInput,
         areas: areasInput,
+        companies: companiesInput,
+        branches: branchesInput,
         holidays: holidaysInput,
       }, { merge: true });
       toast.success("Pengaturan berhasil disimpan");
@@ -227,6 +250,8 @@ export default function Dashboard() {
   const [editShift, setEditShift] = useState("");
   const [editUniqueId, setEditUniqueId] = useState("");
   const [editArea, setEditArea] = useState("");
+  const [editCompany, setEditCompany] = useState("");
+  const [editBranch, setEditBranch] = useState("");
   const [editIsBanned, setEditIsBanned] = useState(false);
   const [editWorkStartDate, setEditWorkStartDate] = useState("");
   const [editWorkEndDate, setEditWorkEndDate] = useState("");
@@ -241,6 +266,8 @@ export default function Dashboard() {
     setEditShift(user.shiftId || "shift1");
     setEditUniqueId(user.uniqueId || "");
     setEditArea(user.areaId || "global");
+    setEditCompany(user.companyId || "global");
+    setEditBranch(user.branchId || "global");
     setEditIsBanned(user.isBanned || false);
     setEditWorkStartDate(user.workStartDate ? format(new Date(user.workStartDate), "yyyy-MM-dd") : "");
     setEditWorkEndDate(user.workEndDate ? format(new Date(user.workEndDate), "yyyy-MM-dd") : "");
@@ -341,6 +368,8 @@ export default function Dashboard() {
         shiftId: editShift,
         uniqueId: editUniqueId,
         areaId: editArea === "global" ? null : editArea,
+        companyId: editCompany === "global" ? null : editCompany,
+        branchId: editBranch === "global" ? null : editBranch,
         isBanned: editIsBanned,
         workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
         workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null,
@@ -550,14 +579,16 @@ export default function Dashboard() {
           {[
             { value: "overview", label: "Overview", icon: Activity },
             { value: "users", label: "User Management", icon: Users },
-            { value: "announcements", label: "Portal Informasi", icon: Briefcase },
-            { value: "analytics", label: "Performance", icon: Activity },
             { value: "live-map", label: "Peta & Lokasi", icon: MapPin },
             { value: "rekap", label: "Rekap Kehadiran", icon: ClipboardList },
-            { value: "settings-shift", label: "Pengaturan Shift", icon: Briefcase },
-            { value: "settings-system", label: "Sistem & Branding", icon: Settings },
+            { value: "announcements", label: "Portal Informasi", icon: Briefcase },
+            { value: "analytics", label: "Performance", icon: Activity },
             { value: "guide", label: "Buku Petunjuk", icon: BookOpen },
-            ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log Keamanan", icon: ShieldAlert }] : []),
+            ...(user?.role === 'superadmin' ? [
+                { value: "settings-shift", label: "Pengaturan Shift", icon: Briefcase },
+                { value: "settings-system", label: "Sistem & Branding", icon: Settings },
+                { value: "logs", label: "Log Keamanan", icon: ShieldAlert }
+            ] : []),
           ].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.value;
@@ -613,14 +644,16 @@ export default function Dashboard() {
              {[
                 { value: "overview", label: "Overview", icon: Activity },
                 { value: "users", label: "User", icon: Users },
-                { value: "announcements", label: "Portal", icon: Briefcase },
-                { value: "analytics", label: "Analytics", icon: Activity },
                 { value: "live-map", label: "Lokasi", icon: MapPin },
                 { value: "rekap", label: "Rekap", icon: ClipboardList },
-                { value: "settings-shift", label: "Shift", icon: Briefcase },
-                { value: "settings-system", label: "Sistem", icon: Settings },
+                { value: "announcements", label: "Portal", icon: Briefcase },
+                { value: "analytics", label: "Analytics", icon: Activity },
                 { value: "guide", label: "Informasi", icon: BookOpen },
-                ...(user?.role === 'superadmin' ? [{ value: "logs", label: "Log", icon: ShieldAlert }] : []),
+                ...(user?.role === 'superadmin' ? [
+                    { value: "settings-shift", label: "Shift", icon: Briefcase },
+                    { value: "settings-system", label: "Sistem", icon: Settings },
+                    { value: "logs", label: "Log", icon: ShieldAlert }
+                ] : []),
               ].map(item => {
                  const isActive = activeTab === item.value;
                  return (
@@ -745,15 +778,21 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              <SettingsLocationTab 
-                  settings={settings} loadingConfig={loadingConfig} areasInput={areasInput}
-                  setAreasInput={setAreasInput} newAreaLatInput={newAreaLatInput}
-                  setNewAreaLatInput={setNewAreaLatInput} newAreaLngInput={newAreaLngInput}
-                  setNewAreaLngInput={setNewAreaLngInput} newArea={newArea}
-                  setNewArea={setNewArea} editingAreaId={editingAreaId}
-                  setEditingAreaId={setEditingAreaId} toggleGeofence={toggleGeofence}
-                  saveSettings={saveSettings}
-              />
+              {user?.role === 'superadmin' && (
+                  <SettingsLocationTab 
+                      settings={settings} loadingConfig={loadingConfig} areasInput={areasInput}
+                      setAreasInput={setAreasInput} newAreaLatInput={newAreaLatInput}
+                      setNewAreaLatInput={setNewAreaLatInput} newAreaLngInput={newAreaLngInput}
+                      setNewAreaLngInput={setNewAreaLngInput} newArea={newArea}
+                      setNewArea={setNewArea} editingAreaId={editingAreaId}
+                      setEditingAreaId={setEditingAreaId} toggleGeofence={toggleGeofence}
+                      saveSettings={saveSettings}
+                      companiesInput={companiesInput} setCompaniesInput={setCompaniesInput}
+                      newCompany={newCompany} setNewCompany={setNewCompany}
+                      branchesInput={branchesInput} setBranchesInput={setBranchesInput}
+                      newBranch={newBranch} setNewBranch={setNewBranch}
+                  />
+              )}
           </TabsContent>
 
           <TabsContent value="rekap" className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
@@ -1088,9 +1127,51 @@ export default function Dashboard() {
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
                   >
                     <option value="superadmin">SUPERADMIN</option>
-                    <option value="admin">ADMIN</option>
+                    <option value="admin_pt">ADMIN PT / PERUSAHAAN</option>
+                    <option value="admin_area">ADMIN AREA / REGIONAL</option>
+                    <option value="admin_cabang">ADMIN CABANG</option>
+                    <option value="admin">ADMIN (LEAD)</option>
                     <option value="staff">STAFF</option>
                     <option value="crew">CREW</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">PT / Perusahaan</Label>
+                  <select 
+                    value={editCompany}
+                    onChange={(e) => setEditCompany(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    <option value="global">Semua / Global</option>
+                    {Object.entries(companiesInput || {}).map(([id, c]: [string, any]) => (
+                      <option key={id} value={id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Area / Regional</Label>
+                  <select 
+                    value={editArea}
+                    onChange={(e) => setEditArea(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    <option value="global">Semua / Global</option>
+                    {Object.entries(areasInput || {}).map(([id, a]: [string, any]) => (
+                      <option key={id} value={id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Cabang / Ruangan</Label>
+                  <select 
+                    value={editBranch}
+                    onChange={(e) => setEditBranch(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    <option value="global">Semua / Global</option>
+                    {Object.entries(branchesInput || {}).map(([id, b]: [string, any]) => (
+                      <option key={id} value={id}>{b.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="space-y-2">
@@ -1103,20 +1184,6 @@ export default function Dashboard() {
                     <option value="none">TIDAK ADA SHIFT (NONE)</option>
                     {Object.entries(shiftsInput).map(([id, s]: [string, any]) => (
                       <option key={id} value={id}>{s.name} ({s.label})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Area / Cabang (Multi-Tenant)</Label>
-                  <select 
-                    value={editArea}
-                    onChange={(e) => setEditArea(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
-                  >
-                    <option value="">-- Pilih Area --</option>
-                    {Object.entries(areasInput || {}).map(([id, a]: [string, any]) => (
-                      <option key={id} value={id}>{a.name}</option>
                     ))}
                   </select>
                 </div>

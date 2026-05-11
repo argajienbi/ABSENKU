@@ -152,6 +152,10 @@ export default function Login() {
 
       // Assign role based on ID Ref
       let assignedRole = "crew";
+      let assignedCompany = "global";
+      let assignedArea = "global";
+      let assignedBranch = "global";
+      
       const idRefUpper = idRef.trim().toUpperCase();
 
       if (idRefUpper === "DEMO123") {
@@ -175,6 +179,9 @@ export default function Login() {
          }
          
          assignedRole = refData.role;
+         if (refData.companyId) assignedCompany = refData.companyId;
+         if (refData.areaId) assignedArea = refData.areaId;
+         if (refData.branchId) assignedBranch = refData.branchId;
       }
 
       const res = await createUserWithEmailAndPassword(auth, email, password);
@@ -204,7 +211,9 @@ export default function Login() {
         avatarUrl: avatarStorageUrl,
         shiftId: "shift1",
         uniqueId: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        areaId: "global",
+        companyId: assignedCompany,
+        areaId: assignedArea,
+        branchId: assignedBranch,
         deviceId: localDeviceId
       };
       console.log("Attempting to create user with data:", newUserData);

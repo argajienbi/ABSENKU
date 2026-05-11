@@ -16,14 +16,17 @@ import autoTable from 'jspdf-autotable';
 interface RekapAbsensiProps {
   usersList: any[];
   settings?: any;
+  user?: any;
 }
 
-export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
+export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
   const [selectedUserId, setSelectedUserId] = useState<string>("all");
   const [period, setPeriod] = useState<string>("monthly");
   
   // New Filters
+  const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedArea, setSelectedArea] = useState<string>("all");
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedShift, setSelectedShift] = useState<string>("all");
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all"); // Tipe log
@@ -33,8 +36,10 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
   const [loading, setLoading] = useState(false);
   const [isFetched, setIsFetched] = useState(false);
 
-  // Extract unique areas, shifts, roles from usersList
+  // Extract unique elements
+  const uniqueCompanies = useMemo(() => Array.from(new Set(usersList.map(u => u.companyId).filter(Boolean))), [usersList]);
   const uniqueAreas = useMemo(() => Array.from(new Set(usersList.map(u => u.areaId).filter(Boolean))), [usersList]);
+  const uniqueBranches = useMemo(() => Array.from(new Set(usersList.map(u => u.branchId).filter(Boolean))), [usersList]);
   const uniqueShifts = useMemo(() => Array.from(new Set(usersList.map(u => u.shiftId).filter(Boolean))), [usersList]);
   const uniqueRoles = useMemo(() => Array.from(new Set(usersList.map(u => u.role).filter(Boolean))), [usersList]);
 
@@ -76,12 +81,14 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
 
   const availableUsers = useMemo(() => {
     const list = filteredUsers.filter(u => 
+      (selectedCompany === "all" || u.companyId === selectedCompany) &&
       (selectedArea === "all" || u.areaId === selectedArea) &&
+      (selectedBranch === "all" || u.branchId === selectedBranch) &&
       (selectedShift === "all" || u.shiftId === selectedShift) &&
       (selectedRole === "all" || u.role === selectedRole)
     );
     return new Set(list.map(u => u.uid || u.id));
-  }, [filteredUsers, selectedArea, selectedShift, selectedRole]);
+  }, [filteredUsers, selectedCompany, selectedArea, selectedBranch, selectedShift, selectedRole]);
 
   // Auto-reset invalid selections
   useEffect(() => {
@@ -163,7 +170,9 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
     const baseData = attendanceData.filter(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
       if (selectedUserId !== "all" && log.userId !== selectedUserId) return false;
+      if (selectedCompany !== "all" && user?.companyId !== selectedCompany) return false;
       if (selectedArea !== "all" && user?.areaId !== selectedArea) return false;
+      if (selectedBranch !== "all" && user?.branchId !== selectedBranch) return false;
       if (selectedShift !== "all" && user?.shiftId !== selectedShift) return false;
       if (selectedRole !== "all" && user?.role !== selectedRole) return false;
       // We don't filter by selectedStatus to make sure we don't skew the pairing of "in" and "out" logs
@@ -230,8 +239,14 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
       // Filter by User
       if (selectedUserId !== "all" && log.userId !== selectedUserId) return false;
       
+      // Filter by Company
+      if (selectedCompany !== "all" && user?.companyId !== selectedCompany) return false;
+
       // Filter by Area
       if (selectedArea !== "all" && user?.areaId !== selectedArea) return false;
+      
+      // Filter by Branch
+      if (selectedBranch !== "all" && user?.branchId !== selectedBranch) return false;
       
       // Filter by Shift
       if (selectedShift !== "all" && user?.shiftId !== selectedShift) return false;
@@ -268,12 +283,15 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
   }, [attendanceData, selectedUserId, selectedArea, selectedShift, selectedRole, selectedStatus, isFetched, usersList, settings]);
 
   const handleExportExcel = () => {
-    const header = ["Nama", "Role", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan"];
+    const header = ["Nama", "Role", "PT / Perusahaan", "Area / Regional", "Cabang / Ruangan", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan"];
     const records = filteredData.map(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
       return [
         user?.name || "Unknown",
         user?.role || "-",
+        user?.companyId === 'global' ? "ALL" : (settings?.companies?.[user?.companyId]?.name || user?.companyId || "-"),
+        user?.areaId === 'global' ? "ALL" : (settings?.areas?.[user?.areaId]?.name || user?.areaId || "-"),
+        user?.branchId === 'global' ? "ALL" : (settings?.branches?.[user?.branchId]?.name || user?.branchId || "-"),
         user?.shiftId || "-",
         format(new Date(log.timestamp), "yyyy-MM-dd"),
         format(new Date(log.timestamp), "HH:mm:ss"),
@@ -299,16 +317,18 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
+    const doc = new jsPDF('landscape');
     doc.text("Laporan Rekap Absensi", 14, 20);
     doc.setFontSize(10);
     doc.text(`Periode: ${period.toUpperCase()}`, 14, 28);
     
-    const tableColumn = ["Nama", "Tanggal", "Jam", "Tipe", "Radius", "Catatan"];
+    const tableColumn = ["Nama", "PT/AR/CB", "Tanggal", "Jam", "Tipe", "Radius", "Catatan"];
     const tableRows = filteredData.map(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      const structName = `${user?.companyId === 'global' ? '*' : 'PT'}/${user?.areaId === 'global' ? '*' : 'AR'}/${user?.branchId === 'global' ? '*' : 'CB'}`;
       return [
         user?.name || "Unknown",
+        structName,
         format(new Date(log.timestamp), "yyyy-MM-dd"),
         format(new Date(log.timestamp), "HH:mm:ss"),
         log.type,
@@ -381,14 +401,38 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
            </div>
 
            <div className="col-span-1">
-             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Area</label>
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">PT / Perusahaan</label>
+             <select 
+               value={selectedCompany} 
+               onChange={(e) => setSelectedCompany(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                <option value="all">Semua PT</option>
+                {uniqueCompanies.map(c => <option key={String(c)} value={String(c)}>{settings?.companies?.[String(c)]?.name || String(c)}</option>)}
+             </select>
+           </div>
+
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Area / Regional</label>
              <select 
                value={selectedArea} 
                onChange={(e) => setSelectedArea(e.target.value)}
                className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
              >
                 <option value="all">Semua Area</option>
-                {uniqueAreas.map(a => <option key={String(a)} value={String(a)} disabled={!availableAreas.has(a)}>{String(a)}</option>)}
+                {uniqueAreas.map(a => <option key={String(a)} value={String(a)} disabled={!availableAreas.has(a)}>{settings?.areas?.[String(a)]?.name || String(a)}</option>)}
+             </select>
+           </div>
+
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Cabang / Ruangan</label>
+             <select 
+               value={selectedBranch} 
+               onChange={(e) => setSelectedBranch(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                <option value="all">Semua Cabang</option>
+                {uniqueBranches.map(b => <option key={String(b)} value={String(b)}>{settings?.branches?.[String(b)]?.name || String(b)}</option>)}
              </select>
            </div>
 
@@ -452,22 +496,26 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
            )}
            
            <div className="flex gap-2 ml-auto">
-             <Button 
-               disabled={!isFetched || filteredData.length === 0} 
-               onClick={handleExportExcel}
-               variant="outline" 
-               className="h-8 rounded-[8px] text-[11px] text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50"
-             >
-                <TableIcon className="w-3.5 h-3.5 mr-1.5" /> Excel
-             </Button>
-             <Button 
-               disabled={!isFetched || filteredData.length === 0} 
-               onClick={handleExportPDF}
-               variant="outline" 
-               className="h-8 rounded-[8px] text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-900/50"
-             >
-                <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
-             </Button>
+             {user?.role !== 'demo' && (
+               <>
+                 <Button 
+                   disabled={!isFetched || filteredData.length === 0} 
+                   onClick={handleExportExcel}
+                   variant="outline" 
+                   className="h-8 rounded-[8px] text-[11px] text-emerald-600 border-emerald-200 hover:bg-emerald-50 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50"
+                 >
+                    <TableIcon className="w-3.5 h-3.5 mr-1.5" /> Excel
+                 </Button>
+                 <Button 
+                   disabled={!isFetched || filteredData.length === 0} 
+                   onClick={handleExportPDF}
+                   variant="outline" 
+                   className="h-8 rounded-[8px] text-[11px] text-rose-600 border-rose-200 hover:bg-rose-50 dark:text-rose-400 dark:border-rose-800 dark:hover:bg-rose-900/50"
+                 >
+                    <Download className="w-3.5 h-3.5 mr-1.5" /> PDF
+                 </Button>
+               </>
+             )}
            </div>
         </div>
 
@@ -537,7 +585,13 @@ export function RekapAbsensi({ usersList, settings }: RekapAbsensiProps) {
                     <TableCell className="py-3 px-4">
                        <div className="flex flex-col">
                           <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{u?.name || log.userId}</span>
-                          <span className="text-[10px] text-slate-500">{u?.role ? String(u.role).toUpperCase() : "-"} • {u?.areaId || "Area PUSAT"}</span>
+                          <span className="text-[10px] text-slate-500">{u?.role ? String(u.role).toUpperCase() : "-"}</span>
+                          <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-bold">
+                            {u?.companyId && u?.companyId !== 'global' && <span className="text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-gray-800 px-1 py-0.5 rounded uppercase leading-none">{settings?.companies?.[u.companyId]?.name || u.companyId}</span>}
+                            {u?.areaId && u?.areaId !== 'global' && <span className="text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/10 px-1 py-0.5 rounded uppercase leading-none">{settings?.areas?.[u.areaId]?.name || u.areaId}</span>}
+                            {u?.branchId && u?.branchId !== 'global' && <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10 px-1 py-0.5 rounded uppercase leading-none">{settings?.branches?.[u.branchId]?.name || u.branchId}</span>}
+                            {(!u?.companyId || u?.companyId === 'global') && (!u?.areaId || u?.areaId === 'global') && (!u?.branchId || u?.branchId === 'global') && <span className="text-slate-400 uppercase">GLOBAL</span>}
+                          </div>
                        </div>
                     </TableCell>
                     <TableCell className="py-3 px-4">

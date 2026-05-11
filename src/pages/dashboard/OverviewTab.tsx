@@ -42,13 +42,18 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-[200px] rounded-xl">
                     <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
-                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe", "Metode", "Status Radius", "Catatan", "Status Approval", "Pemindai (Scanner)"];
+                      const header = ["Nama Karyawan", "Role", "Shift", "PT / Perusahaan", "Area / Regional", "Cabang / Ruangan", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe", "Metode", "Status Radius", "Catatan", "Status Approval", "Pemindai (Scanner)"];
                       let allRecords: any[][] = [header];
                       
                       filteredUsersList.forEach(usr => {
                         const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
+                        
+                        const ptName = usr.companyId && usr.companyId !== 'global' ? usr.companyId : "ALL"; 
+                        const areaName = usr.areaId && usr.areaId !== 'global' ? usr.areaId : "ALL";
+                        const branchName = usr.branchId && usr.branchId !== 'global' ? usr.branchId : "ALL";
+
                         if (userAttendances.length === 0) {
-                          allRecords.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+                          allRecords.push([usr.name || "-", usr.role || "-", usr.shiftId || "-", ptName, areaName, branchName, usr.uniqueId || "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
                         } else {
                           userAttendances.forEach(log => {
                             let scanner = "-";
@@ -59,7 +64,7 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             }
                             
                             allRecords.push([
-                              usr.name || "-", usr.role || "-", usr.shiftId || "-", usr.uniqueId || "-",
+                              usr.name || "-", usr.role || "-", usr.shiftId || "-", ptName, areaName, branchName, usr.uniqueId || "-",
                               format(new Date(log.timestamp), "yyyy-MM-dd"),
                               format(new Date(log.timestamp), "HH:mm:ss"),
                               log.type, log.method, log.withinRadius ? "Ya" : "Tidak",

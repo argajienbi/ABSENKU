@@ -148,6 +148,12 @@ export const AbsenView = () => {
                   )}
                 </div>
               </div>
+              
+              {!isDocumentCapture && (
+                <p className="text-center text-[10px] text-gray-500 dark:text-gray-400 mt-2">
+                  Info: Foto absen hanya digunakan untuk validasi hari ini dan akan otomatis terhapus pada keesokan harinya.
+                </p>
+              )}
 
               <style>{`
                 @keyframes scan {

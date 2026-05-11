@@ -93,6 +93,26 @@ export function GuideTab() {
         <Card className="border-slate-200 dark:border-gray-800 shadow-sm md:col-span-2">
           <CardHeader className="bg-slate-50 dark:bg-gray-900/50 border-b border-slate-100 dark:border-gray-800 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              Struktur Organisasi (PT, Area, Cabang)
+            </CardTitle>
+            <CardDescription>Manajemen penempatan multi-level untuk operasional terpusat.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4 text-sm text-slate-600 dark:text-gray-300">
+            <p>
+              Anda dapat mengkonfigurasi penempatan berlapis (PT / Perusahaan, Area / Regional, dan Cabang / Ruangan) untuk menyesuaikan dengan struktur organisasi Anda.
+            </p>
+            <ul className="list-disc pl-5 space-y-2">
+              <li><strong>Manajemen Struktur:</strong> Data PT, Area (termasuk radius/geofence titik peta), dan Cabang dapat ditambah, diubah, maupun dihapus di menu <strong>Peta & Lokasi</strong> (Geofence Configuration & Manajemen Lokasi).</li>
+              <li><strong>Penempatan User:</strong> Setelah ditambahkan, Anda dapat menentukan penempatan PT, Area, dan Cabang untuk masing-masing karyawan di tab <strong>User</strong> (klik Edit / Ikon Pensil pada salah satu user).</li>
+              <li><strong>Rekapitulasi:</strong> Di menu <strong>Rekap</strong> dan <strong>Overview</strong>, Anda kini bisa memfilter list kehadiran, file export (Excel / PDF), serta status approval sesuai dengan struktur hirarki ini. Tingkat Admin juga akan disesuaikan pada opsi (Superadmin, Admin PT, Admin Area, Admin Cabang).</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-200 dark:border-gray-800 shadow-sm md:col-span-2">
+          <CardHeader className="bg-slate-50 dark:bg-gray-900/50 border-b border-slate-100 dark:border-gray-800 pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-rose-600 dark:text-rose-400" />
               Log Keamanan & Anti-Fake GPS
             </CardTitle>

@@ -20,6 +20,10 @@ export function UsersTab({
   setEditWeeklyShiftPattern, setEditShiftMode, settings, handleEditUser, shiftsInput, areasInput, handleKoreksiAlpa, handleAddManualOvertime, idRefsList
 }: any) {
   const [searchTerm, setSearchTerm] = React.useState("");
+  
+  const [refCompany, setRefCompany] = React.useState("global");
+  const [refArea, setRefArea] = React.useState("global");
+  const [refBranch, setRefBranch] = React.useState("global");
 
   const displayUsers = filteredUsersList.filter((u: any) => 
     (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -42,8 +46,9 @@ export function UsersTab({
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Nama User</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Kontak Email</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Jabatan</TableHead>
-                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 px-6">Bergabung</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Shift</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Penempatan</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Bergabung</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Unique ID</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300 text-right px-6">Navigasi</TableHead>
                       </TableRow>
@@ -92,8 +97,13 @@ export function UsersTab({
                               );
                             })()}
                           </TableCell>
-                          <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">
-                            {areasInput[usr.areaId]?.name || 'Global'}
+                          <TableCell className="px-6 py-4">
+                            <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500 dark:text-gray-400">
+                              {usr.companyId && usr.companyId !== 'global' && <span className="uppercase">{settings?.companies?.[usr.companyId]?.name || usr.companyId}</span>}
+                              {usr.areaId && usr.areaId !== 'global' && <span className="uppercase text-teal-600 dark:text-teal-400">{areasInput[usr.areaId]?.name || usr.areaId}</span>}
+                              {usr.branchId && usr.branchId !== 'global' && <span className="uppercase text-indigo-600 dark:text-indigo-400">{settings?.branches?.[usr.branchId]?.name || usr.branchId}</span>}
+                              {(!usr.companyId || usr.companyId === 'global') && (!usr.areaId || usr.areaId === 'global') && (!usr.branchId || usr.branchId === 'global') && <span>GLOBAL</span>}
+                            </div>
                           </TableCell>
                           <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">{usr.createdAt ? format(new Date(usr.createdAt), "dd MMM yyyy") : "-"}</TableCell>
                           <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-black font-mono">{usr.uniqueId || "-"}</TableCell>
@@ -129,19 +139,61 @@ export function UsersTab({
                 </div>
               </CardContent>
             </Card>
-      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0 mt-6 pt-6">
-        <div className="px-6 text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
-            <UserPlus className="w-4 h-4" /> Registration ID REF Manager
-        </div>
-        <CardContent className="px-6 pb-6">
-        <div className="space-y-6">
+      {user?.role === "superadmin" && (
+        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden p-0 mt-6 pt-6">
+          <div className="px-6 text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+              <UserPlus className="w-4 h-4" /> Registration ID REF Manager
+          </div>
+          <CardContent className="px-6 pb-6">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">PT / Perusahaan Default</label>
+              <select 
+                value={refCompany}
+                onChange={(e) => setRefCompany(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-10 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-3 text-xs outline-none"
+              >
+                <option value="global">Semua / Global (Default)</option>
+                {Object.entries(settings?.companies || {}).map(([id, c]: [string, any]) => (
+                  <option key={id} value={id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Area / Regional Default</label>
+              <select 
+                value={refArea}
+                onChange={(e) => setRefArea(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-10 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-3 text-xs outline-none"
+              >
+                <option value="global">Semua / Global (Default)</option>
+                {Object.entries(areasInput || {}).map(([id, a]: [string, any]) => (
+                  <option key={id} value={id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Cabang / Ruangan Default</label>
+              <select 
+                value={refBranch}
+                onChange={(e) => setRefBranch(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-10 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-3 text-xs outline-none"
+              >
+                <option value="global">Semua / Global (Default)</option>
+                {Object.entries(settings?.branches || {}).map(([id, b]: [string, any]) => (
+                  <option key={id} value={id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <Button 
               onClick={async () => {
                   if (user?.role === "demo") { toast.error("Akun demo."); return; }
                   const role = "crew";
                   const refId = `USER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                  await setDoc(doc(db, "idRefs", refId), { role, companyId: refCompany, areaId: refArea, branchId: refBranch, used: false, createdAt: Date.now() });
               }}
               className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
             >Generate Crew REF</Button>
@@ -150,7 +202,7 @@ export function UsersTab({
                   if (user?.role === "demo") { toast.error("Akun demo."); return; }
                   const role = "staff";
                   const refId = `STAFF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                  await setDoc(doc(db, "idRefs", refId), { role, companyId: refCompany, areaId: refArea, branchId: refBranch, used: false, createdAt: Date.now() });
               }}
               className="bg-teal-500 hover:bg-teal-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
             >Generate Staff REF</Button>
@@ -159,7 +211,7 @@ export function UsersTab({
                   if (user?.role === "demo") { toast.error("Akun demo."); return; }
                   const role = "admin";
                   const refId = `ADMIN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                  await setDoc(doc(db, "idRefs", refId), { role, companyId: refCompany, areaId: refArea, branchId: refBranch, used: false, createdAt: Date.now() });
               }}
               className="bg-rose-500 hover:bg-rose-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
             >Generate Admin REF</Button>
@@ -168,7 +220,7 @@ export function UsersTab({
                   if (user?.role === "demo") { toast.error("Akun demo."); return; }
                   const role = "demo";
                   const refId = `DEMO-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                  await setDoc(doc(db, "idRefs", refId), { role, companyId: refCompany, areaId: refArea, branchId: refBranch, used: false, createdAt: Date.now() });
               }}
               className="bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
             >Generate Demo REF</Button>
@@ -177,7 +229,7 @@ export function UsersTab({
                   if (user?.role === "demo") { toast.error("Akun demo."); return; }
                   const role = "demouser";
                   const refId = `DEMOUSER-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                  await setDoc(doc(db, "idRefs", refId), { role, used: false, createdAt: Date.now() });
+                  await setDoc(doc(db, "idRefs", refId), { role, companyId: refCompany, areaId: refArea, branchId: refBranch, used: false, createdAt: Date.now() });
               }}
               className="bg-indigo-500 hover:bg-indigo-600 rounded-xl font-bold uppercase tracking-widest text-[10px] px-4"
             >Generate DemoUser REF</Button>
@@ -190,6 +242,7 @@ export function UsersTab({
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">ID REF</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Dibuat</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Role</TableHead>
+                  <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Penempatan Default</TableHead>
                   <TableHead className="text-[10px] font-black uppercase tracking-widest text-slate-500 relative bg-white dark:bg-gray-900">Status</TableHead>
                   <TableHead className="text-right relative bg-white dark:bg-gray-900"></TableHead>
                 </TableRow>
@@ -203,6 +256,14 @@ export function UsersTab({
                         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${refData.role === 'admin' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
                           {refData.role}
                         </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1 text-[9px] font-black text-slate-500 dark:text-gray-400">
+                        {refData.companyId && refData.companyId !== 'global' && <span className="uppercase text-slate-600 dark:text-slate-400">{settings?.companies?.[refData.companyId]?.name || refData.companyId}</span>}
+                        {refData.areaId && refData.areaId !== 'global' && <span className="uppercase text-teal-600 dark:text-teal-400">{settings?.areas?.[refData.areaId]?.name || refData.areaId}</span>}
+                        {refData.branchId && refData.branchId !== 'global' && <span className="uppercase text-indigo-600 dark:text-indigo-400">{settings?.branches?.[refData.branchId]?.name || refData.branchId}</span>}
+                        {(!refData.companyId || refData.companyId === 'global') && (!refData.areaId || refData.areaId === 'global') && (!refData.branchId || refData.branchId === 'global') && <span>GLOBAL</span>}
+                      </div>
                     </TableCell>
                     <TableCell>
                         {refData.used ? 
@@ -227,7 +288,7 @@ export function UsersTab({
                 ))}
                 {(!idRefsList || idRefsList.length === 0) && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-xs text-slate-400 italic">Belum ada ID REF yang dibuat.</TableCell>
+                    <TableCell colSpan={6} className="text-center py-8 text-xs text-slate-400 italic">Belum ada ID REF yang dibuat.</TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -236,6 +297,7 @@ export function UsersTab({
         </div>
         </CardContent>
       </Card>
+      )}
           </div>
   );
 }

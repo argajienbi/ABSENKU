@@ -11,10 +11,74 @@ export function SettingsLocationTab({
   settings, loadingConfig, areasInput, setAreasInput,
   newAreaLatInput, setNewAreaLatInput, newAreaLngInput, setNewAreaLngInput,
   newArea, setNewArea, editingAreaId, setEditingAreaId,
-  toggleGeofence, saveSettings
+  toggleGeofence, saveSettings,
+  companiesInput, setCompaniesInput, newCompany, setNewCompany,
+  branchesInput, setBranchesInput, newBranch, setNewBranch
 }: any) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
+      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
+        <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+          Manajemen PT / Perusahaan
+        </div>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input value={newCompany?.name || ""} onChange={e => setNewCompany({name: e.target.value})} placeholder="Nama PT / Perusahaan (Contoh: PT. Abadi Jaya)" className="bg-white" />
+            <Button onClick={() => {
+              if (settings?.role === "demo") return;
+              if (!newCompany?.name) return;
+              const id = `pt_${Date.now()}`;
+              setCompaniesInput({ ...companiesInput, [id]: { name: newCompany.name } });
+              setNewCompany({ name: "" });
+            }} className="bg-teal-600 hover:bg-teal-700 text-white font-bold">Tambah</Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {Object.entries(companiesInput || {}).map(([id, c]: [string, any]) => (
+              <div key={id} className="flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed">
+                <span className="text-xs font-bold text-teal-900 dark:text-teal-50">{c.name}</span>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-500 hover:text-rose-600" onClick={() => {
+                  const newObj = {...companiesInput};
+                  delete newObj[id];
+                  setCompaniesInput(newObj);
+                }}>Hapus</Button>
+              </div>
+            ))}
+            {Object.keys(companiesInput || {}).length === 0 && <p className="text-xs text-slate-400 italic text-center py-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 w-full sm:col-span-2">Belum ada PT / Perusahaan.</p>}
+          </div>
+        </div>
+      </Card>
+
+      <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
+        <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
+          Manajemen Cabang / Ruangan
+        </div>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Input value={newBranch?.name || ""} onChange={e => setNewBranch({name: e.target.value, areaId: newBranch?.areaId || ""})} placeholder="Nama Cabang / Ruangan (Contoh: Cabang Bekasi)" className="bg-white" />
+            <Button onClick={() => {
+              if (settings?.role === "demo") return;
+              if (!newBranch?.name) return;
+              const id = `cb_${Date.now()}`;
+              setBranchesInput({ ...branchesInput, [id]: { name: newBranch.name, areaId: newBranch.areaId } });
+              setNewBranch({ name: "", areaId: "" });
+            }} className="bg-teal-600 hover:bg-teal-700 text-white font-bold">Tambah</Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {Object.entries(branchesInput || {}).map(([id, b]: [string, any]) => (
+              <div key={id} className="flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed">
+                <span className="text-xs font-bold text-teal-900 dark:text-teal-50">{b.name}</span>
+                <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-500 hover:text-rose-600" onClick={() => {
+                  const newObj = {...branchesInput};
+                  delete newObj[id];
+                  setBranchesInput(newObj);
+                }}>Hapus</Button>
+              </div>
+            ))}
+            {Object.keys(branchesInput || {}).length === 0 && <p className="text-xs text-slate-400 italic text-center py-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-200 w-full sm:col-span-2">Belum ada Cabang / Ruangan yang ditambahkan.</p>}
+          </div>
+        </div>
+      </Card>
+
       <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl p-6">
         <div className="text-teal-700 dark:text-teal-300 text-[10px] font-black mb-6 uppercase tracking-widest flex items-center gap-2">
           <MapPin className="w-4 h-4" /> Geofence Configuration

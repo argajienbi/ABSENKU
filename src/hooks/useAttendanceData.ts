@@ -238,11 +238,21 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
     // Fetch attendance
     const q = query(collection(db, "attendance"), where("userId", "==", user.uid));
     const unsubAttendance = onSnapshot(q, { includeMetadataChanges: true }, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ 
-        id: doc.id, 
-        ...doc.data(),
-        isPending: doc.metadata.hasPendingWrites 
-      }));
+      const data = snapshot.docs.map(doc => {
+        const docData = doc.data();
+        const logDate = new Date(docData.timestamp);
+        const today = new Date();
+        // Remove photo if it is not today
+        if (!isSameDay(logDate, today)) {
+            delete docData.photoBase64;
+        }
+        
+        return { 
+          id: doc.id, 
+          ...docData,
+          isPending: doc.metadata.hasPendingWrites 
+        };
+      });
       data.sort((a: any, b: any) => b.timestamp - a.timestamp);
       setMyHistory(data);
     }, (error) => {
