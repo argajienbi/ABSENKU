@@ -7,7 +7,6 @@ import {
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase } from "firebase/database";
-import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 export const app = initializeApp(firebaseConfig);
@@ -21,44 +20,6 @@ export const rtdb = getDatabase(app);
 
 export const auth = getAuth(app);
 export const storage = getStorage(app);
-
-// Setup FCM
-let messagingInstance: any = null;
-
-export const getMessagingInstance = async () => {
-  if (messagingInstance) return messagingInstance;
-  if (typeof window !== "undefined") {
-    try {
-      const supported = await isSupported();
-      if (supported) {
-        messagingInstance = getMessaging(app);
-        return messagingInstance;
-      }
-    } catch (e) {
-      console.warn("FCM not supported:", e);
-    }
-  }
-  return null;
-};
-
-export const requestFCMPermission = async (vapidKey: string) => {
-  try {
-    const msg = await getMessagingInstance();
-    if (!msg) {
-      console.warn("Messaging instance not available");
-      return null;
-    }
-    const permission = await Notification.requestPermission();
-    if (permission === "granted") {
-      const token = await getToken(msg, { vapidKey });
-      return token;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error getting FCM token:", error);
-    return null;
-  }
-};
 
 export enum OperationType {
   CREATE = "create",

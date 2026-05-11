@@ -19,16 +19,16 @@ export default defineConfig(({mode}) => {
             background_color: '#ffffff',
             display: 'standalone',
             icons: [
-              {
-                src: 'https://cdn-icons-png.flaticon.com/512/3204/3204361.png',
-                sizes: '192x192',
-                type: 'image/png'
-              },
-              {
-                src: 'https://cdn-icons-png.flaticon.com/512/3204/3204361.png',
-                sizes: '512x512',
-                type: 'image/png'
-              }
+                {
+                    src: 'https://cdn-icons-png.flaticon.com/512/3204/3204361.png',
+                    sizes: '192x192',
+                    type: 'image/png'
+                },
+                {
+                    src: 'https://cdn-icons-png.flaticon.com/512/3204/3204361.png',
+                    sizes: '512x512',
+                    type: 'image/png'
+                }
             ]
         },
         workbox: {
@@ -45,7 +45,7 @@ export default defineConfig(({mode}) => {
     },
     build: {
       outDir: 'dist',
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -54,8 +54,8 @@ export default defineConfig(({mode}) => {
               if (id.includes('recharts')) return 'vendor-recharts';
               if (id.includes('lucide-react')) return 'vendor-icons';
               if (id.includes('face-api.js')) return 'vendor-faceapi';
-              if (id.includes('jspdf') || id.includes('html-to-image') || id.includes('xlsx')) return 'vendor-utils';
-              return 'vendor';
+              if (id.includes('leaflet')) return 'vendor-maps';
+              return 'vendor-libs';
             }
           }
         }

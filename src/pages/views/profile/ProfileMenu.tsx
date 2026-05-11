@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Edit, ChevronRight, IdCard, Sun, Moon, LogOut, Bell, Info, ArrowLeft, Activity, Share2, Download, Fingerprint, Check, Code, Camera, Phone, Key, Settings } from 'lucide-react';
+import { User, Edit, ChevronRight, IdCard, Sun, Moon, LogOut, ArrowLeft, Activity, Share2, Download, Fingerprint, Check, Code, Camera, Phone, Key, Settings } from 'lucide-react';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -10,7 +10,6 @@ import Webcam from 'react-webcam';
 import { getEffectiveShiftId } from '../../../lib/dateUtils';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'sonner';
-import { requestFCMPermission } from '../../../lib/firebase';
 import { useTheme } from 'next-themes';
 import { useUserAppContext } from '../UserAppContext';
 
@@ -97,55 +96,6 @@ export const ProfileMenu = () => {
                     </div>
                     Keluar
                   </div>
-                </button>
-            </Card>
-
-            <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 py-1 mt-4">Sistem</div>
-            <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden divide-y divide-gray-100 dark:divide-gray-700/50">
-                <button 
-                  onClick={async () => {
-                      if (!settings?.fcmVapidKey) {
-                        return;
-                      }
-                      toast.loading("Meminta izin push notification...");
-                      const token = await requestFCMPermission(settings.fcmVapidKey);
-                      toast.dismiss();
-                      if (token) {
-                        try {
-                          await updateDoc(doc(db, "users", user.uid), { fcmToken: token });
-                          toast.success("FCM Berhasil dikonfigurasi!", { description: "Notifikasi telah aktif." });
-                        } catch (e) {
-                          toast.error("Gagal menyimpan token FCM ke database.");
-                        }
-                      }
-                  }}
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/40 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-                        <Bell className="w-4 h-4" />
-                      </div>
-                      <div className="text-left leading-tight">
-                        <div className="font-semibold">Aktifkan Notifikasi</div>
-                        <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">Push notification (FCM)</div>
-                      </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-                </button>
-                <button 
-                  onClick={() => setProfileTab('changelog')}
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-t border-gray-100 dark:border-gray-700/50"
-                >
-                  <div className="flex items-center gap-3 text-sm font-semibold text-gray-700 dark:text-gray-200">
-                      <div className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-900/40 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                        <Info className="w-4 h-4" />
-                      </div>
-                      <div className="text-left leading-tight">
-                        <div className="font-semibold">Tentang Aplikasi</div>
-                        <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium mt-0.5">Versi & Info Pembaruan</div>
-                      </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                 </button>
             </Card>
           </>

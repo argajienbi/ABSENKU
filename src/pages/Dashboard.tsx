@@ -61,7 +61,7 @@ export default function Dashboard() {
   // Settings Inputs
   const [appNameInput, setAppNameInput] = useState("ABSENKU");
   const [appLogoUrlInput, setAppLogoUrlInput] = useState("");
-  const [fcmVapidKeyInput, setFcmVapidKeyInput] = useState("");
+  const [useGoogleMapsInput, setUseGoogleMapsInput] = useState(false);
   const [googleMapsApiKeyInput, setGoogleMapsApiKeyInput] = useState("");
   const [shiftsInput, setShiftsInput] = useState<any>({});
   const [holidaysInput, setHolidaysInput] = useState<string[]>([]);
@@ -109,7 +109,7 @@ export default function Dashboard() {
     if (settings) {
       setAppNameInput(settings.appName || "ABSENKU");
       setAppLogoUrlInput(settings.appLogoUrl || "");
-      setFcmVapidKeyInput(settings.fcmVapidKey || "");
+      setUseGoogleMapsInput(settings.useGoogleMaps ?? false);
       setGoogleMapsApiKeyInput(settings.googleMapsApiKey || "");
       setShiftsInput(settings.shifts && Object.keys(settings.shifts).length > 0 ? settings.shifts : SHIFTS);
       setHolidaysInput(settings.holidays || []);
@@ -331,6 +331,7 @@ export default function Dashboard() {
                             attendances={attendances} 
                             users={usersList} 
                             apiKey={settings.googleMapsApiKey}
+                            useGoogleMaps={settings.useGoogleMaps}
                             center={{ 
                               lat: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lat !== undefined) ? (Object.values(settings.subareas)[0] as any).lat! : -6.2088, 
                               lng: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lng !== undefined) ? (Object.values(settings.subareas)[0] as any).lng! : 106.8456 
@@ -367,10 +368,16 @@ export default function Dashboard() {
                   <SettingsSystemTab
                       loadingConfig={loadingConfig} appNameInput={appNameInput}
                       setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
-                      setAppLogoUrlInput={setAppLogoUrlInput} fcmVapidKeyInput={fcmVapidKeyInput}
-                      setFcmVapidKeyInput={setFcmVapidKeyInput} googleMapsApiKeyInput={googleMapsApiKeyInput}
+                      setAppLogoUrlInput={setAppLogoUrlInput} 
+                      useGoogleMapsInput={useGoogleMapsInput} setUseGoogleMapsInput={setUseGoogleMapsInput}
+                      googleMapsApiKeyInput={googleMapsApiKeyInput}
                       setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput}
-                      saveSettings={() => saveSettings({ appName: appNameInput, appLogoUrl: appLogoUrlInput, fcmVapidKey: fcmVapidKeyInput, googleMapsApiKey: googleMapsApiKeyInput })} 
+                      saveSettings={() => saveSettings({ 
+                        appName: appNameInput, 
+                        appLogoUrl: appLogoUrlInput, 
+                        useGoogleMaps: useGoogleMapsInput,
+                        googleMapsApiKey: googleMapsApiKeyInput 
+                      })} 
                       user={user} idRefsList={idRefsList}
                   />
               </TabsContent>
@@ -399,7 +406,7 @@ export default function Dashboard() {
               showOvertimeModal={showOvertimeModal} setShowOvertimeModal={setShowOvertimeModal}
               overtimeUser={overtimeUser} overtimeDate={overtimeDate} setOvertimeDate={setOvertimeDate}
               overtimeStartTime={overtimeStartTime} setOvertimeStartTime={setOvertimeStartTime}
-              overtimeEndTime={overtimeEndTime} setOvertimeEndTime={setOvertimeEndTime}
+              overtimeEndTime={overtimeEndTime} setOvertimeEndTime={setEditWorkEndDate}
               overtimeNotes={overtimeNotes} setOvertimeNotes={setOvertimeNotes}
               saveManualOvertime={() => saveManualOvertime(overtimeUser, overtimeDate, overtimeStartTime, overtimeEndTime, overtimeNotes).then(s => s && setShowOvertimeModal(false))}
             />

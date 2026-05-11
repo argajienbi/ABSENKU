@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { doc, onSnapshot, collection } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./lib/firebase";
 
 export interface SystemSettings {
   geofenceEnabled: boolean;
+  useGoogleMaps?: boolean;
   appName?: string;
   appLogoUrl?: string;
-  fcmVapidKey?: string;
   googleMapsApiKey?: string;
   shifts?: {
     [key: string]: {
@@ -35,91 +35,78 @@ export function useSettings() {
   const [branches, setBranches] = useState<any>({});
   const [subareas, setSubareas] = useState<any>({});
 
+  const areasStr = JSON.stringify(areas);
+  const companiesStr = JSON.stringify(companies);
+  const branchesStr = JSON.stringify(branches);
+  const subareasStr = JSON.stringify(subareas);
+  const settingsStr = JSON.stringify(settings);
+
   useEffect(() => {
-    const unsubAreas = onSnapshot(
-      collection(db, 'areas'),
-      (snap) => {
-        const data: any = {};
-        snap.forEach((doc) => { data[doc.id] = doc.data(); });
-        setAreas(data);
-      },
-      (error) => console.error("Areas onSnapshot error:", error)
-    );
+    const unsubAreas = onSnapshot(collection(db, 'areas'), (snap) => {
+      const data: any = {};
+      snap.forEach((doc) => { data[doc.id] = doc.data(); });
+      if (JSON.stringify(data) !== areasStr) setAreas(data);
+    });
     
-    const unsubCompanies = onSnapshot(
-      collection(db, 'companies'),
-      (snap) => {
-        const data: any = {};
-        snap.forEach((doc) => { data[doc.id] = doc.data(); });
-        setCompanies(data);
-      },
-      (error) => console.error("Companies onSnapshot error:", error)
-    );
+    const unsubCompanies = onSnapshot(collection(db, 'companies'), (snap) => {
+      const data: any = {};
+      snap.forEach((doc) => { data[doc.id] = doc.data(); });
+      if (JSON.stringify(data) !== companiesStr) setCompanies(data);
+    });
 
-    const unsubBranches = onSnapshot(
-      collection(db, 'branches'),
-      (snap) => {
-        const data: any = {};
-        snap.forEach((doc) => { data[doc.id] = doc.data(); });
-        setBranches(data);
-      },
-      (error) => console.error("Branches onSnapshot error:", error)
-    );
+    const unsubBranches = onSnapshot(collection(db, 'branches'), (snap) => {
+      const data: any = {};
+      snap.forEach((doc) => { data[doc.id] = doc.data(); });
+      if (JSON.stringify(data) !== branchesStr) setBranches(data);
+    });
 
-    const unsubSubareas = onSnapshot(
-      collection(db, 'subareas'),
-      (snap) => {
-        const data: any = {};
-        snap.forEach((doc) => { data[doc.id] = doc.data(); });
-        setSubareas(data);
-      },
-      (error) => console.error("Subareas onSnapshot error:", error)
-    );
+    const unsubSubareas = onSnapshot(collection(db, 'subareas'), (snap) => {
+      const data: any = {};
+      snap.forEach((doc) => { data[doc.id] = doc.data(); });
+      if (JSON.stringify(data) !== subareasStr) setSubareas(data);
+    });
 
     return () => {
-      unsubAreas();
-      unsubCompanies();
-      unsubBranches();
-      unsubSubareas();
+      unsubAreas(); unsubCompanies(); unsubBranches(); unsubSubareas();
     };
-  }, []);
+  }, [areasStr, companiesStr, branchesStr, subareasStr]);
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, "settings", "global"),
-      (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as SystemSettings;
-          setSettings({
-            ...data,
-            appName: data.appName || "ABSENKU",
-            appLogoUrl: data.appLogoUrl || "",
-            fcmVapidKey: data.fcmVapidKey || "",
-            googleMapsApiKey: data.googleMapsApiKey || "",
-            shifts: data.shifts || {},
-            holidays: data.holidays || []
-          });
-        } else {
-           // Provide safe defaults if no settings are configured yet
-           setSettings({
-             geofenceEnabled: false,
-             appName: "ABSENKU",
-             appLogoUrl: "",
-             fcmVapidKey: "",
-             googleMapsApiKey: "",
-             shifts: {},
-             holidays: []
-           });
-        }
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.GET, "settings/global");
+    const unsub = onSnapshot(doc(db, "settings", "global"), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as SystemSettings;
+        const newSettings = {
+          ...data,
+          appName: data.appName || "ABSENKU",
+          appLogoUrl: data.appLogoUrl || "",
+          useGoogleMaps: data.useGoogleMaps ?? false,
+          googleMapsApiKey: data.googleMapsApiKey || "",
+          shifts: data.shifts || {},
+          holidays: data.holidays || []
+        };
+        if (JSON.stringify(newSettings) !== settingsStr) setSettings(newSettings);
+      } else {
+         const defaultSettings = {
+           geofenceEnabled: false,
+           useGoogleMaps: false,
+           appName: "ABSENKU",
+           appLogoUrl: "",
+           googleMapsApiKey: "",
+           shifts: {},
+           holidays: []
+         };
+         if (JSON.stringify(defaultSettings) !== settingsStr) setSettings(defaultSettings);
       }
-    );
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "settings/global");
+    });
     return () => unsub();
-  }, []);
+  }, [settingsStr]);
 
-  const mergedSettings = settings ? { ...settings, areas, companies, branches, subareas } : null;
+  const mergedSettings = useMemo(() => 
+    settings ? { ...settings, areas, companies, branches, subareas } : null,
+    [settings, areas, companies, branches, subareas]
+  );
 
   useEffect(() => {
     let manifestURL: string | null = null;

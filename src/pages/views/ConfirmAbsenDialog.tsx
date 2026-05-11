@@ -24,8 +24,8 @@ export function ConfirmAbsenDialog({ confirmData, setConfirmData, type, submitAt
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">Apakah Anda yakin ingin mengirim absen {type === 'in' ? 'Masuk' : type === 'out' ? 'Pulang' : type.replace('_', ' ')} ini ke server?</p>
           
           {confirmData.photoBase64 && (
-            <div className="mb-6 rounded-xl overflow-hidden border-2 border-gray-100 dark:border-gray-700 shadow-inner">
-              <img src={confirmData.photoBase64} alt="Captured Selfie" className="w-full h-auto" />
+            <div className="mb-6 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-inner flex justify-center bg-gray-50 dark:bg-gray-900/50">
+              <img src={confirmData.photoBase64} alt="Captured Selfie" className="w-48 h-64 object-cover" />
             </div>
           )}
 

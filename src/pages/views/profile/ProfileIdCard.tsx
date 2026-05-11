@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Edit, ChevronRight, IdCard, Sun, Moon, LogOut, Bell, Info, ArrowLeft, Activity, Share2, Download, Fingerprint, Check, Code, Camera, Phone, Key, Settings } from 'lucide-react';
+import { User, Edit, ChevronRight, IdCard, Sun, Moon, LogOut, Info, ArrowLeft, Activity, Share2, Download, Fingerprint, Check, Code, Camera, Phone, Key, Settings } from 'lucide-react';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -10,7 +10,6 @@ import Webcam from 'react-webcam';
 import { getEffectiveShiftId } from '../../../lib/dateUtils';
 import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'sonner';
-import { requestFCMPermission } from '../../../lib/firebase';
 import { useTheme } from 'next-themes';
 import { useUserAppContext } from '../UserAppContext';
 

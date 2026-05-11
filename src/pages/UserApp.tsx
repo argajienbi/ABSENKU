@@ -21,17 +21,16 @@ import { UserAppProvider } from './views/UserAppContext';
 import { uploadBase64Image } from "../lib/storage";
 import { setCustomHolidays } from "../lib/dateUtils";
 
+// New Hooks & Components
+import { useUserAppLogic } from "../hooks/useUserAppLogic";
+import { ConfirmAbsenDialog } from "./views/ConfirmAbsenDialog";
+
 // Lazy Loaded Views
 const HomeView = lazy(() => import('./views/HomeView').then(m => ({ default: m.HomeView })));
 const AbsenView = lazy(() => import('./views/AbsenView').then(m => ({ default: m.AbsenView })));
 const HistoryView = lazy(() => import('./views/HistoryView').then(m => ({ default: m.HistoryView })));
-const NotificationsView = lazy(() => import('./views/NotificationsView').then(m => ({ default: m.NotificationsView })));
 const IzinMenuView = lazy(() => import('./views/IzinMenuView').then(m => ({ default: m.IzinMenuView })));
 const ProfileView = lazy(() => import('./views/ProfileView').then(m => ({ default: m.ProfileView })));
-
-// New Hooks & Components
-import { useUserAppLogic } from "../hooks/useUserAppLogic";
-import { ConfirmAbsenDialog } from "./views/ConfirmAbsenDialog";
 
 const ViewLoading = () => (
   <div className="flex flex-col items-center justify-center p-20 animate-in fade-in duration-500">
@@ -47,8 +46,8 @@ export default function UserApp() {
   const { theme, setTheme } = useTheme();
 
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [view, setView] = useState<"home" | "absen" | "history" | "profile" | "izin_menu" | "hris" | "notifications">("home");
-  const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card" | "changelog">("menu");
+  const [view, setView] = useState<"home" | "absen" | "history" | "profile" | "izin_menu" | "hris">("home");
+  const [profileTab, setProfileTab] = useState<"menu" | "edit-profile" | "id-card">("menu");
   const [type, setType] = useState<"in" | "out" | "overtime_in" | "overtime_out" | "sick" | "permit" | "cuti" | "melahirkan" | "meninggal">("in");
   const [activeAbsenTab, setActiveAbsenTab] = useState("selfie");
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
@@ -126,7 +125,7 @@ export default function UserApp() {
     );
   }
 
-  const contextValue = {
+  const contextValue = React.useMemo(() => ({
     isCardExpanded, setIsCardExpanded, currentTime, user, resolvedShifts, 
     settings, location, distance, locationError, currentAreaName, myHistory, 
     setType, setView, canEnableOvertime, pendingCount, announcements,
@@ -142,7 +141,15 @@ export default function UserApp() {
     editName, setEditName, editPhone, setEditPhone, 
     handleResetPassword, handleSaveProfile, isEditSaving, view, confirmData, setConfirmData, 
     submitAttendance: () => submitAttendance(permitStartDate, permitEndDate).then(s => s && view === 'absen' && setView('home'))
-  };
+  }), [
+    isCardExpanded, currentTime, user, resolvedShifts, settings, location, distance, 
+    locationError, currentAreaName, myHistory, canEnableOvertime, pendingCount, 
+    announcements, type, activeAbsenTab, pendingQRData, qrUserIdentity, 
+    permitStartDate, permitEndDate, isAbsenMapExpanded, isWithinRadius, loading, 
+    summary, summaryModalCategory, selectedDate, appNotifications, profileTab, 
+    theme, setTheme, idCardSide, showFaceUpdateCam, editFaceBase64, editName, 
+    editPhone, isEditSaving, view, confirmData
+  ]);
 
   return (
     <UserAppProvider value={contextValue}>
@@ -161,14 +168,6 @@ export default function UserApp() {
                       <h1 className="text-2xl font-extrabold tracking-tight">{user?.name}</h1>
                   </div>
                </div>
-               <button onClick={() => setView('notifications')} className="relative p-2.5 rounded-xl bg-white/50 dark:bg-zinc-800/50">
-                  <Bell className="w-6 h-6" />
-                  {appNotifications.filter(n => !n.read).length > 0 && (
-                     <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] text-white font-black">
-                        {appNotifications.filter(n => !n.read).length}
-                     </span>
-                  )}
-               </button>
             </div>
           </div>
 
@@ -178,7 +177,6 @@ export default function UserApp() {
                {view === "izin_menu" && <IzinMenuView />}
                {view === "absen" && <AbsenView />}
                {view === "history" && <HistoryView />}
-               {view === "notifications" && <NotificationsView />}
                {view === "profile" && <ProfileView />}
              </Suspense>
           </div>

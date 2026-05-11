@@ -172,8 +172,10 @@ export const HistoryView = () => {
                     </div>
                     {log.photoBase64 && (
                       <div className="relative mt-0 border-t border-gray-100 dark:border-gray-700/50 p-4">
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-2 uppercase tracking-wide font-bold">Foto Absen (Otomatis Dihapus Besok)</p>
-                        <img src={log.photoBase64} alt="Foto Absen" className="w-full h-auto max-h-48 object-cover rounded-xl" />
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wide font-bold text-center">Tangkapan Foto</p>
+                        <div className="flex justify-center">
+                          <img src={log.photoBase64} alt="Foto Absen" className="w-48 h-64 object-cover rounded-xl shadow-sm border border-gray-200 dark:border-gray-700" />
+                        </div>
                       </div>
                     )}
                   </Card>

@@ -12,11 +12,15 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
   const [appNotifications, setAppNotifications] = useState<any[]>([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
+  // Memoize status function separately for reuse
   const getStatusForDate = React.useCallback((date: Date) => {
     const isToday = isSameDay(date, new Date());
     const isFuture = date > new Date() && !isToday;
     
-    // User shift settings
+    const settingsStr = JSON.stringify(settings);
+    const userStr = JSON.stringify(user);
+    const resolvedShiftsStr = JSON.stringify(resolvedShifts);
+
     const shiftId = getEffectiveShiftId(user, date);
     const shiftConfig = resolvedShifts[shiftId] || resolvedShifts.shift1;
     const dayOfWeek = date.getDay();
@@ -54,7 +58,7 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
 
     if (inLogs.length === 0 && outLogs.length === 0) {
         if (!isOffDay && !isToday && isWithinContract) return 'alpa'; 
-        return null; // Don't return 'alpa' for future or before contract
+        return null; 
     }
 
     if (inLogs.length > 0) {
@@ -76,30 +80,27 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
           isLate = userInMinutes > shiftStartMinutes;
         }
 
-        if (outLogs.length === 0 && !isToday && !isOffDay) {
-            return 'lupa_pulang';
-        }
-
+        if (outLogs.length === 0 && !isToday && !isOffDay) return 'lupa_pulang';
         if (isLate) return 'telat';
         return 'hadir'; 
     }
 
     return null;
-  }, [myHistory, settings, user, resolvedShifts]);
+  }, [myHistory.length, JSON.stringify(settings), JSON.stringify(user), JSON.stringify(resolvedShifts)]);
 
   const pendingCount = myHistory.filter(log => log.status === 'pending_approval').length;
 
   const isIzinActive = React.useMemo(() => {
     return myHistory.some(log => isSameDay(new Date(log.timestamp), new Date()) && ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type));
-  }, [myHistory]);
+  }, [myHistory.length]);
   
   const hasInApproved = React.useMemo(() => {
      return myHistory.some(log => isSameDay(new Date(log.timestamp), new Date()) && log.type === 'in' && log.status === 'approved');
-  }, [myHistory]);
+  }, [myHistory.length]);
 
   const hasOutApproved = React.useMemo(() => {
      return myHistory.some(log => isSameDay(new Date(log.timestamp), new Date()) && log.type === 'out' && log.status === 'approved');
-  }, [myHistory]);
+  }, [myHistory.length]);
 
   const isTodayHolidayOrWeekend = React.useMemo(() => {
      const today = new Date();
@@ -114,7 +115,6 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
      const now = new Date();
      const minutesSinceOut = (now.getTime() - outTime.getTime()) / (1000 * 60);
      
-     // Check shift end time
      const shift = resolvedShifts[getEffectiveShiftId(user, new Date()) || ''];
      const dayOfWeek = new Date().getDay();
      const shiftDay = shift?.workDays?.[dayOfWeek];
@@ -124,7 +124,6 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
          const shiftEnd = new Date();
          shiftEnd.setHours(endHour, endMinute, 0, 0);
          
-         // If shift ends tomorrow morning, adjust shiftEnd
          if (endHour < 12) { 
              shiftEnd.setDate(shiftEnd.getDate() + 1);
          }
@@ -132,9 +131,8 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
      }
      
      return minutesSinceOut >= 0 && minutesSinceOut <= 30;
-  }, [myHistory, resolvedShifts, user]);
+  }, [myHistory.length, JSON.stringify(resolvedShifts), JSON.stringify(user)]);
 
-  
   const summary = React.useMemo(() => {
      let telatCount = 0;
      let ijinCount = 0;
@@ -156,10 +154,13 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
         if (status === 'telat') { 
            telatCount++; telatDates.push(date); 
            hadirCount++; hadirDates.push(date); 
+        } else if (status === 'sick' || status === 'permit' || status === 'dispensasi') { 
+           ijinCount++; ijinDates.push(date); 
+        } else if (status === 'alpa') { 
+           alpaCount++; alpaDates.push(date); 
+        } else if (status === 'hadir') { 
+           hadirCount++; hadirDates.push(date); 
         }
-        if (status === 'sick' || status === 'permit' || status === 'dispensasi') { ijinCount++; ijinDates.push(date); }
-        if (status === 'alpa') { alpaCount++; alpaDates.push(date); }
-        if (status === 'hadir') { hadirCount++; hadirDates.push(date); }
         
         const dayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), date));
         const lemburIn = dayLogs.filter(l => l.type === 'overtime_in').sort((a,b) => a.timestamp - b.timestamp);
@@ -176,7 +177,7 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
      }
      
      return { telatCount, ijinCount, alpaCount, lemburHours, hadirCount, telatDates, ijinDates, alpaDates, hadirDates, lemburDetails };
-  }, [myHistory, getStatusForDate]);
+  }, [myHistory.length, getStatusForDate]);
 
   const todayStatusText = React.useMemo(() => {
     const todayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), new Date()));

@@ -5,9 +5,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Converts an image URL to base64 by drawing it to a canvas.
 // This is often more reliable for CORS than a direct fetch, depending on the origin.
 export async function urlToBase64(url: string): Promise<{ mimeType: string, data: string }> {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
+  const processBlob = (blob: Blob): Promise<{ mimeType: string, data: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -22,27 +20,42 @@ export async function urlToBase64(url: string): Promise<{ mimeType: string, data
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
+  };
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Network request failed");
+    const blob = await response.blob();
+    return await processBlob(blob);
   } catch (error) {
-    console.warn("Failed to fetch directly, falling back to canvas", error);
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.width;
-        canvas.height = img.height;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("No ctx"));
-        ctx.drawImage(img, 0, 0);
-        const dataUrl = canvas.toDataURL("image/jpeg");
-        const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
-        if (match) resolve({ mimeType: match[1], data: match[2] });
-        else reject(new Error("Failed to parse canvas base64"));
-      };
-      img.onerror = () => reject(new Error("Image failed to load for canvas draw"));
-      // Append a query param to bypass cache if needed
-      img.src = url + (url.includes('?') ? '&' : '?') + 'notag=1';
-    });
+    console.warn("Failed to fetch directly, trying allorigins proxy", error);
+    try {
+       const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+       const response = await fetch(proxyUrl);
+       if (!response.ok) throw new Error("Proxy request failed");
+       const blob = await response.blob();
+       return await processBlob(blob);
+    } catch (proxyError) {
+      console.warn("Proxy also failed, falling back to canvas", proxyError);
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return reject(new Error("No ctx"));
+          ctx.drawImage(img, 0, 0);
+          const dataUrl = canvas.toDataURL("image/jpeg");
+          const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+          if (match) resolve({ mimeType: match[1], data: match[2] });
+          else reject(new Error("Failed to parse canvas base64"));
+        };
+        img.onerror = () => reject(new Error("Image failed to load for canvas draw"));
+        img.src = url + (url.includes('?') ? '&' : '?') + 'notag=1';
+      });
+    }
   }
 }
 

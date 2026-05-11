@@ -406,7 +406,7 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <Label htmlFor="reg-name" className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-widest">Nama Lengkap</Label>
-                  <Input id="reg-name" type="text" required placeholder="John Doe" className="border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 h-10 text-sm rounded-lg px-3" value={name} onChange={e => setName(e.target.value)} />
+                  <Input id="reg-name" type="text" required placeholder="Nama Lengkap" className="border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-900 h-10 text-sm rounded-lg px-3" value={name} onChange={e => setName(e.target.value)} />
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
