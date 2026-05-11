@@ -44,7 +44,7 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
-      outDir: 'build',
+      outDir: 'dist',
       chunkSizeWarningLimit: 1000,
       rollupOptions: {
         output: {
