@@ -153,7 +153,10 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
         const date = new Date(now.getFullYear(), now.getMonth(), i);
         const status = getStatusForDate(date);
         
-        if (status === 'telat') { telatCount++; telatDates.push(date); }
+        if (status === 'telat') { 
+           telatCount++; telatDates.push(date); 
+           hadirCount++; hadirDates.push(date); 
+        }
         if (status === 'sick' || status === 'permit' || status === 'dispensasi') { ijinCount++; ijinDates.push(date); }
         if (status === 'alpa') { alpaCount++; alpaDates.push(date); }
         if (status === 'hadir') { hadirCount++; hadirDates.push(date); }
