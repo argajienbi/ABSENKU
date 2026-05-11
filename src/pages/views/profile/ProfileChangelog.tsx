@@ -40,7 +40,7 @@ export const ProfileChangelog = () => {
                   <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.22 (Terbaru)</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.23 (Terbaru)</p>
               </div>
 
               <div className="space-y-6">
@@ -97,9 +97,17 @@ export const ProfileChangelog = () => {
                         <Code className="w-4 h-4" /> Log Perubahan (Changelog)
                     </h4>
                     <div className="space-y-5">
-                        <div className="relative pl-4 border-l-2 border-teal-500/30">
-                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-500"></div>
-                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.22 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                        <div className="relative pl-4 border-l-2 border-indigo-500/30">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.23 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Reorganisasi Navigasi: Memindahkan tombol Home ke posisi tengah pada bilah navigasi bawah (Floating Navigation) untuk akses yang lebih ergonomis dan tampilan yang lebih seimbang secara visual.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-teal-200 dark:border-teal-900/50">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-teal-300 dark:bg-teal-700"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.22</h5>
                           <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                             <li>Fitur Pengingat Otomatis Admin: Setiap input manual oleh Admin (Koreksi Alpa atau Lembur) kini secara otomatis mengirimkan notifikasi real-time ke aplikasi karyawan yang bersangkutan.</li>
                             <li>Optimalisasi Transaksi Database: Implementasi Firestore writeBatch untuk menjamin integritas data saat menyimpan record absensi dan notifikasi secara bersamaan.</li>

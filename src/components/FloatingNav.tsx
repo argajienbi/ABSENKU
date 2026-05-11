@@ -4,20 +4,20 @@ import { Home, CalendarDays, User } from 'lucide-react';
 export function FloatingNav({ view, setView, setProfileTab }: { view: string, setView: (v: any) => void, setProfileTab: (v: any) => void }) {
   const tabs = [
     {
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      color: 'text-rose-600 dark:text-rose-400',
-      bgColor: 'bg-rose-100 dark:bg-rose-500/20',
-      onClick: () => setView('home'),
-    },
-    {
       id: 'history',
       label: 'Riwayat',
       icon: CalendarDays,
       color: 'text-amber-600 dark:text-amber-400',
       bgColor: 'bg-amber-100 dark:bg-amber-500/20',
       onClick: () => setView('history'),
+    },
+    {
+      id: 'home',
+      label: 'Home',
+      icon: Home,
+      color: 'text-rose-600 dark:text-rose-400',
+      bgColor: 'bg-rose-100 dark:bg-rose-500/20',
+      onClick: () => setView('home'),
     },
     {
       id: 'profile',
