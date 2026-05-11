@@ -155,6 +155,7 @@ export default function Login() {
       let assignedCompany = "global";
       let assignedArea = "global";
       let assignedBranch = "global";
+      let assignedSubArea = "global";
       
       const idRefUpper = idRef.trim().toUpperCase();
 
@@ -182,6 +183,7 @@ export default function Login() {
          if (refData.companyId) assignedCompany = refData.companyId;
          if (refData.areaId) assignedArea = refData.areaId;
          if (refData.branchId) assignedBranch = refData.branchId;
+         if (refData.subareaId) assignedSubArea = refData.subareaId;
       }
 
       const res = await createUserWithEmailAndPassword(auth, email, password);
@@ -214,6 +216,7 @@ export default function Login() {
         companyId: assignedCompany,
         areaId: assignedArea,
         branchId: assignedBranch,
+        subareaId: assignedSubArea,
         deviceId: localDeviceId
       };
       console.log("Attempting to create user with data:", newUserData);

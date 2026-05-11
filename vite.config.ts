@@ -7,9 +7,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
   return {
+    base: './',
     plugins: [react(), tailwindcss(), VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        includeAssets: [],
         manifest: {
             name: 'ABSENKU',
             short_name: 'Absenku',
@@ -43,7 +44,7 @@ export default defineConfig(({mode}) => {
       },
     },
     build: {
-      outDir: 'dist',
+      outDir: 'build',
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

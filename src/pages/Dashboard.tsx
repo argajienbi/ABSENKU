@@ -97,9 +97,6 @@ export default function Dashboard() {
   const [googleMapsApiKeyInput, setGoogleMapsApiKeyInput] = useState("");
   const [shiftsInput, setShiftsInput] = useState<any>({});
   const [holidaysInput, setHolidaysInput] = useState<string[]>([]);
-  const [areasInput, setAreasInput] = useState<any>({});
-  const [companiesInput, setCompaniesInput] = useState<any>({});
-  const [branchesInput, setBranchesInput] = useState<any>({});
   
   const [newAreaLatInput, setNewAreaLatInput] = useState("-6.2088");
   const [newAreaLngInput, setNewAreaLngInput] = useState("106.8456");
@@ -119,18 +116,18 @@ export default function Dashboard() {
       const q = query(collection(db, "idRefs"), orderBy("createdAt", "desc"));
       const unsub = onSnapshot(q, (snapshot) => {
         setIdRefsList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
+      }, (error) => console.error("idRefs snapshot error:", error));
 
       const q2 = query(collection(db, "announcements"), orderBy("createdAt", "desc"));
       const unsub2 = onSnapshot(q2, (snapshot) => {
         setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      });
+      }, (error) => console.error("announcements snapshot error:", error));
 
       const q3 = query(collection(db, "notifications"), where("userId", "in", ["all", "admin_only"]), orderBy("createdAt", "desc"));
       const unsub3 = onSnapshot(q3, (snapshot) => {
         const logs = snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as object) })) as any[];
         setSecurityLogs(logs.filter(l => l.userId === "admin_only" || l.type === "danger"));
-      });
+      }, (error) => console.error("notifications snapshot error:", error));
 
       return () => {
          unsub();
@@ -148,15 +145,14 @@ export default function Dashboard() {
       setGoogleMapsApiKeyInput(settings.googleMapsApiKey || "");
       setShiftsInput(settings.shifts && Object.keys(settings.shifts).length > 0 ? settings.shifts : SHIFTS);
       setHolidaysInput(settings.holidays || []);
-      setAreasInput(settings.areas || {});
-      setCompaniesInput(settings.companies || {});
-      setBranchesInput(settings.branches || {});
     }
   }, [settings]);
 
   const initialLoadRef = useRef(false);
 
   useEffect(() => {
+    if (!user || !['superadmin', 'admin', 'demo'].includes(user.role)) return;
+
     const q = query(collection(db, "attendance"), orderBy("timestamp", "desc"), limit(50));
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -193,7 +189,7 @@ export default function Dashboard() {
     });
 
     return () => { unsub(); unsubUsers(); };
-  }, []);
+  }, [user]);
 
   const toggleGeofence = async (checked: boolean) => {
     if (user?.role === "demo") {
@@ -228,9 +224,6 @@ export default function Dashboard() {
         fcmVapidKey: fcmVapidKeyInput,
         googleMapsApiKey: googleMapsApiKeyInput,
         shifts: shiftsInput,
-        areas: areasInput,
-        companies: companiesInput,
-        branches: branchesInput,
         holidays: holidaysInput,
       }, { merge: true });
       toast.success("Pengaturan berhasil disimpan");
@@ -252,6 +245,7 @@ export default function Dashboard() {
   const [editArea, setEditArea] = useState("");
   const [editCompany, setEditCompany] = useState("");
   const [editBranch, setEditBranch] = useState("");
+  const [editSubArea, setEditSubArea] = useState("");
   const [editIsBanned, setEditIsBanned] = useState(false);
   const [editWorkStartDate, setEditWorkStartDate] = useState("");
   const [editWorkEndDate, setEditWorkEndDate] = useState("");
@@ -268,6 +262,7 @@ export default function Dashboard() {
     setEditArea(user.areaId || "global");
     setEditCompany(user.companyId || "global");
     setEditBranch(user.branchId || "global");
+    setEditSubArea(user.subareaId || "global");
     setEditIsBanned(user.isBanned || false);
     setEditWorkStartDate(user.workStartDate ? format(new Date(user.workStartDate), "yyyy-MM-dd") : "");
     setEditWorkEndDate(user.workEndDate ? format(new Date(user.workEndDate), "yyyy-MM-dd") : "");
@@ -370,6 +365,7 @@ export default function Dashboard() {
         areaId: editArea === "global" ? null : editArea,
         companyId: editCompany === "global" ? null : editCompany,
         branchId: editBranch === "global" ? null : editBranch,
+        subareaId: editSubArea === "global" ? null : editSubArea,
         isBanned: editIsBanned,
         workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
         workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null,
@@ -719,7 +715,7 @@ export default function Dashboard() {
                   setEditShiftMode={setEditShiftMode}
                   settings={settings}
                   shiftsInput={shiftsInput}
-                  areasInput={areasInput}
+                  areasInput={settings?.areas}
                   handleEditUser={handleEditUser}
                   handleKoreksiAlpa={handleKoreksiAlpa}
                   handleAddManualOvertime={handleAddManualOvertime}
@@ -770,8 +766,8 @@ export default function Dashboard() {
                          users={usersList} 
                          apiKey={settings.googleMapsApiKey}
                          center={{ 
-                           lat: (settings?.areas && Object.values(settings.areas).length > 0) ? Object.values(settings.areas)[0].lat : -6.2088, 
-                           lng: (settings?.areas && Object.values(settings.areas).length > 0) ? Object.values(settings.areas)[0].lng : 106.8456 
+                           lat: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lat !== undefined) ? (Object.values(settings.subareas)[0] as any).lat! : -6.2088, 
+                           lng: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lng !== undefined) ? (Object.values(settings.subareas)[0] as any).lng! : 106.8456 
                          }}
                        />
                      )}
@@ -780,17 +776,10 @@ export default function Dashboard() {
 
               {user?.role === 'superadmin' && (
                   <SettingsLocationTab 
-                      settings={settings} loadingConfig={loadingConfig} areasInput={areasInput}
-                      setAreasInput={setAreasInput} newAreaLatInput={newAreaLatInput}
-                      setNewAreaLatInput={setNewAreaLatInput} newAreaLngInput={newAreaLngInput}
-                      setNewAreaLngInput={setNewAreaLngInput} newArea={newArea}
-                      setNewArea={setNewArea} editingAreaId={editingAreaId}
-                      setEditingAreaId={setEditingAreaId} toggleGeofence={toggleGeofence}
-                      saveSettings={saveSettings}
-                      companiesInput={companiesInput} setCompaniesInput={setCompaniesInput}
-                      newCompany={newCompany} setNewCompany={setNewCompany}
-                      branchesInput={branchesInput} setBranchesInput={setBranchesInput}
-                      newBranch={newBranch} setNewBranch={setNewBranch}
+                      settings={settings} loadingConfig={loadingConfig}
+                      areas={settings?.areas} companies={settings?.companies} branches={settings?.branches} subareas={settings?.subareas}
+                      toggleGeofence={toggleGeofence}
+                      user={user}
                   />
               )}
           </TabsContent>
@@ -1143,7 +1132,7 @@ export default function Dashboard() {
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
                   >
                     <option value="global">Semua / Global</option>
-                    {Object.entries(companiesInput || {}).map(([id, c]: [string, any]) => (
+                    {Object.entries(settings?.companies || {}).map(([id, c]: [string, any]) => (
                       <option key={id} value={id}>{c.name}</option>
                     ))}
                   </select>
@@ -1156,21 +1145,34 @@ export default function Dashboard() {
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
                   >
                     <option value="global">Semua / Global</option>
-                    {Object.entries(areasInput || {}).map(([id, a]: [string, any]) => (
+                    {Object.entries(settings?.areas || {}).map(([id, a]: [string, any]) => (
                       <option key={id} value={id}>{a.name}</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Cabang / Ruangan</Label>
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Cabang / Area</Label>
                   <select 
                     value={editBranch}
                     onChange={(e) => setEditBranch(e.target.value)}
                     className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
                   >
                     <option value="global">Semua / Global</option>
-                    {Object.entries(branchesInput || {}).map(([id, b]: [string, any]) => (
+                    {Object.entries(settings?.branches || {}).map(([id, b]: [string, any]) => (
                       <option key={id} value={id}>{b.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Sub Area (Koordinat)</Label>
+                  <select 
+                    value={editSubArea}
+                    onChange={(e) => setEditSubArea(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                  >
+                    <option value="global">Semua / Global</option>
+                    {Object.entries(settings?.subareas || {}).map(([id, sa]: [string, any]) => (
+                      <option key={id} value={id}>{sa.name}</option>
                     ))}
                   </select>
                 </div>
@@ -1189,7 +1191,7 @@ export default function Dashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">KODE UNIK</Label>
+                  <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">NO NIP</Label>
                   <Input 
                     value={editUniqueId} 
                     onChange={(e) => setEditUniqueId(e.target.value)}

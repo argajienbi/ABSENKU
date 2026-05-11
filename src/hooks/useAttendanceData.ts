@@ -213,19 +213,19 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       data.sort((a: any, b: any) => b.createdAt - a.createdAt);
       setAppNotifications(data);
-    });
+    }, (error) => console.error("Notifications snapshot error:", error));
 
     // Fetch announcements
     const qAnnouncements = query(collection(db, "announcements"));
     const unsubAnnouncements = onSnapshot(qAnnouncements, (snapshot) => {
       setAnnouncements(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (error) => console.error("Announcements snapshot error:", error));
 
     // Fetch leave requests
     const qLeave = query(collection(db, "leaveRequests"), where("userId", "==", user.uid));
     const unsubLeave = onSnapshot(qLeave, (snapshot) => {
       setLeaveRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    }, (error) => console.error("Leave requests snapshot error:", error));
     
     // Fetch payroll
     const qPayroll = query(collection(db, "payroll"), where("userId", "==", user.uid));

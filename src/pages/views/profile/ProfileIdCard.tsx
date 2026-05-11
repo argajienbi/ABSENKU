@@ -102,7 +102,7 @@ export const ProfileIdCard = () => {
                               <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-md rounded-2xl p-2.5 border border-white/40 dark:border-white/10 shadow-sm mx-2">
                                 <p className="text-xs font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] mb-1 line-clamp-1">{user?.role}</p>
                                 <div className="flex items-center justify-center gap-2">
-                                  <span className="text-[10px] font-bold text-teal-600/80 dark:text-teal-400/80 uppercase tracking-widest line-clamp-1 break-all">ID: {user?.uniqueId}</span>
+                                  <span className="text-[10px] font-bold text-teal-600/80 dark:text-teal-400/80 uppercase tracking-widest line-clamp-1 break-all">NIP: {user?.uniqueId}</span>
                                   <div className="flex items-center gap-1.5 shrink-0">
                                       <span className="text-teal-400/50">•</span>
                                       <div className="w-2 h-2 rounded-full" style={{ backgroundColor: resolvedShifts[getEffectiveShiftId(user, new Date())]?.color || '#14b8a6' }}></div>

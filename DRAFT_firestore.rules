@@ -26,6 +26,8 @@ service cloud.firestore {
              data.shiftId is string && data.shiftId.size() <= 128 &&
              data.uniqueId is string && data.uniqueId.size() <= 128 &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
+             (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
+             (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
              (!('isBanned' in data) || data.isBanned is bool) &&
              (!('rfid' in data) || data.rfid == null || (data.rfid is string && data.rfid.size() <= 128)) &&
              (!('waNumber' in data) || data.waNumber == null || (data.waNumber is string && data.waNumber.size() <= 20));
@@ -72,11 +74,48 @@ service cloud.firestore {
              (!('usedAt' in data) || data.usedAt == null || data.usedAt is number) &&
              (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"])) &&
              (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
+             (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
+             (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
+             (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128));
+    }
+
+    // Validations
+    function isValidArea(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             data.lat is number && data.lng is number && data.radius is number;
+    }
+
+    function isValidCompany(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128));
+    }
+
+    function isValidBranch(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128));
     }
 
     // Default Deny All
     match /{document=**} { allow read, write: if false; }
+
+    // Areas Collection
+    match /areas/{areaId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() && isValidArea(incoming());
+    }
+
+    // Companies Collection
+    match /companies/{companyId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() && isValidCompany(incoming());
+    }
+
+    // Branches Collection
+    match /branches/{branchId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin() && isValidBranch(incoming());
+    }
 
     // Users Collection
     match /users/{userId} {
@@ -86,7 +125,7 @@ service cloud.firestore {
       allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
                     (
                       (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl']) && incoming().uid == existing().uid) ||
-                      (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'isBanned', 'rfid']) && incoming().uid == existing().uid)
+                      (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'companyId', 'branchId', 'isBanned', 'rfid']) && incoming().uid == existing().uid)
                     );
       allow delete: if isValidId(userId) && isSuperAdmin();
     }
@@ -139,7 +178,7 @@ service cloud.firestore {
       allow delete: if isValidId(refId) && isAdmin();
       allow update: if isValidId(refId) && isSignedIn() && isValidIdRef(incoming()) &&
                     (
-                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'shiftId', 'areaId'])) ||
+                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'shiftId', 'areaId', 'companyId', 'branchId'])) ||
                        (!existing().used && incoming().used == true && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt']))
                     );
     }

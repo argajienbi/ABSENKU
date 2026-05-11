@@ -75,9 +75,9 @@ export const AbsenView = () => {
                             <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest block leading-none mb-1">Peta Visual (GPS)</span>
                             <span className={`text-[10px] items-center gap-1 inline-flex font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
                               {isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence'}
-                              {location && user?.areaId && settings?.areas?.[user.areaId] && (
+                              {location && user?.subareaId && settings?.subareas?.[user.subareaId]?.lat !== undefined && settings?.subareas?.[user.subareaId]?.lng !== undefined && (
                                 <span className="ml-1 opacity-70">
-                                  ({Math.round(calculateDistance(location.lat, location.lng, settings.areas[user.areaId].lat, settings.areas[user.areaId].lng))}m)
+                                  ({Math.round(calculateDistance(location.lat, location.lng, settings.subareas[user.subareaId].lat, settings.subareas[user.subareaId].lng))}m)
                                 </span>
                               )}
                             </span>
@@ -91,13 +91,13 @@ export const AbsenView = () => {
                       <div className="overflow-hidden w-full">
                           <MapPicker 
                             center={{ 
-                              lat: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lat : (location?.lat || -6.2088), 
-                              lng: user?.areaId && settings?.areas?.[user.areaId] ? settings.areas[user.areaId].lng : (location?.lng || 106.8456)
+                              lat: user?.subareaId && settings?.subareas?.[user.subareaId]?.lat !== undefined ? settings.subareas[user.subareaId].lat! : (location?.lat || -6.2088), 
+                              lng: user?.subareaId && settings?.subareas?.[user.subareaId]?.lng !== undefined ? settings.subareas[user.subareaId].lng! : (location?.lng || 106.8456)
                             }} 
                             userLocation={location ? { lat: location.lat, lng: location.lng } : undefined}
                             radius={(() => {
-                              if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
-                                return settings.areas[user.areaId].radius;
+                              if (user?.subareaId && settings?.subareas?.[user.subareaId]?.radius !== undefined) {
+                                return settings.subareas[user.subareaId].radius;
                               }
                               return 100;
                             })()}

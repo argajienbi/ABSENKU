@@ -70,30 +70,33 @@ export function useUserLocation(settings: any, user: any) {
             let closestTargetLng = 0;
             let closestTargetRadius = 100;
 
-            if (settings.areas && Object.keys(settings.areas).length > 0) {
-              if (user?.areaId && settings.areas[user.areaId]) {
-                const areaConfig = settings.areas[user.areaId];
-                closestTargetLat = areaConfig.lat;
-                closestTargetLng = areaConfig.lng;
-                closestTargetRadius = areaConfig.radius;
+            if (settings.subareas && Object.keys(settings.subareas).length > 0) {
+              if (user?.subareaId && settings.subareas[user.subareaId] && settings.subareas[user.subareaId].lat !== undefined) {
+                const subareaConfig = settings.subareas[user.subareaId];
+                closestTargetLat = subareaConfig.lat;
+                closestTargetLng = subareaConfig.lng;
+                closestTargetRadius = subareaConfig.radius || 100;
                 const dist = calculateDistance(latitude, longitude, closestTargetLat, closestTargetLng);
                 closestAreaDist = dist;
                 if (dist <= closestTargetRadius) {
                   inAnyArea = true;
-                  foundAreaName = areaConfig.name;
+                  foundAreaName = subareaConfig.name;
                 }
               } else {
-                Object.values(settings.areas).forEach((area: any) => {
-                  const areaDist = calculateDistance(latitude, longitude, area.lat, area.lng);
-                  if (areaDist < closestAreaDist) {
-                    closestAreaDist = areaDist;
-                    closestTargetLat = area.lat;
-                    closestTargetLng = area.lng;
-                    closestTargetRadius = area.radius;
-                  }
-                  if (areaDist <= area.radius) {
-                    inAnyArea = true;
-                    foundAreaName = area.name;
+                Object.values(settings.subareas).forEach((subarea: any) => {
+                  if (subarea.lat !== undefined && subarea.lng !== undefined) {
+                    const radius = subarea.radius || 100;
+                    const areaDist = calculateDistance(latitude, longitude, subarea.lat, subarea.lng);
+                    if (areaDist < closestAreaDist) {
+                      closestAreaDist = areaDist;
+                      closestTargetLat = subarea.lat;
+                      closestTargetLng = subarea.lng;
+                      closestTargetRadius = radius;
+                    }
+                    if (areaDist <= radius) {
+                      inAnyArea = true;
+                      foundAreaName = subarea.name;
+                    }
                   }
                 });
               }
@@ -155,7 +158,7 @@ export function useUserLocation(settings: any, user: any) {
         setIsWithinRadius(false);
       }
     }
-  }, [settings, user?.areaId]);
+  }, [settings, user?.subareaId]);
 
   return { location, distance, isWithinRadius, locationError, isFakeGPS, currentAreaName, setIsWithinRadius };
 }

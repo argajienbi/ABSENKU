@@ -5,11 +5,40 @@ service cloud.firestore {
     // Global Helpers
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
-    function isDemo() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "demo"; }
-    function isSuperAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "superadmin"; }
-    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["superadmin", "admin"]; }
+    
+    // Helper untuk mengecek role dari dokumen user
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isSuperAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == "armin.gandi@gmail.com" || 
+        (userExists() && 'role' in getUserData() && getUserData().role == "superadmin")
+      );
+    }
+    
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == "armin.gandi@gmail.com" || 
+        (userExists() && 'role' in getUserData() && getUserData().role in ["superadmin", "admin"])
+      );
+    }
+    
+    function isDemo() { 
+      return isSignedIn() && userExists() && 'role' in getUserData() && getUserData().role == "demo"; 
+    }
+    
     function isAdminOrDemo() { return isAdmin() || isDemo(); }
-    function isBanned() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("isBanned", false) == true; }
+    
+    function isBanned() { 
+      return isSignedIn() && userExists() && 'isBanned' in getUserData() && getUserData().isBanned == true; 
+    }
+    
     function isOwner(uid) { return isSignedIn() && request.auth.uid == uid; }
 
     function incoming() { return request.resource.data; }
@@ -26,6 +55,9 @@ service cloud.firestore {
              data.shiftId is string && data.shiftId.size() <= 128 &&
              data.uniqueId is string && data.uniqueId.size() <= 128 &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
+             (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
+             (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
+             (!('subareaId' in data) || data.subareaId == null || (data.subareaId is string && data.subareaId.size() <= 128)) &&
              (!('isBanned' in data) || data.isBanned is bool) &&
              (!('fcmToken' in data) || data.fcmToken is string) &&
              (!('deviceId' in data) || data.deviceId is string && data.deviceId.size() <= 256) &&
@@ -83,11 +115,69 @@ service cloud.firestore {
              (!('usedAt' in data) || data.usedAt == null || data.usedAt is number) &&
              (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"])) &&
              (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
+             (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
+             (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
+             (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
+             (!('subareaId' in data) || data.subareaId == null || (data.subareaId is string && data.subareaId.size() <= 128));
+    }
+
+    // Validations for Hierarchy
+    function isValidArea(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             (!('lat' in data) || data.lat is number) && 
+             (!('lng' in data) || data.lng is number) && 
+             (!('radius' in data) || data.radius is number);
+    }
+
+    function isValidCompany(data) {
+      return data.name is string && data.name.size() <= 128 &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128));
+    }
+
+    function isValidBranch(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
+             (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128));
+    }
+
+    function isValidSubArea(data) {
+      return data.name is string && data.name.size() <= 128 &&
+             (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
+             (!('lat' in data) || data.lat is number) && 
+             (!('lng' in data) || data.lng is number) && 
+             (!('radius' in data) || data.radius is number);
     }
 
     // Default Deny All
     match /{document=**} { allow read, write: if false; }
+
+    // Areas Collection
+    match /areas/{areaId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidArea(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Companies Collection
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidCompany(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // Branches Collection
+    match /branches/{branchId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidBranch(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // SubAreas Collection
+    match /subareas/{subareaId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidSubArea(incoming());
+      allow delete: if isAdmin();
+    }
 
     // Users Collection
     match /users/{userId} {
@@ -100,7 +190,7 @@ service cloud.firestore {
                       (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken', 'deviceId']) && incoming().uid == existing().uid) ||
                       (isAdmin() &&
                        get(/databases/$(database)/documents/users/$(userId)).data.role != 'superadmin' &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'isBanned', 'fcmToken', 'deviceId']) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'companyId', 'branchId', 'subareaId', 'isBanned', 'fcmToken', 'deviceId']) &&
                        incoming().uid == existing().uid
                       )
                     );
@@ -134,21 +224,24 @@ service cloud.firestore {
     match /payroll/{payrollId} {
       allow get: if isValidId(payrollId) && (isOwner(resource.data.userId) || isAdminOrDemo());
       allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
-      allow write: if isValidId(payrollId) && isAdmin() && isValidPayrollRecord(incoming());
+      allow create, update: if isValidId(payrollId) && isAdmin() && isValidPayrollRecord(incoming());
+      allow delete: if isValidId(payrollId) && isAdmin();
     }
 
     // Settings Collection
     match /settings/global {
       allow get: if true;
       allow list: if true;
-      allow write: if isAdmin() && isValidSettings(incoming());
+      allow create, update: if isAdmin() && isValidSettings(incoming());
+      allow delete: if false;
     }
 
     // Protected API Settings Collection
     match /settings_private/api {
       allow get: if isSuperAdmin();
       allow list: if isSuperAdmin();
-      allow write: if isSuperAdmin() && isValidApiSettings(incoming());
+      allow create, update: if isSuperAdmin() && isValidApiSettings(incoming());
+      allow delete: if false;
     }
 
     // Admins Collection
@@ -167,13 +260,20 @@ service cloud.firestore {
 
     // Notifications Collection
     match /notifications/{notificationId} {
-      allow get: if isValidId(notificationId) && isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.userId == "all" || (isAdmin() && resource.data.userId == "admin_only"));
-      allow list: if isSignedIn() && (resource.data.userId in [request.auth.uid, "all"] || (isAdmin() && resource.data.userId == "admin_only"));
+      allow get: if isValidId(notificationId) && isSignedIn();
+      allow list: if isSignedIn();
       allow create: if isAdmin() && isValidId(notificationId);
-      allow update: if isValidId(notificationId) && isSignedIn() && (resource.data.userId in [request.auth.uid, "all"] || (isAdmin() && resource.data.userId == "admin_only")) && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow update: if isValidId(notificationId) && isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
       allow delete: if isAdmin() && isValidId(notificationId);
     }
 
+    // Security Logs Collection
+    match /securityLogs/{logId} {
+      allow get: if isValidId(logId) && isAdminOrDemo();
+      allow list: if isAdminOrDemo();
+      allow create: if isSignedIn(); // Allow system to write logs
+      allow update, delete: if false;
+    }
 
     // IdRefs Collection
     match /idRefs/{refId} {
@@ -183,7 +283,7 @@ service cloud.firestore {
       allow delete: if isValidId(refId) && isAdmin();
       allow update: if isValidId(refId) && isSignedIn() && isValidIdRef(incoming()) &&
                     (
-                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'shiftId', 'areaId'])) ||
+                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'shiftId', 'areaId', 'companyId', 'branchId', 'subareaId'])) ||
                        (!existing().used && incoming().used == true && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt']))
                     );
     }

@@ -16,6 +16,8 @@ interface AppUser {
   monthlyShifts?: Record<string, string>;
   uniqueId: string;
   areaId?: string | null;
+  companyId?: string | null;
+  branchId?: string | null;
   isBanned?: boolean;
   createdAt?: number;
   deviceId?: string;

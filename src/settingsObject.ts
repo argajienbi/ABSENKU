@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./lib/firebase";
 
 export interface SystemSettings {
@@ -21,19 +21,68 @@ export interface SystemSettings {
       };
     };
   };
-  areas?: {
-    [areaId: string]: {
-      name: string;
-      lat: number;
-      lng: number;
-      radius: number;
-    };
-  };
+  areas?: any;
+  companies?: any;
+  branches?: any;
+  subareas?: any;
   holidays?: string[]; // Array of YYYY-MM-DD
 }
 
 export function useSettings() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [areas, setAreas] = useState<any>({});
+  const [companies, setCompanies] = useState<any>({});
+  const [branches, setBranches] = useState<any>({});
+  const [subareas, setSubareas] = useState<any>({});
+
+  useEffect(() => {
+    const unsubAreas = onSnapshot(
+      collection(db, 'areas'),
+      (snap) => {
+        const data: any = {};
+        snap.forEach((doc) => { data[doc.id] = doc.data(); });
+        setAreas(data);
+      },
+      (error) => console.error("Areas onSnapshot error:", error)
+    );
+    
+    const unsubCompanies = onSnapshot(
+      collection(db, 'companies'),
+      (snap) => {
+        const data: any = {};
+        snap.forEach((doc) => { data[doc.id] = doc.data(); });
+        setCompanies(data);
+      },
+      (error) => console.error("Companies onSnapshot error:", error)
+    );
+
+    const unsubBranches = onSnapshot(
+      collection(db, 'branches'),
+      (snap) => {
+        const data: any = {};
+        snap.forEach((doc) => { data[doc.id] = doc.data(); });
+        setBranches(data);
+      },
+      (error) => console.error("Branches onSnapshot error:", error)
+    );
+
+    const unsubSubareas = onSnapshot(
+      collection(db, 'subareas'),
+      (snap) => {
+        const data: any = {};
+        snap.forEach((doc) => { data[doc.id] = doc.data(); });
+        setSubareas(data);
+      },
+      (error) => console.error("Subareas onSnapshot error:", error)
+    );
+
+    return () => {
+      unsubAreas();
+      unsubCompanies();
+      unsubBranches();
+      unsubSubareas();
+    };
+  }, []);
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -48,7 +97,6 @@ export function useSettings() {
             fcmVapidKey: data.fcmVapidKey || "",
             googleMapsApiKey: data.googleMapsApiKey || "",
             shifts: data.shifts || {},
-            areas: data.areas || {},
             holidays: data.holidays || []
           });
         } else {
@@ -60,7 +108,6 @@ export function useSettings() {
              fcmVapidKey: "",
              googleMapsApiKey: "",
              shifts: {},
-             areas: {},
              holidays: []
            });
         }
@@ -72,24 +119,26 @@ export function useSettings() {
     return () => unsub();
   }, []);
 
+  const mergedSettings = settings ? { ...settings, areas, companies, branches, subareas } : null;
+
   useEffect(() => {
     let manifestURL: string | null = null;
     
-    if (settings?.appName) {
-      document.title = settings.appName;
+    if (mergedSettings?.appName) {
+      document.title = mergedSettings.appName;
       
       // Update metadata tags
       const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-      if (metaTitle) metaTitle.setAttribute('content', settings.appName);
+      if (metaTitle) metaTitle.setAttribute('content', mergedSettings.appName);
       
       const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription) metaDescription.setAttribute('content', `Aplikasi Absensi ${settings.appName}`);
+      if (metaDescription) metaDescription.setAttribute('content', `Aplikasi Absensi ${mergedSettings.appName}`);
       
       // Update or create dynamic manifest for PWA
       const manifest = {
-        "name": settings.appName,
-        "short_name": settings.appName.substring(0, 12),
-        "description": `Aplikasi ${settings.appName}`,
+        "name": mergedSettings.appName,
+        "short_name": mergedSettings.appName.substring(0, 12),
+        "description": `Aplikasi ${mergedSettings.appName}`,
         "start_url": window.location.origin,
         "display": "standalone",
         "background_color": "#ffffff",
@@ -134,9 +183,9 @@ export function useSettings() {
         URL.revokeObjectURL(manifestURL);
       }
     };
-  }, [settings?.appName]);
+  }, [mergedSettings?.appName]);
 
-  return settings;
+  return mergedSettings;
 }
 
 export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {

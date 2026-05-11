@@ -40,7 +40,7 @@ export const ProfileChangelog = () => {
                   <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.18 (Terbaru)</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.21 (Terbaru)</p>
               </div>
 
               <div className="space-y-6">
@@ -97,9 +97,35 @@ export const ProfileChangelog = () => {
                         <Code className="w-4 h-4" /> Log Perubahan (Changelog)
                     </h4>
                     <div className="space-y-5">
-                        <div className="relative pl-4 border-l-2 border-indigo-500/30">
-                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.18 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                        <div className="relative pl-4 border-l-2 border-emerald-500/30">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-emerald-500"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.21 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Fix Deployment: Optimalisasi konfigurasi Vite Build (base paths & output directory) untuk menjamin kompatibilitas unggahan artefak pada sistem hosting.</li>
+                            <li>PWA Cleanup: Membersihkan referensi aset yang hilang pada plugin Progressive Web App agar proses build lebih bersih dan stabil.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-fuchsia-200 dark:border-fuchsia-900/50">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-fuchsia-300 dark:bg-fuchsia-700"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.20</h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Fix Sub Area Display: Memperbaiki masalah data Sub Area yang sudah berhasil tersimpan tetapi tidak tampil di daftar Pengaturan Lokasi akibat missing props sinkronisasi tampilan dari Dashboard Induk ke Form Komponen.</li>
+                            <li>Optimalisasi Firestore Rules: Konfigurasi tingkat tinggi validasi keamanan backend untuk mencegah penyisipan value pada hierarki Sub Area yang tidak semestinya.</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="relative pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/50">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-300 dark:bg-indigo-700"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.19</h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Database Refactoring: Area, Perusahaan (PT), dan Cabang sukses dipisahkan dari objek tunggal <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">settings</code> menjadi koleksi level akar (root collections) dinamis tersendiri di dalam sistem database Firestore. Fitur ini dirancang khusus untuk mewadahi jumlah referensi hierarki tanpa batas tanpa melambatkan memori komponen. Data UI diringkas menggunakan state merge global untuk kompabilitas backwards dengan sistem sedia ada.</li>
+                          </ul>
+                        </div>
+                        
+                        <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.18</h5>
                           <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                             <li>Role & Permissions: Restriksi dan filter tingkat lanjut untuk role Superadmin dan Admin. Menyembunyikan Pengaturan Shift, Pengaturan Lokasi, dan pembuatan ID Reff untuk Admin perwakilan; dan Admin perwakilan hanya melihat/mengekspor data lingkup PT/Area/Cabang-nya saja. Ekspor PDF & Excel dinonaktifkan untuk role Demo.</li>
                           </ul>
