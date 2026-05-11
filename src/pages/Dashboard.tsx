@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useSettings } from "../settingsObject";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { auth } from "../lib/firebase";
 import { LiveMap } from "../components/LiveMap";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
@@ -398,7 +399,7 @@ export default function Dashboard() {
               showOvertimeModal={showOvertimeModal} setShowOvertimeModal={setShowOvertimeModal}
               overtimeUser={overtimeUser} overtimeDate={overtimeDate} setOvertimeDate={setOvertimeDate}
               overtimeStartTime={overtimeStartTime} setOvertimeStartTime={setOvertimeStartTime}
-              overtimeEndTime={overtimeEndTime} setOvertimeEndTime={setEditWorkEndDate}
+              overtimeEndTime={overtimeEndTime} setOvertimeEndTime={setOvertimeEndTime}
               overtimeNotes={overtimeNotes} setOvertimeNotes={setOvertimeNotes}
               saveManualOvertime={() => saveManualOvertime(overtimeUser, overtimeDate, overtimeStartTime, overtimeEndTime, overtimeNotes).then(s => s && setShowOvertimeModal(false))}
             />

@@ -6,6 +6,11 @@ service cloud.firestore {
     function isSignedIn() { return request.auth != null; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     
+    // Global Admin Check (Superadmin Tertinggi)
+    function isGlobalAdmin() {
+      return isSignedIn() && request.auth.token.email == "armin.gandi@gmail.com";
+    }
+
     // Helper untuk mengecek role dari dokumen user
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
@@ -16,17 +21,11 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() { 
-      return isSignedIn() && (
-        request.auth.token.email == "armin.gandi@gmail.com" || 
-        (userExists() && 'role' in getUserData() && getUserData().role == "superadmin")
-      );
+      return isGlobalAdmin() || (isSignedIn() && userExists() && getUserData().get('role', '') == "superadmin");
     }
     
     function isAdmin() { 
-      return isSignedIn() && (
-        request.auth.token.email == "armin.gandi@gmail.com" || 
-        (userExists() && 'role' in getUserData() && getUserData().role in ["superadmin", "admin"])
-      );
+      return isSuperAdmin() || (isSignedIn() && userExists() && getUserData().get('role', '') == "admin");
     }
     
     function isDemo() { 
@@ -51,9 +50,9 @@ service cloud.firestore {
              data.name is string && data.name.size() <= 256 &&
              data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"] && 
              data.createdAt is number && 
-             data.avatarUrl is string && data.avatarUrl.size() <= 2048 &&
-             data.shiftId is string && data.shiftId.size() <= 128 &&
-             data.uniqueId is string && data.uniqueId.size() <= 128 &&
+             (!('uniqueId' in data) || data.uniqueId == null || (data.uniqueId is string && data.uniqueId.size() <= 128)) &&
+             (!('avatarUrl' in data) || data.avatarUrl == null || (data.avatarUrl is string && data.avatarUrl.size() <= 2048)) &&
+             (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
              (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
              (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
@@ -186,15 +185,17 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == userId && isValidUser(incoming());
       allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
                     (
-                      isSuperAdmin() ||
+                      isGlobalAdmin() ||
+                      (isSuperAdmin() && (userId == request.auth.uid || get(/databases/$(database)/documents/users/$(userId)).data.role != 'superadmin')) ||
                       (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken', 'deviceId']) && incoming().uid == existing().uid) ||
                       (isAdmin() &&
                        get(/databases/$(database)/documents/users/$(userId)).data.role != 'superadmin' &&
+                       get(/databases/$(database)/documents/users/$(userId)).data.role != 'admin' &&
                        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'companyId', 'branchId', 'subareaId', 'isBanned', 'fcmToken', 'deviceId']) &&
                        incoming().uid == existing().uid
                       )
                     );
-      allow delete: if isValidId(userId) && isSuperAdmin();
+      allow delete: if isValidId(userId) && (isGlobalAdmin() || (isSuperAdmin() && get(/databases/$(database)/documents/users/$(userId)).data.role != 'superadmin'));
     }
 
     // Attendance Collection
@@ -232,15 +233,15 @@ service cloud.firestore {
     match /settings/global {
       allow get: if true;
       allow list: if true;
-      allow create, update: if isAdmin() && isValidSettings(incoming());
+      allow create, update: if isSuperAdmin() && isValidSettings(incoming());
       allow delete: if false;
     }
 
     // Protected API Settings Collection
     match /settings_private/api {
-      allow get: if isSuperAdmin();
-      allow list: if isSuperAdmin();
-      allow create, update: if isSuperAdmin() && isValidApiSettings(incoming());
+      allow get: if isGlobalAdmin();
+      allow list: if isGlobalAdmin();
+      allow create, update: if isGlobalAdmin() && isValidApiSettings(incoming());
       allow delete: if false;
     }
 
@@ -260,9 +261,14 @@ service cloud.firestore {
 
     // Notifications Collection
     match /notifications/{notificationId} {
-      allow get: if isValidId(notificationId) && isSignedIn();
-      allow list: if isSignedIn();
-      allow create: if isAdmin() && isValidId(notificationId);
+      allow get: if isValidId(notificationId) && (isOwner(resource.data.userId) || isAdminOrDemo() || resource.data.userId == "all");
+      allow list: if isSignedIn() && (
+        isAdminOrDemo() || 
+        resource.data.userId == request.auth.uid || 
+        resource.data.userId == "all" ||
+        (isAdminOrDemo() && resource.data.userId == "admin_only")
+      );
+      allow create: if (isAdmin() || isSignedIn()) && isValidId(notificationId);
       allow update: if isValidId(notificationId) && isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['read']);
       allow delete: if isAdmin() && isValidId(notificationId);
     }

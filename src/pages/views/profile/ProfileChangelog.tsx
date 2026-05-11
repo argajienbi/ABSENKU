@@ -40,7 +40,7 @@ export const ProfileChangelog = () => {
                   <Activity className="w-8 h-8 text-teal-600 dark:text-teal-400" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-wider">{settings?.appName || "ABSENKU"}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.25 (Terbaru)</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 font-medium mt-1">Versi 3.9.31 (Terbaru)</p>
               </div>
 
               <div className="space-y-6">
@@ -49,6 +49,22 @@ export const ProfileChangelog = () => {
                         <Fingerprint className="w-4 h-4" /> Fitur Tersedia
                     </h4>
                     <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                      <li className="flex gap-2.5">
+                        <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        <span>Fix Fetch Module Error: Menstabilkan pemuatan rute dinamis dengan pengalihan ke jalur relatif dan base path yang kompatibel.</span>
+                      </li>
+                      <li className="flex gap-2.5">
+                        <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        <span>Deployment Guard: Sinkronisasi outDir dan build artifacts untuk menjamin aplikasi terdeploy sempurna di Cloud Run.</span>
+                      </li>
+                      <li className="flex gap-2.5">
+                        <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        <span>Security Rules Patch: Memperbaiki kendala 'Missing Permissions' pada dashboard admin dan sistem notifikasi keamanan.</span>
+                      </li>
+                      <li className="flex gap-2.5">
+                        <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
+                        <span>Optimasi Global Admin: Menjamin akses tak terbatas bagi superadmin utama (armin.gandi@gmail.com).</span>
+                      </li>
                       <li className="flex gap-2.5">
                         <Check className="w-4 h-4 text-teal-500 shrink-0 mt-0.5" />
                         <span>Absensi Foto Selfie Otomatis dengan Deteksi Wajah AI & Geolocation.</span>
@@ -102,8 +118,57 @@ export const ProfileChangelog = () => {
                     </h4>
                     <div className="space-y-5">
                         <div className="relative pl-4 border-l-2 border-indigo-500/30">
+                           <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.31 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Fix Dynamic Fetch: Menghentikan error 'Failed to fetch' pada modul lazy-loaded dengan beralih kembali ke impor relatif dan konfigurasi base path './' di Vite.</li>
+                            <li>Build Synchronization: Menyelaraskan direktori output 'dist' dengan filter metadata hosting untuk menjamin ketersediaan artefak saat deployment.</li>
+                            <li>System Integrity: Melakukan restart server internal untuk menjamin seluruh pemetaan modul baru terindeks dengan benar oleh browser.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-indigo-500/30">
+                           <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.30</h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Fix Dynamic Import: Menggunakan path aliasing (@/...) untuk seluruh rute lazy-loaded guna menjamin modul dapat ditemukan di seluruh environment.</li>
+                            <li>Deployment Optimization: Mengembalikan output build ke standar 'dist' dan mengaktifkan eksplisit root base path '/' untuk stabilitas URL aset.</li>
+                            <li>Server Refresh: Melakukan booting ulang pada layanan development untuk membersihkan cache resolusi modul yang usang.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-indigo-500/30">
+                           <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.29</h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Fix Build Artifacts: Mengoreksi direktori output (outDir) kembali ke folder 'build' untuk sinkronisasi otomatis dengan sistem penyerahan artefak pada infrastruktur hosting.</li>
+                            <li>Deployment Optimization: Memastikan folder build tidak kosong dan berisi seluruh aset produksi yang diperlukan untuk pemuatan aplikasi yang stabil.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-indigo-500/30">
                           <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-500"></div>
-                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.25 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.28 <span className="text-xs font-normal text-gray-500 ml-2">Baru saja</span></h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Fix Security Rules: Memperbaiki filter pada query notifikasi admin yang menyebabkan error 'Missing Permissions'.</li>
+                            <li>Relaksasi Verifikasi: Menghapus syarat verifikasi email untuk Global Admin guna mempermudah akses darurat/bypass.</li>
+                            <li>Audit Keamanan: Melakukan peninjauan ulang pada seluruh helper aturan (isAdmin, isSuperAdmin) demi resiliensi akses data.</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/50">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-300 dark:bg-indigo-700"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.27</h5>
+                          <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
+                            <li>Implementasi Global Admin: Menetapkan email armin.gandi@gmail.com sebagai Superadmin Tertinggi dengan otoritas penuh atas seluruh admin lain dan pengaturan sistem privat.</li>
+                            <li>Pengetatan Keamanan API: Mengunci akses koleksi pengaturan API sensitif (Google Maps, VAPID) hanya untuk level Global Admin guna mencegah kebocoran kredensial.</li>
+                            <li>Validasi Role Hierarkis: Memperketat aturan update user sehingga admin biasa tidak dapat mempromosikan/mengedit akun dengan level yang lebih tinggi (Superadmin/Global Admin).</li>
+                          </ul>
+                        </div>
+
+                        <div className="relative pl-4 border-l-2 border-indigo-200 dark:border-indigo-900/50">
+                          <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-indigo-300 dark:bg-indigo-700"></div>
+                          <h5 className="font-bold text-gray-900 dark:text-gray-300 text-sm">Versi 3.9.25</h5>
                           <ul className="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1 list-disc pl-3">
                             <li>Fix Deployment Vercel: Mengembalikan konfigurasi output directory build dari 'build' ke standar 'dist' untuk menjamin kompatibilitas deteksi folder output otomatis pada sistem Vercel.</li>
                           </ul>
