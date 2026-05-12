@@ -137,12 +137,12 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                     </DropdownMenuItem>
 
                     <DropdownMenuItem className="text-xs font-semibold cursor-pointer" onClick={() => {
-                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe Transaksi", "Metode", "Status Validasi Radius", "Catatan Laporan Tambahan", "Status Approval", "Pemindai (Scanner)"].map(h => `"${h}"`).join(',');
+                      const header = ["Nama Karyawan", "Role", "Shift", "ID Karyawan", "Tanggal Transaksi", "Jam Transaksi", "Tipe Transaksi", "Metode", "Status Validasi Radius", "Catatan Laporan Tambahan", "Keterangan Pegawai", "Status Approval", "Pemindai (Scanner)"].map(h => `"${h}"`).join(',');
                       let allRecords: string[] = [];
                       filteredUsersList.forEach(usr => {
                         const userAttendances = filteredAttendances.filter(a => a.userId === usr.uid || a.userId === usr.id);
                         if (userAttendances.length === 0) {
-                          allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", "-", "-", "-", "-", "-", "-", "-", "-"].map(v => `"${v}"`).join(','));
+                          allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", "-", "-", "-", "-", "-", "-", "-", "-", "-"].map(v => `"${v}"`).join(','));
                         } else {
                           userAttendances.forEach(log => {
                             let scanner = "-";
@@ -151,7 +151,7 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             } else if (log.method === "qr") {
                               scanner = "Diri Sendiri";
                             }
-                            allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.status || "APPROVED", scanner].map(v => `"${v}"`).join(','));
+                            allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.notes ? log.notes.replace(/,/g, ' ') : "-", log.status || "APPROVED", scanner].map(v => `"${v}"`).join(','));
                           });
                         }
                       });
@@ -210,10 +210,16 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.type === 'in' ? 'bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300' : log.type === 'out' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' : log.type === 'overtime_in' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300' : log.type === 'overtime_out' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300' : log.type === 'sick' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : ['permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type) ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'}`}>
                               {log.type === 'in' ? 'MASUK' : log.type === 'out' ? 'PULANG' : log.type === 'overtime_in' ? 'LEMBUR MSK' : log.type === 'overtime_out' ? 'LEMBUR PLG' : log.type === 'sick' ? 'SAKIT' : log.type === 'permit' ? 'IZIN' : log.type === 'cuti' ? 'CUTI' : log.type === 'melahirkan' ? 'HAMIL' : log.type === 'meninggal' ? 'BERDUKA' : log.type}
                             </span>
-                            <div className="mt-1">
+                            <div className="mt-1 flex flex-col gap-1 items-start">
                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${log.status === 'approved' ? 'bg-green-100 text-green-700' : log.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
                                  {log.status === 'approved' ? 'Disetujui' : log.status === 'rejected' ? 'Ditolak' : 'Menunggu'}
                                </span>
+                               {log.notes && (
+                                  <div className="mt-1 w-full max-w-[120px] sm:max-w-[150px]">
+                                    <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest leading-none mb-0.5">Keterangan:</div>
+                                    <div className="text-[10px] text-gray-600 dark:text-gray-300 italic truncate" title={log.notes}>"{log.notes}"</div>
+                                  </div>
+                               )}
                             </div>
                           </TableCell>
                           <TableCell className="px-6 py-4 uppercase text-[10px] font-black text-slate-600 dark:text-gray-400 tracking-widest">
@@ -267,66 +273,9 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                           </TableCell>
                           <TableCell className="px-6 py-4 text-center">
                             <div className="flex justify-center items-center gap-2">
-                              {log.status === "pending_approval" || user?.role === "superadmin" ? (
-                                <div className="flex justify-center gap-2">
-                                  {log.status !== "approved" && (
-                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-teal-50 text-teal-600 border-teal-200 hover:bg-teal-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
-                                      if (user?.role === "demo") { toast.error("Akun demo."); return; }
-                                      try {
-                                        await updateDoc(doc(db, "attendance", log.id), { status: "approved" });
-                                        await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
-                                          userId: log.userId,
-                                          title: "Absensi Disetujui",
-                                          body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} telah disetujui.`,
-                                          createdAt: Date.now(),
-                                          read: false,
-                                          type: "success"
-                                        });
-                                        await set(ref(rtdb, `notifications/users/${log.userId}/broadcast`), {
-                                          title: "Absensi Disetujui",
-                                          message: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} telah disetujui.`,
-                                          read: false,
-                                          createdAt: Date.now()
-                                        });
-                                        toast.success("Absensi disetujui");
-                                      } catch (e) {
-                                        console.error("Approve error:", e);
-                                        toast.error("Gagal menyetujui");
-                                      }
-                                    }}>OK</Button>
-                                  )}
-                                  {log.status !== "rejected" && (
-                                    <Button size="sm" variant="outline" className="h-8 text-[10px] font-black uppercase tracking-widest px-3 bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-600 hover:text-white transition-all rounded-xl shadow-sm" onClick={async () => {
-                                      if (user?.role === "demo") { toast.error("Akun demo."); return; }
-                                      try {
-                                        await updateDoc(doc(db, "attendance", log.id), { status: "rejected" });
-                                        await setDoc(doc(db, "notifications", `notif_${Date.now()}_${log.userId}`), {
-                                          userId: log.userId,
-                                          title: "Absensi Ditolak",
-                                          body: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} ditolak oleh Admin.`,
-                                          createdAt: Date.now(),
-                                          read: false,
-                                          type: "danger"
-                                        });
-                                        await set(ref(rtdb, `notifications/users/${log.userId}/broadcast`), {
-                                          title: "Absensi Ditolak",
-                                          message: `Absensi ${log.type === 'in' ? 'Masuk' : 'Keluar'} Anda tanggal ${format(new Date(log.timestamp), "dd MMM")} ditolak oleh Admin.`,
-                                          read: false,
-                                          createdAt: Date.now()
-                                        });
-                                        toast.success("Absensi ditolak");
-                                      } catch (e) {
-                                        console.error("Reject error:", e);
-                                        toast.error("Gagal menolak");
-                                      }
-                                    }}>NO</Button>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.status === 'rejected' ? 'bg-rose-500 text-white' : log.status === 'approved' ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-300'}`}>
-                                  {log.status || 'APPROVED'}
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${log.status === 'rejected' ? 'bg-rose-500 text-white' : log.status === 'approved' ? 'bg-teal-500 text-white' : log.status === 'pending_approval' || log.status === 'PENDING' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500 dark:bg-gray-700 dark:text-gray-300'}`}>
+                                  {log.status === 'pending_approval' || log.status === 'PENDING' ? 'MENUNGGU' : (log.status || 'APPROVED')}
                                 </span>
-                              )}
                               {(user?.role === "superadmin" || user?.role === "admin") && (
                                 <Button 
                                   size="sm" 

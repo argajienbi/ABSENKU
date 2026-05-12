@@ -56,7 +56,7 @@ export default function UserApp() {
   const [permitStartDate, setPermitStartDate] = useState<Date | undefined>(new Date());
   const [permitEndDate, setPermitEndDate] = useState<Date | undefined>(new Date());
   const [idCardSide, setIdCardSide] = useState<"front" | "back">("front");
-  const [summaryModalCategory, setSummaryModalCategory] = useState<'hadir' | 'telat' | 'ijin' | 'alpa' | 'lembur' | null>(null);
+  const [summaryModalCategory, setSummaryModalCategory] = useState<'hadir' | 'telat' | 'ijin' | 'alpa' | 'lembur' | 'lupa' | null>(null);
   const [isCardExpanded, setIsCardExpanded] = useState(false);
   const [isAbsenMapExpanded, setIsAbsenMapExpanded] = useState(false);
   const [showFaceUpdateCam, setShowFaceUpdateCam] = useState(false);
@@ -140,7 +140,7 @@ export default function UserApp() {
     editFaceBase64, captureEditFace: () => { const src = editWebcamRef.current?.getScreenshot(); if(src) setEditFaceBase64(src); setShowFaceUpdateCam(false); },
     editName, setEditName, editPhone, setEditPhone, 
     handleResetPassword, handleSaveProfile, isEditSaving, view, confirmData, setConfirmData, 
-    submitAttendance: () => submitAttendance(permitStartDate, permitEndDate).then(s => s && view === 'absen' && setView('home'))
+    submitAttendance: (notes: string = "") => submitAttendance(permitStartDate, permitEndDate, notes).then(s => s && view === 'absen' && setView('home'))
   }), [
     isCardExpanded, currentTime, user, resolvedShifts, settings, location, distance, targetRadius, 
     locationError, currentAreaName, myHistory, canEnableOvertime, pendingCount, 

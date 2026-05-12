@@ -98,22 +98,6 @@ export const ProfileMenu = () => {
                   </div>
                 </button>
             </Card>
-            
-            <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider px-2 py-1 mt-4">Tentang Aplikasi</div>
-            <Card className="bg-white dark:bg-gray-800 border-0 shadow-sm rounded-xl overflow-hidden p-4">
-               <div className="flex items-center justify-between">
-                 <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Versi</span>
-                 <span className="text-xs font-mono font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/40 px-2 py-0.5 rounded">4.1.0</span>
-               </div>
-               <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-1.5">
-                   <p className="font-semibold text-gray-700 dark:text-gray-300">Changelog:</p>
-                   <ul className="list-disc pl-4 space-y-0.5">
-                      <li>Perbaikan <i>face verification</i> (Canvas di iOS/CORS Storage)</li>
-                      <li>Penambahan filter Sub-Area pada Rekapitulasi Absensi</li>
-                      <li>Validasi absen berdasarkan radius lokasi, memunculkan popup peringatan jarak jika berada di luar jangkauan</li>
-                   </ul>
-               </div>
-            </Card>
           </>
     );
 };

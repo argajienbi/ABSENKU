@@ -107,7 +107,7 @@ export function useUserAppLogic(user: any, settings: any, myHistory: any[], loca
     }
   };
 
-  const submitAttendance = async (permitStartDate: any, permitEndDate: any) => {
+  const submitAttendance = async (permitStartDate: any, permitEndDate: any, notes: string = "") => {
     if (!user || !confirmData) return;
     setLoading(true);
     try {
@@ -152,6 +152,7 @@ export function useUserAppLogic(user: any, settings: any, myHistory: any[], loca
         location: location || { lat: 0, lng: 0 },
         withinRadius: isWithinRadius,
         extraData: extraDataToUpload,
+        notes,
         status
       };
       if (targetUid !== user.uid) {

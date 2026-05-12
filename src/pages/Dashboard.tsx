@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Button } from "../components/ui/button";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { MapPin, Settings, Users, Activity, LogOut, Briefcase, ClipboardList, BookOpen, ShieldAlert, AlertCircle, Loader2 } from "lucide-react";
+import { MapPin, Settings, Users, Activity, LogOut, Briefcase, ClipboardList, BookOpen, ShieldAlert, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 
 import { SHIFTS } from "../constants";
 
@@ -26,6 +26,8 @@ const SettingsShiftTab = lazy(() => import("./dashboard/SettingsShiftTab").then(
 const SettingsSystemTab = lazy(() => import("./dashboard/SettingsSystemTab").then(m => ({ default: m.SettingsSystemTab })));
 const LogsTab = lazy(() => import("./dashboard/LogsTab").then(m => ({ default: m.LogsTab })));
 const GuideTab = lazy(() => import("./dashboard/GuideTab").then(m => ({ default: m.GuideTab })));
+
+const ApprovalsTab = lazy(() => import("./dashboard/ApprovalsTab").then(m => ({ default: m.ApprovalsTab })));
 
 // New Dialog Components
 const MemberCardDialog = lazy(() => import("./dashboard/MemberCardDialog").then(m => ({ default: m.MemberCardDialog })));
@@ -169,6 +171,7 @@ export default function Dashboard() {
         <div className="flex-1 overflow-y-auto px-3 py-6 space-y-1 no-scrollbar">
           {[
             { value: "overview", label: "Overview", icon: Activity },
+            { value: "approvals", label: "Persetujuan", icon: CheckCircle2 },
             { value: "users", label: "User Management", icon: Users },
             { value: "live-map", label: "Peta & Lokasi", icon: MapPin },
             { value: "rekap", label: "Rekap Kehadiran", icon: ClipboardList },
@@ -234,6 +237,7 @@ export default function Dashboard() {
            <div className="flex gap-2 w-max px-2">
              {[
                 { value: "overview", label: "Overview", icon: Activity },
+                { value: "approvals", label: "Persetujuan", icon: CheckCircle2 },
                 { value: "users", label: "User", icon: Users },
                 { value: "live-map", label: "Lokasi", icon: MapPin },
                 { value: "rekap", label: "Rekap", icon: ClipboardList },
@@ -271,6 +275,14 @@ export default function Dashboard() {
                       filteredAttendances={filteredAttendances} 
                       filteredUsersList={filteredUsersList} 
                       setConfirmDeleteGlobal={setConfirmDeleteGlobal} 
+                  />
+              </TabsContent>
+
+              <TabsContent value="approvals">
+                  <ApprovalsTab
+                      user={user}
+                      filteredAttendances={filteredAttendances}
+                      usersList={usersList}
                   />
               </TabsContent>
               

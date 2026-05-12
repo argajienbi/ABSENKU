@@ -309,7 +309,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
   }, [attendanceData, selectedUserId, selectedCompany, selectedArea, selectedSubArea, selectedBranch, selectedShift, selectedRole, selectedStatus, isFetched, usersList, settings]);
 
   const handleExportExcel = () => {
-    const header = ["Nama", "Role", "PT / Perusahaan", "Area / Regional", "Cabang / Ruangan", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan"];
+    const header = ["Nama", "Role", "PT / Perusahaan", "Area / Regional", "Sub Area", "Cabang / Ruangan", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan", "Keterangan/Alasan"];
     const records = filteredData.map(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
       return [
@@ -317,6 +317,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
         user?.role || "-",
         user?.companyId === 'global' ? "ALL" : (settings?.companies?.[user?.companyId]?.name || user?.companyId || "-"),
         user?.areaId === 'global' ? "ALL" : (settings?.areas?.[user?.areaId]?.name || user?.areaId || "-"),
+        user?.subareaId === 'global' ? "ALL" : (settings?.subareas?.[user?.subareaId]?.name || user?.subareaId || "-"),
         user?.branchId === 'global' ? "ALL" : (settings?.branches?.[user?.branchId]?.name || user?.branchId || "-"),
         user?.shiftId || "-",
         format(new Date(log.timestamp), "yyyy-MM-dd"),
@@ -325,7 +326,8 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
         log.status || "APPROVED",
         log.withinRadius ? "Dalam Radius" : "Luar Radius",
         log.location ? `${log.location.lat}, ${log.location.lng}` : "-",
-        log.extraData || log.notes ? String(log.extraData || log.notes).replace(/,/g, ' ') : "-"
+        log.extraData ? String(log.extraData).replace(/,/g, ' ') : "-",
+        log.notes ? String(log.notes).replace(/,/g, ' ') : "-"
       ];
     });
     
@@ -348,10 +350,10 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
     doc.setFontSize(10);
     doc.text(`Periode: ${period.toUpperCase()}`, 14, 28);
     
-    const tableColumn = ["Nama", "PT/AR/CB", "Tanggal", "Jam", "Tipe", "Radius", "Catatan"];
+    const tableColumn = ["Nama", "PT/AR/SA/CB", "Tanggal", "Jam", "Tipe", "Radius", "Izin", "Keterangan"];
     const tableRows = filteredData.map(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
-      const structName = `${user?.companyId === 'global' ? '*' : 'PT'}/${user?.areaId === 'global' ? '*' : 'AR'}/${user?.branchId === 'global' ? '*' : 'CB'}`;
+      const structName = `${user?.companyId === 'global' ? '*' : 'PT'}/${user?.areaId === 'global' ? '*' : 'AR'}/${user?.subareaId === 'global' ? '*' : 'SA'}/${user?.branchId === 'global' ? '*' : 'CB'}`;
       return [
         user?.name || "Unknown",
         structName,
@@ -359,7 +361,8 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
         format(new Date(log.timestamp), "HH:mm:ss"),
         log.type,
         log.withinRadius ? "Dalam Radius" : "Luar Radius",
-        log.extraData || log.notes ? String(log.extraData || log.notes).replace(/,/g, ' ') : "-"
+        log.extraData ? String(log.extraData).replace(/,/g, ' ') : "-",
+        log.notes ? String(log.notes).replace(/,/g, ' ') : "-"
       ];
     });
     
@@ -676,9 +679,14 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
                                {log.withinRadius ? "✅ VALID GEOFENCE" : "⚠️ LUAR GEOFENCE"}
                             </span>
                           )}
-                          {(log.extraData || log.notes) && (
+                          {log.extraData && (
+                             <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium mt-0.5 break-all max-w-[250px] inline-flex items-center gap-1">
+                                <span className="text-[8px]">📅</span> {String(log.extraData).includes('|') ? String(log.extraData).replace('|', ' sd ') : log.extraData}
+                             </span>
+                          )}
+                          {log.notes && (
                              <span className="text-[10px] text-slate-600 dark:text-slate-400 italic mt-0.5 break-all max-w-[250px]">
-                               &quot;{log.extraData || log.notes}&quot;
+                               &quot;{log.notes}&quot;
                              </span>
                           )}
                           {log.location && log.method !== "qr" && typeof log.location.lat === 'number' && typeof log.location.lng === 'number' && (

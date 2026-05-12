@@ -22,7 +22,7 @@ export const HistoryView = () => {
         <h2 className="text-xl font-bold px-2 flex items-center gap-2 dark:text-gray-100 mb-2 mt-4">
           <CalendarDays className="w-5 h-5 text-teal-600 dark:text-teal-400" /> Ringkasan Bulan Ini
         </h2>
-        <div className="grid grid-cols-5 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
             <div onClick={() => setSummaryModalCategory('hadir')} className="bg-teal-50 dark:bg-teal-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-teal-100 dark:hover:bg-teal-800/40 transition-colors active:scale-95">
               <span className="text-lg font-bold text-teal-600 dark:text-teal-400">{summary.hadirCount}</span>
               <span className="text-[9px] uppercase tracking-wider font-bold text-teal-700/60 dark:text-teal-500">Hadir</span>
@@ -33,7 +33,7 @@ export const HistoryView = () => {
             </div>
             <div onClick={() => setSummaryModalCategory('ijin')} className="bg-blue-50 dark:bg-blue-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800/40 transition-colors active:scale-95">
               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{summary.ijinCount}</span>
-              <span className="text-[9px] uppercase tracking-wider font-bold text-blue-700/60 dark:text-blue-500">Ijin</span>
+              <span className="text-[9px] uppercase tracking-wider font-bold text-blue-700/60 dark:text-blue-500">Ijin/Sakit</span>
             </div>
             <div onClick={() => setSummaryModalCategory('alpa')} className="bg-red-50 dark:bg-red-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-red-100 dark:hover:bg-red-800/40 transition-colors active:scale-95">
               <span className="text-lg font-bold text-red-600 dark:text-red-400">{summary.alpaCount}</span>
@@ -42,6 +42,10 @@ export const HistoryView = () => {
             <div onClick={() => setSummaryModalCategory('lembur')} className="bg-amber-50 dark:bg-amber-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-800/40 transition-colors active:scale-95">
               <span className="text-lg font-bold text-amber-600 dark:text-amber-400">{summary.lemburHours.toFixed(1)}</span>
               <span className="text-[9px] uppercase tracking-wider font-bold text-amber-700/60 dark:text-amber-500">Jam Lmbr</span>
+            </div>
+            <div onClick={() => setSummaryModalCategory('lupa')} className="bg-orange-50 dark:bg-orange-900/40 p-3 rounded-2xl text-center flex flex-col items-center shadow-sm cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-800/40 transition-colors active:scale-95">
+              <span className="text-lg font-bold text-orange-600 dark:text-orange-400">{summary.lupaPulangCount + summary.lupaMasukCount}</span>
+              <span className="text-[9px] uppercase tracking-wider font-bold text-orange-700/60 dark:text-orange-500">Lupa Absen</span>
             </div>
         </div>
 
@@ -87,6 +91,20 @@ export const HistoryView = () => {
                     <div key={i} className="flex justify-between items-center bg-amber-50 dark:bg-amber-900/20 px-4 py-3 rounded-xl border border-amber-100 dark:border-amber-800/30">
                       <span className="font-bold text-sm text-amber-800 dark:text-amber-200">{format(item.date, "EEEE, dd MMM", { locale: id })}</span>
                       <span className="text-xs font-black bg-amber-200 dark:bg-amber-700 text-amber-900 dark:text-amber-100 px-2 py-1 rounded-md">{item.hours.toFixed(1)} Jam</span>
+                    </div>
+                ))}
+                
+                {summaryModalCategory === 'lupa' && summary.lupaPulangDates.length === 0 && summary.lupaMasukDates.length === 0 && <p className="text-sm text-gray-500 italic text-center">Belum ada riwayat</p>}
+                {summaryModalCategory === 'lupa' && summary.lupaPulangDates.map((d: Date, i: number) => (
+                    <div key={`p-${i}`} className="flex justify-between items-center bg-orange-50 dark:bg-orange-900/20 px-4 py-3 rounded-xl border border-orange-100 dark:border-orange-800/30">
+                      <span className="font-bold text-sm text-orange-800 dark:text-orange-200">{format(d, "EEEE, dd MMM yyyy", { locale: id })}</span>
+                      <span className="text-xs font-black bg-orange-200 dark:bg-orange-700 text-orange-900 dark:text-orange-100 px-2 py-1 rounded-md">Lupa Pulang</span>
+                    </div>
+                ))}
+                {summaryModalCategory === 'lupa' && summary.lupaMasukDates.map((d: Date, i: number) => (
+                    <div key={`m-${i}`} className="flex justify-between items-center bg-orange-50 dark:bg-orange-900/20 px-4 py-3 rounded-xl border border-orange-100 dark:border-orange-800/30">
+                      <span className="font-bold text-sm text-orange-800 dark:text-orange-200">{format(d, "EEEE, dd MMM yyyy", { locale: id })}</span>
+                      <span className="text-xs font-black bg-orange-200 dark:bg-orange-700 text-orange-900 dark:text-orange-100 px-2 py-1 rounded-md">Lupa Masuk</span>
                     </div>
                 ))}
               </div>
@@ -170,6 +188,20 @@ export const HistoryView = () => {
                           </div>
                       </div>
                     </div>
+                    {(log.notes || log.extraData) && (
+                      <div className="px-4 pb-3 flex flex-col gap-1">
+                        {log.extraData && (
+                           <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                             📅 {String(log.extraData).includes('|') ? String(log.extraData).replace('|', ' sd ') : log.extraData}
+                           </div>
+                        )}
+                        {log.notes && (
+                           <div className="text-[11px] text-gray-500 dark:text-gray-400 italic">
+                             &quot;{log.notes}&quot;
+                           </div>
+                        )}
+                      </div>
+                    )}
                     {log.photoBase64 && (
                       <div className="relative mt-0 border-t border-gray-100 dark:border-gray-700/50 p-4">
                         <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3 uppercase tracking-wide font-bold text-center">Tangkapan Foto</p>

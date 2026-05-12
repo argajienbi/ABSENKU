@@ -219,35 +219,47 @@ export const AbsenView = () => {
         </CardContent>
       </Card>
     <Dialog open={showGeofenceModal} onOpenChange={setShowGeofenceModal}>
-      <DialogContent className="sm:max-w-md border-0 bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500"></div>
-        <DialogHeader className="px-6 pt-8 pb-2">
-          <div className="mx-auto w-16 h-16 bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center mb-4">
-            <AlertTriangle className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+      <DialogContent className="sm:max-w-md p-0 border-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur-3xl rounded-[2rem] overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-rose-500 to-orange-500"></div>
+        <div className="absolute -top-24 -right-24 w-48 h-48 bg-rose-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-orange-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <DialogHeader className="px-8 pt-10 pb-2 relative z-10">
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-rose-100 to-orange-100 dark:from-rose-900/40 dark:to-orange-900/40 rounded-2xl flex items-center justify-center mb-6 shadow-sm rotate-3 transform transition-transform hover:rotate-0">
+            <AlertTriangle className="w-10 h-10 text-rose-600 dark:text-rose-400" />
           </div>
-          <DialogTitle className="text-xl text-center font-bold text-gray-900 dark:text-white">Di Luar Area Absensi</DialogTitle>
-          <DialogDescription className="text-center text-gray-500 dark:text-gray-400 mt-2">
+          <DialogTitle className="text-2xl text-center font-black text-gray-900 dark:text-white tracking-tight">Di Luar Jangkauan</DialogTitle>
+          <DialogDescription className="text-center text-gray-500 dark:text-gray-400 mt-2 text-sm max-w-[260px] mx-auto leading-relaxed">
             Anda harus berada di dalam area yang ditetapkan untuk melakukan absensi ini. 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col gap-3 border-y border-gray-100 dark:border-gray-800">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400">Jarak Anda Saat Ini</span>
-            <span className="font-bold text-rose-600 dark:text-rose-400">{distance ? Math.round(distance) : '-'} meter</span>
-          </div>
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-500 dark:text-gray-400">Radius Maksimal</span>
-            <span className="font-bold text-teal-600 dark:text-teal-400">{targetRadius ? Math.round(targetRadius) : '-'} meter</span>
+        <div className="px-8 py-6 relative z-10">
+          <div className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-xl rounded-2xl p-4 flex flex-col gap-3 shadow-inner border border-gray-100 dark:border-gray-700/50">
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-rose-500" />
+                <span className="text-gray-600 dark:text-gray-400 font-medium">Jarak Lokasi Anda</span>
+              </div>
+              <span className="font-black text-rose-600 dark:text-rose-400 text-lg">{distance ? Math.round(distance) : '-'} <span className="text-xs font-semibold text-rose-500/60 ml-0.5">m</span></span>
+            </div>
+            <div className="h-px w-full bg-gray-200/50 dark:bg-gray-700/50"></div>
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-teal-500" />
+                <span className="text-gray-600 dark:text-gray-400 font-medium">Radius Maksimal</span>
+              </div>
+              <span className="font-black text-teal-600 dark:text-teal-400 text-lg">{targetRadius ? Math.round(targetRadius) : '-'} <span className="text-xs font-semibold text-teal-500/60 ml-0.5">m</span></span>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-6 border-none sm:justify-center">
+        <DialogFooter className="px-8 pt-2 pb-8 border-none sm:justify-center relative z-10">
           <Button 
-            className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white rounded-xl h-12 px-8 font-bold"
+            className="w-full bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white rounded-2xl h-14 font-black tracking-wider text-sm transition-transform active:scale-95 shadow-xl shadow-gray-900/10 dark:shadow-gray-100/10"
             onClick={() => setShowGeofenceModal(false)}
           >
-            Mengerti
+            SAYA MENGERTI
           </Button>
         </DialogFooter>
       </DialogContent>

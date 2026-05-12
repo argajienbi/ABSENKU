@@ -80,9 +80,12 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
           isLate = userInMinutes > shiftStartMinutes;
         }
 
-        if (outLogs.length === 0 && !isToday && !isOffDay) return 'lupa_pulang';
+        if (outLogs.length === 0 && !isToday && !isOffDay) return isLate ? 'telat_lupa_pulang' : 'lupa_pulang';
         if (isLate) return 'telat';
         return 'hadir'; 
+    } else if (outLogs.length > 0) {
+        // Ada absen pulang tapi tidak ada absen masuk
+        return 'lupa_masuk';
     }
 
     return null;
@@ -139,11 +142,15 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
      let alpaCount = 0;
      let lemburHours = 0;
      let hadirCount = 0;
+     let lupaPulangCount = 0;
+     let lupaMasukCount = 0;
 
      const telatDates: Date[] = [];
      const ijinDates: Date[] = [];
      const alpaDates: Date[] = [];
      const hadirDates: Date[] = [];
+     const lupaPulangDates: Date[] = [];
+     const lupaMasukDates: Date[] = [];
      const lemburDetails: {date: Date, hours: number}[] = [];
      
      const now = new Date();
@@ -151,15 +158,23 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
         const date = new Date(now.getFullYear(), now.getMonth(), i);
         const status = getStatusForDate(date);
         
-        if (status === 'telat') { 
+        if (status === 'telat' || status === 'telat_lupa_pulang') { 
            telatCount++; telatDates.push(date); 
            hadirCount++; hadirDates.push(date); 
+           if (status === 'telat_lupa_pulang') {
+              lupaPulangCount++; lupaPulangDates.push(date);
+           }
         } else if (status === 'sick' || status === 'permit' || status === 'dispensasi') { 
            ijinCount++; ijinDates.push(date); 
         } else if (status === 'alpa') { 
            alpaCount++; alpaDates.push(date); 
-        } else if (status === 'hadir') { 
+        } else if (status === 'hadir' || status === 'lupa_pulang' || status === 'lupa_masuk') { 
            hadirCount++; hadirDates.push(date); 
+           if (status === 'lupa_pulang') {
+              lupaPulangCount++; lupaPulangDates.push(date);
+           } else if (status === 'lupa_masuk') {
+              lupaMasukCount++; lupaMasukDates.push(date);
+           }
         }
         
         const dayLogs = myHistory.filter(log => isSameDay(new Date(log.timestamp), date));
@@ -176,7 +191,7 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
         }
      }
      
-     return { telatCount, ijinCount, alpaCount, lemburHours, hadirCount, telatDates, ijinDates, alpaDates, hadirDates, lemburDetails };
+     return { telatCount, ijinCount, alpaCount, lemburHours, hadirCount, lupaPulangCount, lupaMasukCount, telatDates, ijinDates, alpaDates, hadirDates, lupaPulangDates, lupaMasukDates, lemburDetails };
   }, [myHistory.length, getStatusForDate]);
 
   const todayStatusText = React.useMemo(() => {
@@ -184,15 +199,16 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
     if (todayLogs.length === 0) return "Belum Absen Hari Ini";
     
     const hasOut = todayLogs.some(log => log.type === 'out');
-    if (hasOut) return "Sudah Absen Pulang";
+    const hasIn = todayLogs.some(log => log.type === 'in');
+    
+    if (hasOut && hasIn) return "Sudah Absen Pulang";
+    if (hasOut && !hasIn) return "Hadir (Lupa Masuk)";
     
     const hasLemburOut = todayLogs.some(log => log.type === 'overtime_out');
     if (hasLemburOut) return "Sudah Lembur Pulang";
 
     const hasLemburIn = todayLogs.some(log => log.type === 'overtime_in');
     if (hasLemburIn) return "Sedang Lembur Masuk";
-
-    const hasIn = todayLogs.some(log => log.type === 'in');
     
     const sickOrPermit = todayLogs.find(log => ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(log.type));
     if (sickOrPermit) {
@@ -203,7 +219,7 @@ export function useAttendanceData(user: any, settings: any, resolvedShifts: any)
        return "Status: Izin";
     }
 
-    if (hasIn) return "Sudah Absen Masuk";
+    if (hasIn && !hasOut) return "Hadir (Belum/Lupa Pulang)";
     
     return "Sudah Absen";
   }, [myHistory]);
