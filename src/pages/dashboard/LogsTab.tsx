@@ -1,11 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "../../components/ui/card";
-import { ShieldAlert, AlertCircle, Ban, Search } from "lucide-react";
+import { ShieldAlert, AlertCircle, Ban, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { id } from "date-fns/locale";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 
 export function LogsTab({ securityLogs }: any) {
+  const [filterType, setFilterType] = useState<string>("all");
+
+  const filteredLogs = securityLogs.filter((log: any) => {
+    if (filterType === "all") return true;
+    if (filterType === "login_attempts") return log.title?.toLowerCase().includes("login");
+    if (filterType === "security_alerts") return log.title?.toLowerCase().includes("peringatan") || log.title?.toLowerCase().includes("ancaman");
+    if (filterType === "system_errors") return log.title?.toLowerCase().includes("error") || log.title?.toLowerCase().includes("kesalahan") || log.title?.toLowerCase().includes("sistem");
+    return true;
+  });
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
                 <Card className="border-0 shadow-lg shadow-teal-900/5 bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl p-8 rounded-3xl">
@@ -18,6 +29,23 @@ export function LogsTab({ securityLogs }: any) {
                       <p className="text-sm text-slate-500 dark:text-gray-400 mt-1">
                         Catatan sistem terkait login perangkat ganda dan isu keamanan lainnya. (Fitur Khusus Superadmin)
                       </p>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 bg-white dark:bg-gray-900 shadow-sm border border-gray-100 dark:border-gray-800 rounded-xl p-1">
+                      <div className="pl-3 py-1 flex items-center justify-center text-gray-400">
+                         <Filter className="w-4 h-4" />
+                      </div>
+                      <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger className="w-[180px] border-none shadow-none focus:ring-0 bg-transparent">
+                          <SelectValue placeholder="Filter Log" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Semua Tipe</SelectItem>
+                          <SelectItem value="login_attempts">Login Attempts</SelectItem>
+                          <SelectItem value="security_alerts">Security Alerts</SelectItem>
+                          <SelectItem value="system_errors">System Errors</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 
@@ -32,7 +60,7 @@ export function LogsTab({ securityLogs }: any) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {securityLogs.length > 0 ? securityLogs.map((log) => (
+                      {filteredLogs.length > 0 ? filteredLogs.map((log: any) => (
                         <TableRow key={log.id} className="hover:bg-rose-50/50 dark:hover:bg-rose-900/10">
                           <TableCell className="font-medium">
                             {format(new Date(log.createdAt), "dd MMM yyyy, HH:mm", { locale: id })}
@@ -50,7 +78,7 @@ export function LogsTab({ securityLogs }: any) {
                       )) : (
                         <TableRow>
                           <TableCell colSpan={3} className="h-32 text-center text-slate-500">
-                            Tidak ada log peringatan keamanan yang tercatat.
+                            Tidak ada log yang sesuai dengan filter.
                           </TableCell>
                         </TableRow>
                       )}

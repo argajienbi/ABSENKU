@@ -84,7 +84,7 @@ export default function UserApp() {
   }, []);
 
   const { myHistory, announcements, appNotifications, selectedDate, setSelectedDate, pendingCount, canEnableOvertime, summary } = useAttendanceData(user, settings, resolvedShifts);
-  const { location, distance, isWithinRadius, locationError, isFakeGPS, currentAreaName } = useUserLocation(settings, user);
+  const { location, distance, targetRadius, isWithinRadius, locationError, isFakeGPS, currentAreaName } = useUserLocation(settings, user);
   useQRScanner(view, activeAbsenTab, type, user, setPendingQRData, setQrUserIdentity, setActiveAbsenTab);
 
   const { loading, confirmData, setConfirmData, webcamRef, checkPendingAndStartAttendance, submitAttendance, handleResetPassword } = useUserAppLogic(user, settings, myHistory, location, isWithinRadius, locationError, isFakeGPS, qrUserIdentity, type, resolvedShifts);
@@ -127,7 +127,7 @@ export default function UserApp() {
 
   const contextValue = React.useMemo(() => ({
     isCardExpanded, setIsCardExpanded, currentTime, user, resolvedShifts, 
-    settings, location, distance, locationError, currentAreaName, myHistory, 
+    settings, location, distance, targetRadius, locationError, currentAreaName, myHistory, 
     setType, setView, canEnableOvertime, pendingCount, announcements,
     type, activeAbsenTab, setActiveAbsenTab, setPendingQRData, setQrUserIdentity,
     isDocumentCapture: ['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type),
@@ -142,7 +142,7 @@ export default function UserApp() {
     handleResetPassword, handleSaveProfile, isEditSaving, view, confirmData, setConfirmData, 
     submitAttendance: () => submitAttendance(permitStartDate, permitEndDate).then(s => s && view === 'absen' && setView('home'))
   }), [
-    isCardExpanded, currentTime, user, resolvedShifts, settings, location, distance, 
+    isCardExpanded, currentTime, user, resolvedShifts, settings, location, distance, targetRadius, 
     locationError, currentAreaName, myHistory, canEnableOvertime, pendingCount, 
     announcements, type, activeAbsenTab, pendingQRData, qrUserIdentity, 
     permitStartDate, permitEndDate, isAbsenMapExpanded, isWithinRadius, loading, 

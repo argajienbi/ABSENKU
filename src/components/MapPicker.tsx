@@ -176,7 +176,7 @@ function LeafletMapPicker({ center, radius, userLocation, readonly, onLocationSe
 
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current).setView(currentUserLocation || pos, 15);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{y}.png', {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(mapRef.current);
       
@@ -188,6 +188,10 @@ function LeafletMapPicker({ center, radius, userLocation, readonly, onLocationSe
     }
 
     const map = mapRef.current;
+    
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
 
     if (!markerRef.current) {
       markerRef.current = L.marker(pos, { draggable: !readonly }).addTo(map);

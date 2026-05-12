@@ -64,13 +64,19 @@ function PureLeafletMap({ mapData, center }: { mapData: any[], center: [number, 
 
     if (!mapRef.current) {
       mapRef.current = L.map(mapContainerRef.current).setView(center, 14);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{y}.png', {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       }).addTo(mapRef.current);
       markersRef.current = L.layerGroup().addTo(mapRef.current);
     }
 
     const map = mapRef.current;
+    
+    // Fix issue where map tiles don't load due to container resize
+    setTimeout(() => {
+        map.invalidateSize();
+    }, 100);
+
     const markers = markersRef.current!;
 
     markers.clearLayers();

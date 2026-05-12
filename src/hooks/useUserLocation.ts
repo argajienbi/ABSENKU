@@ -6,6 +6,7 @@ import { toast } from "sonner";
 export function useUserLocation(settings: any, user: any) {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+  const [targetRadius, setTargetRadius] = useState<number | null>(null);
   const [isWithinRadius, setIsWithinRadius] = useState(false);
   const [locationError, setLocationError] = useState(false);
   const [isFakeGPS, setIsFakeGPS] = useState(false);
@@ -106,6 +107,7 @@ export function useUserLocation(settings: any, user: any) {
 
             if (closestAreaDist !== Infinity) {
               setDistance(closestAreaDist);
+              setTargetRadius(closestTargetRadius);
               if (settings.geofenceEnabled) {
                 setIsWithinRadius(inAnyArea);
               }
@@ -160,5 +162,5 @@ export function useUserLocation(settings: any, user: any) {
     }
   }, [settings, user?.subareaId]);
 
-  return { location, distance, isWithinRadius, locationError, isFakeGPS, currentAreaName, setIsWithinRadius };
+  return { location, distance, targetRadius, isWithinRadius, locationError, isFakeGPS, currentAreaName, setIsWithinRadius };
 }

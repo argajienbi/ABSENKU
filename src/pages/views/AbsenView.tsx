@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowLeft, UserSquare2, Code, MapPin, ChevronUp, ChevronDown, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, UserSquare2, Code, MapPin, ChevronUp, ChevronDown, Check, AlertTriangle } from 'lucide-react';
 import { MapPicker } from '../../components/MapPicker';
 import Webcam from 'react-webcam';
 import { format } from 'date-fns';
@@ -9,12 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Input } from '../../components/ui/input';
 import { useUserAppContext } from './UserAppContext';
 import { calculateDistance } from '../../settingsObject';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '../../components/ui/dialog';
 
 export const AbsenView = () => {
+  const [showGeofenceModal, setShowGeofenceModal] = useState(false);
   const { 
     type, setView, activeAbsenTab, setActiveAbsenTab, setPendingQRData, setQrUserIdentity,
     isDocumentCapture, permitStartDate, setPermitStartDate, permitEndDate, setPermitEndDate,
-    location, isAbsenMapExpanded, setIsAbsenMapExpanded, isWithinRadius, user, settings,
+    location, distance, targetRadius, isAbsenMapExpanded, setIsAbsenMapExpanded, isWithinRadius, user, settings,
     webcamRef, loading, checkPendingAndStartAttendance
   } = useUserAppContext();
 
@@ -166,8 +168,14 @@ export const AbsenView = () => {
 
               <Button 
                 className={`w-full text-xs font-black uppercase tracking-[0.2em] h-12 shadow-xl rounded-2xl text-white transform active:scale-95 transition-all ${type === 'in' ? 'bg-teal-600 hover:bg-teal-700 shadow-teal-500/20' : type === 'overtime_in' ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-500/20' : type === 'overtime_out' ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/20' : type === 'sick' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20' : type === 'permit' ? 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/20' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20'}`} 
-                onClick={() => checkPendingAndStartAttendance?.("selfie")} 
-                disabled={loading || (settings?.geofenceEnabled && !isWithinRadius && !['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type))}
+                onClick={() => {
+                  if (settings?.geofenceEnabled && !isWithinRadius && !['sick', 'permit', 'cuti', 'melahirkan', 'meninggal'].includes(type)) {
+                    setShowGeofenceModal(true);
+                  } else {
+                    checkPendingAndStartAttendance?.("selfie");
+                  }
+                }} 
+                disabled={loading}
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -210,6 +218,40 @@ export const AbsenView = () => {
             </Tabs>
         </CardContent>
       </Card>
+    <Dialog open={showGeofenceModal} onOpenChange={setShowGeofenceModal}>
+      <DialogContent className="sm:max-w-md border-0 bg-white dark:bg-gray-900 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-rose-500"></div>
+        <DialogHeader className="px-6 pt-8 pb-2">
+          <div className="mx-auto w-16 h-16 bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center mb-4">
+            <AlertTriangle className="w-8 h-8 text-rose-600 dark:text-rose-400" />
+          </div>
+          <DialogTitle className="text-xl text-center font-bold text-gray-900 dark:text-white">Di Luar Area Absensi</DialogTitle>
+          <DialogDescription className="text-center text-gray-500 dark:text-gray-400 mt-2">
+            Anda harus berada di dalam area yang ditetapkan untuk melakukan absensi ini. 
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 flex flex-col gap-3 border-y border-gray-100 dark:border-gray-800">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500 dark:text-gray-400">Jarak Anda Saat Ini</span>
+            <span className="font-bold text-rose-600 dark:text-rose-400">{distance ? Math.round(distance) : '-'} meter</span>
+          </div>
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-gray-500 dark:text-gray-400">Radius Maksimal</span>
+            <span className="font-bold text-teal-600 dark:text-teal-400">{targetRadius ? Math.round(targetRadius) : '-'} meter</span>
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-6 border-none sm:justify-center">
+          <Button 
+            className="w-full sm:w-auto bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 dark:text-gray-900 text-white rounded-xl h-12 px-8 font-bold"
+            onClick={() => setShowGeofenceModal(false)}
+          >
+            Mengerti
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </div>
   );
 };

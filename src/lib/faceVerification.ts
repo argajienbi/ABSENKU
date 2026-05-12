@@ -5,6 +5,12 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Converts an image URL to base64 by drawing it to a canvas.
 // This is often more reliable for CORS than a direct fetch, depending on the origin.
 export async function urlToBase64(url: string): Promise<{ mimeType: string, data: string }> {
+  if (url.startsWith('data:')) {
+    const match = url.match(/^data:([^;]+);base64,(.*)$/);
+    if (match) return { mimeType: match[1], data: match[2] };
+    throw new Error("Invalid data URL");
+  }
+
   const processBlob = (blob: Blob): Promise<{ mimeType: string, data: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -47,13 +53,17 @@ export async function urlToBase64(url: string): Promise<{ mimeType: string, data
           const ctx = canvas.getContext("2d");
           if (!ctx) return reject(new Error("No ctx"));
           ctx.drawImage(img, 0, 0);
-          const dataUrl = canvas.toDataURL("image/jpeg");
-          const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
-          if (match) resolve({ mimeType: match[1], data: match[2] });
-          else reject(new Error("Failed to parse canvas base64"));
+          try {
+            const dataUrl = canvas.toDataURL("image/jpeg");
+            const match = dataUrl.match(/^data:([^;]+);base64,(.*)$/);
+            if (match) resolve({ mimeType: match[1], data: match[2] });
+            else reject(new Error("Failed to parse canvas base64"));
+          } catch (e) {
+            reject(new Error("Canvas tainted by CORS, cannot extract data"));
+          }
         };
-        img.onerror = () => reject(new Error("Image failed to load for canvas draw"));
-        img.src = url + (url.includes('?') ? '&' : '?') + 'notag=1';
+        img.onerror = () => reject(new Error(`Image failed to load (likely CORS/Firebase Storage rules). URL: ${url}`));
+        img.src = url; // do not append random query params that might invalidate signed URLs
       });
     }
   }
@@ -96,8 +106,8 @@ export async function verifyFace(selfieBase64: string, avatarUrl: string): Promi
     const answer = req.text?.trim().toUpperCase() || "";
     return answer.includes("YES") ? 'MATCH' : 'NO_MATCH';
   } catch (error) {
-    console.error("Face verification error:", error);
-    // You could potentially check the error message for "429" or "quota" here.
+    console.warn("Face verification skipped:", error instanceof Error ? error.message : String(error));
+    // Provide UNAVAILABLE so the flow continues gracefully
     return 'UNAVAILABLE';
   }
 }
