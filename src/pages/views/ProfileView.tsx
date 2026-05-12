@@ -5,7 +5,7 @@ import { ProfileMenu } from './profile/ProfileMenu';
 import { ProfileIdCard } from './profile/ProfileIdCard';
 import { ProfileEdit } from './profile/ProfileEdit';
 
-// Versi 4.1.0
+// Versi 4.1.2
 export const ProfileView = () => {
   const { profileTab } = useUserAppContext();
 

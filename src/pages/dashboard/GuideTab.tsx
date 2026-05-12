@@ -124,6 +124,42 @@ export function GuideTab() {
             </p>
           </CardContent>
         </Card>
+
+        <Card className="border-teal-200 dark:border-teal-900 shadow-sm md:col-span-2 bg-teal-50/30 dark:bg-teal-900/10">
+          <CardHeader className="border-b border-teal-100 dark:border-teal-900 pb-4">
+            <CardTitle className="text-lg flex items-center gap-2 text-teal-800 dark:text-teal-200">
+              <ClipboardList className="w-5 h-5" />
+              Changelog & Pembaruan
+            </CardTitle>
+            <CardDescription>Riwayat pembaruan fitur dan perbaikan sistem.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="space-y-4">
+              <div className="border-l-2 border-teal-500 pl-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-black text-teal-700 dark:text-teal-400">v4.1.2</span>
+                  <span className="text-[10px] bg-teal-100 dark:bg-teal-900 px-2 py-0.5 rounded-full font-bold text-teal-600">Terbaru</span>
+                </div>
+                <ul className="text-xs text-slate-600 dark:text-gray-400 list-disc pl-4 space-y-1">
+                  <li>Rancang ulang menu Profil: Tampilan lebih bersih tanpa header gradien.</li>
+                  <li>Detail informasi pengguna: Email, NIP, Unit Penempatan, dan Shift Kerja.</li>
+                  <li>Fitur Kalender Kehadiran Bulanan dengan legenda status (Tepat, Telat, Izin, Alpa).</li>
+                  <li>Pembaruan versi sistem ke v4.1.2.</li>
+                </ul>
+              </div>
+
+              <div className="border-l-2 border-slate-300 pl-4 opacity-70">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-black text-slate-700 dark:text-slate-400">v4.1.1</span>
+                </div>
+                <ul className="text-xs text-slate-600 dark:text-gray-400 list-disc pl-4 space-y-1">
+                  <li>Peningkatan UI Profil Pengguna dengan kartu identitas modern.</li>
+                  <li>Penambahan Ringkasan Statistik Kehadiran bulanan di menu Profil.</li>
+                </ul>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
