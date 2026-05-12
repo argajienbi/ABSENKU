@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, addDoc, collection } from "firebase/firestore";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
+import { toast } from "sonner";
 
 interface AppUser {
   uid: string;
@@ -72,7 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Check for device lock
             if (userData.deviceId && userData.deviceId !== currentDeviceId && !localStorage.getItem("suppress_device_logout")) {
                console.log("Device mismatch detected. Found ID:", userData.deviceId, "Current:", currentDeviceId);
-               alert("Anda telah masuk (login) dari perangkat lain. Anda akan dikeluarkan dari perangkat ini.");
+               toast.error("Sesi Berakhir", {
+                 description: "Anda telah masuk (login) dari perangkat lain. Anda akan dikeluarkan dari perangkat ini.",
+                 duration: 5000
+               });
                auth.signOut();
                setUser(null);
                return;

@@ -69,45 +69,57 @@ export default function Login() {
       setLoading(true);
       const res = await signInWithEmailAndPassword(auth, email, password);
       
-      let localDeviceId = localStorage.getItem("app_device_id");
-      if (!localDeviceId) {
-         localDeviceId = Math.random().toString(36).substring(2, 18);
-         localStorage.setItem("app_device_id", localDeviceId);
+      // Post-login metadata updates (wrapped in separate try-catch to not block successful auth)
+      try {
+        let localDeviceId = localStorage.getItem("app_device_id");
+        if (!localDeviceId) {
+           localDeviceId = Math.random().toString(36).substring(2, 18);
+           localStorage.setItem("app_device_id", localDeviceId);
+        }
+        localStorage.setItem("suppress_device_logout", "true");
+        
+        const userRef = doc(db, "users", res.user.uid);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+           const data = userSnap.data();
+           if (data.deviceId && data.deviceId !== localDeviceId) {
+              // Log security warning for superadmin
+              if (data.role === 'superadmin' || data.role === 'admin') {
+                 try {
+                    await setDoc(doc(db, "notifications", `notif_${Date.now()}_admin_only`), {
+                      title: "Peringatan Keamanan Sistem",
+                      body: `Pengguna ${data.name || email} (${email}) login dari perangkat baru. Perangkat lama telah di-logout.`,
+                      userId: "admin_only",
+                      type: "danger", 
+                      createdAt: Date.now(),
+                      read: false
+                    });
+                    // Notif RTDB untuk admin/superadmin Sketchware
+                    const adminRef = ref(rtdb, `notifications/users/admin_only/broadcast`);
+                    await set(adminRef, {
+                      title: "Peringatan Keamanan Sistem",
+                      message: `Pengguna ${data.name || email} (${email}) login dari perangkat baru.`,
+                      read: false,
+                      createdAt: Date.now()
+                    });
+                 } catch (e) {
+                    console.error("Failed to write device log", e);
+                 }
+              }
+           }
+        }
+        await updateDoc(userRef, { 
+          deviceId: localDeviceId,
+          lastLogin: Date.now()
+        }).catch(err => {
+          console.error("Critical: Failed to update deviceId", err);
+          // If this fails, the user might be booted out by the device lock rule in AuthContext
+        });
+        setTimeout(() => localStorage.removeItem("suppress_device_logout"), 5000);
+      } catch (postLoginError) {
+        console.error("Non-critical post-login error:", postLoginError);
+        // We don't show a toast here because the user is technically logged in
       }
-      localStorage.setItem("suppress_device_logout", "true");
-      
-      const userRef = doc(db, "users", res.user.uid);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-         const data = userSnap.data();
-         if (data.deviceId && data.deviceId !== localDeviceId) {
-            // Log security warning for superadmin
-            if (data.role === 'superadmin' || data.role === 'admin') {
-               try {
-                  await setDoc(doc(db, "notifications", `notif_${Date.now()}_admin_only`), {
-                    title: "Peringatan Keamanan Sistem",
-                    body: `Pengguna ${data.name || email} (${email}) login dari perangkat baru. Perangkat lama telah di-logout.`,
-                    userId: "admin_only",
-                    type: "danger", 
-                    createdAt: Date.now(),
-                    read: false
-                  });
-                  // Notif RTDB untuk admin/superadmin Sketchware
-                  const adminRef = ref(rtdb, `notifications/users/admin_only/broadcast`);
-                  await set(adminRef, {
-                    title: "Peringatan Keamanan Sistem",
-                    message: `Pengguna ${data.name || email} (${email}) login dari perangkat baru.`,
-                    read: false,
-                    createdAt: Date.now()
-                  });
-               } catch (e) {
-                  console.error("Failed to write device log", e);
-               }
-            }
-         }
-      }
-      await updateDoc(userRef, { deviceId: localDeviceId });
-      setTimeout(() => localStorage.removeItem("suppress_device_logout"), 5000);
       
     } catch (error: any) {
       setLoading(false);

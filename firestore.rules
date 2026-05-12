@@ -25,7 +25,7 @@ service cloud.firestore {
     function isAdmin() { 
       return isSignedIn() && (
         request.auth.token.email == "armin.gandi@gmail.com" || 
-        (userExists() && 'role' in getUserData() && getUserData().role in ["superadmin", "admin"])
+        (userExists() && 'role' in getUserData() && getUserData().role in ["superadmin", "admin", "admin_pt", "admin_area", "admin_cabang"])
       );
     }
     
@@ -49,11 +49,11 @@ service cloud.firestore {
       return data.uid is string && data.uid.size() <= 128 &&
              data.email is string && data.email.size() <= 256 &&
              data.name is string && data.name.size() <= 256 &&
-             data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"] && 
+             data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser", "admin_pt", "admin_area", "admin_cabang"] && 
              data.createdAt is number && 
              data.avatarUrl is string && data.avatarUrl.size() <= 2048 &&
-             data.shiftId is string && data.shiftId.size() <= 128 &&
-             data.uniqueId is string && data.uniqueId.size() <= 128 &&
+             (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
+             (!('uniqueId' in data) || data.uniqueId == null || (data.uniqueId is string && data.uniqueId.size() <= 128)) &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
              (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
              (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
@@ -113,7 +113,7 @@ service cloud.firestore {
       return data.used is bool &&
              (!('usedBy' in data) || data.usedBy == null || (data.usedBy is string && data.usedBy.size() <= 128)) &&
              (!('usedAt' in data) || data.usedAt == null || data.usedAt is number) &&
-             (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"])) &&
+             (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser", "admin_pt", "admin_area", "admin_cabang"])) &&
              (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
              (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&

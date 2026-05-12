@@ -208,7 +208,7 @@ export const ProfileMenu = () => {
                   </div>
                 </button>
 
-                {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'demo') && (
+                {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'demo' || user?.role === 'admin_pt' || user?.role === 'admin_area' || user?.role === 'admin_cabang') && (
                   <button 
                     onClick={() => navigate('/dashboard')}
                     className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
