@@ -64,7 +64,7 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             }
                             
                             allRecords.push([
-                              usr.name || "-", usr.role || "-", usr.shiftId || "-", ptName, areaName, branchName, usr.uniqueId || "-",
+                              usr.name || log.userName || "-", usr.role || "-", usr.shiftId || "-", ptName, areaName, branchName, usr.uniqueId || "-",
                               format(new Date(log.timestamp), "yyyy-MM-dd"),
                               format(new Date(log.timestamp), "HH:mm:ss"),
                               log.type, log.method, log.withinRadius ? "Ya" : "Tidak",
@@ -111,7 +111,7 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             }
 
                             rows.push([
-                              usr.name || "-", usr.role || "-", usr.shiftId || "-",
+                              usr.name || log.userName || "-", usr.role || "-", usr.shiftId || "-",
                               format(new Date(log.timestamp), "yyyy-MM-dd"),
                               format(new Date(log.timestamp), "HH:mm:ss"),
                               log.type, log.method, log.withinRadius ? "Ya" : "Tidak",
@@ -151,7 +151,7 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             } else if (log.method === "qr") {
                               scanner = "Diri Sendiri";
                             }
-                            allRecords.push([usr.name || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.notes ? log.notes.replace(/,/g, ' ') : "-", log.status || "APPROVED", scanner].map(v => `"${v}"`).join(','));
+                            allRecords.push([usr.name || log.userName || "N/A", usr.role || "N/A", usr.shiftId || "N/A", usr.uniqueId || "N/A", format(new Date(log.timestamp), "yyyy-MM-dd"), format(new Date(log.timestamp), "HH:mm:ss"), log.type, log.method, log.withinRadius ? "Ya" : "Tidak/Manual", log.extraData ? log.extraData.replace(/,/g, ' ') : "-", log.notes ? log.notes.replace(/,/g, ' ') : "-", log.status || "APPROVED", scanner].map(v => `"${v}"`).join(','));
                           });
                         }
                       });
@@ -191,7 +191,7 @@ export function OverviewTab({ user, filteredAttendances, filteredUsersList, setC
                             {format(new Date(log.timestamp), "dd MMM, HH:mm:ss")}
                           </TableCell>
                           <TableCell className="px-6 py-4 font-black text-teal-800 dark:text-teal-200">
-                            {filteredUsersList.find(u => u.uid === log.userId || u.id === log.userId)?.name || log.userId}
+                            {filteredUsersList.find(u => u.uid === log.userId || u.id === log.userId)?.name || log.userName || log.userId}
                           </TableCell>
                           <TableCell className="px-6 py-4">
                              <div className="text-[10px] font-bold text-slate-500">Jadwal:</div>

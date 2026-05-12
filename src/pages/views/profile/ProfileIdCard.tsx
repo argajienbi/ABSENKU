@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User, Edit, ChevronRight, IdCard, Sun, Moon, LogOut, Info, ArrowLeft, Activity, Share2, Download, Fingerprint, Check, Code, Camera, Phone, Key, Settings } from 'lucide-react';
 import { Card } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
@@ -12,6 +12,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { toast } from 'sonner';
 import { useTheme } from 'next-themes';
 import { useUserAppContext } from '../UserAppContext';
+import { toPng } from 'html-to-image';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
 
 export const ProfileIdCard = () => {
     const { 
@@ -19,13 +21,51 @@ export const ProfileIdCard = () => {
         theme, setTheme, idCardSide, setIdCardSide, idCardRef,
         showFaceUpdateCam, setShowFaceUpdateCam, editWebcamRef, editFaceBase64, captureEditFace,
         editName, setEditName, editPhone, setEditPhone, handleResetPassword, handleSaveProfile,
-        isEditSaving, handleShareIDCard, handleDownloadIDCard, setView
+        isEditSaving, setView
     } = useUserAppContext();
 
     const navigate = useNavigate();
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+    const handleShareIDCard = async () => {
+      if (!idCardRef.current) return;
+      try {
+          const dataUrl = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], 'id-card.png', { type: 'image/png' });
+          if (navigator.share && navigator.canShare({ files: [file] })) {
+               await navigator.share({
+                   title: 'ID Card Pegawai',
+                   files: [file]
+               });
+          } else {
+               toast.error("Fitur share tidak didukung di perangkat ini.");
+          }
+      } catch (e) {
+          console.error(e);
+          toast.error("Gagal membagikan kartu.");
+      }
+    };
+
+    const handleDownloadIDCard = async () => {
+      if (!idCardRef.current) return;
+      toast.loading("Memproses gambar...", { id: "gen-card" });
+      try {
+          await new Promise(r => setTimeout(r, 200)); 
+          const dataUrl = await toPng(idCardRef.current, { cacheBust: true, pixelRatio: 3 });
+          setPreviewImage(dataUrl);
+          toast.dismiss("gen-card");
+          toast.success("Berhasil! Tahan gambar untuk menyimpan.", { id: "gen-card-success" });
+      } catch (e) {
+          toast.dismiss("gen-card");
+          console.error(e);
+          toast.error("Gagal memproses kartu.");
+      }
+    };
 
     return (
-                  <div className="space-y-4 animate-in fade-in">
+        <>
+        <div className="space-y-4 animate-in fade-in">
             <div className="flex items-center justify-between mb-4 px-2">
                 <div className="flex items-center">
                   <button onClick={() => setProfileTab('menu')} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 dark:text-gray-300">
@@ -166,9 +206,21 @@ export const ProfileIdCard = () => {
                   <Share2 className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Bagikan</span>
                 </Button>
                 <Button variant="outline" className="flex flex-col h-auto py-3 gap-1.5 rounded-2xl font-semibold border-purple-100 text-purple-700 bg-purple-50 hover:bg-purple-100 dark:bg-gray-800 dark:border-gray-700 dark:text-purple-400" onClick={handleDownloadIDCard}>
-                  <Download className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Unduh PDF</span>
+                  <Download className="w-5 h-5" /> <span className="text-[10px] uppercase tracking-wider">Unduh Gambar (JPG)</span>
                 </Button>
             </div>
           </div>
+
+          <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+            <DialogContent className="max-w-[400px] p-6 flex flex-col items-center justify-center bg-white dark:bg-gray-900 border-0 rounded-[2.5rem] shadow-2xl outline-none">
+              <DialogHeader>
+                 <DialogTitle className="text-center font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest text-sm mb-2">Simpan ID Card</DialogTitle>
+              </DialogHeader>
+              <p className="text-[11px] text-center text-slate-500 mb-4 font-medium dark:text-gray-400">Tekan dan tahan gambar di bawah ini lalu pilih <strong>"Download Image" / "Simpan Gambar"</strong>.</p>
+              {previewImage && <img src={previewImage} alt="ID Card" className="w-full h-auto rounded-xl shadow-2xl pointer-events-auto" />}
+              <Button variant="outline" className="w-full mt-6 h-12 rounded-2xl font-bold uppercase tracking-widest text-xs" onClick={() => setPreviewImage(null)}>Tutup</Button>
+            </DialogContent>
+          </Dialog>
+        </>
     );
 };

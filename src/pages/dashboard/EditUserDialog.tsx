@@ -36,6 +36,8 @@ interface EditUserDialogProps {
   setEditMonthlyShifts: (shifts: any) => void;
   editIsBanned: boolean;
   setEditIsBanned: (banned: boolean) => void;
+  editBypassGeofence: boolean;
+  setEditBypassGeofence: (bypass: boolean) => void;
   saveUserChanges: () => void;
   deleteUser: () => void;
   settings: any;
@@ -53,6 +55,7 @@ export function EditUserDialog({
   editWeeklyShiftPattern, setEditWeeklyShiftPattern,
   editMonthlyShifts, setEditMonthlyShifts,
   editIsBanned, setEditIsBanned,
+  editBypassGeofence, setEditBypassGeofence,
   saveUserChanges, deleteUser,
   settings, shiftsInput, currentUser
 }: EditUserDialogProps) {
@@ -252,6 +255,17 @@ export function EditUserDialog({
                   <Switch 
                     checked={editIsBanned}
                     onCheckedChange={setEditIsBanned}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-widest">Bypass Geofence</Label>
+                    <p className="text-[9px] text-rose-600/70 dark:text-rose-500/70">Izinkan absen dari lokasi manapun terlepas dari sistem radius.</p>
+                  </div>
+                  <Switch 
+                    checked={editBypassGeofence}
+                    onCheckedChange={setEditBypassGeofence}
+                    className="data-[state=checked]:bg-teal-500"
                   />
                 </div>
                 

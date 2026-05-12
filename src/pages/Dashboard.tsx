@@ -79,6 +79,7 @@ export default function Dashboard() {
   const [editBranch, setEditBranch] = useState("");
   const [editSubArea, setEditSubArea] = useState("");
   const [editIsBanned, setEditIsBanned] = useState(false);
+  const [editBypassGeofence, setEditBypassGeofence] = useState(false);
   const [editWorkStartDate, setEditWorkStartDate] = useState("");
   const [editWorkEndDate, setEditWorkEndDate] = useState("");
   const [editMonthlyShifts, setEditMonthlyShifts] = useState<Record<string, string>>({});
@@ -129,6 +130,7 @@ export default function Dashboard() {
     setEditBranch(user.branchId || "global");
     setEditSubArea(user.subareaId || "global");
     setEditIsBanned(user.isBanned || false);
+    setEditBypassGeofence(user.bypassGeofence || false);
     setEditWorkStartDate(user.workStartDate ? format(new Date(user.workStartDate), "yyyy-MM-dd") : "");
     setEditWorkEndDate(user.workEndDate ? format(new Date(user.workEndDate), "yyyy-MM-dd") : "");
     setEditMonthlyShifts(user.monthlyShifts || {});
@@ -441,6 +443,7 @@ export default function Dashboard() {
               editWeeklyShiftPattern={editWeeklyShiftPattern} setEditWeeklyShiftPattern={setEditWeeklyShiftPattern}
               editMonthlyShifts={editMonthlyShifts} setEditMonthlyShifts={setEditMonthlyShifts}
               editIsBanned={editIsBanned} setEditIsBanned={setEditIsBanned}
+              editBypassGeofence={editBypassGeofence} setEditBypassGeofence={setEditBypassGeofence}
               saveUserChanges={() => saveUserChanges(selectedUserForEdit.id, {
                 name: editName, role: editRole, shiftId: editShift, uniqueId: editUniqueId,
                 areaId: editArea === "global" ? null : editArea,
@@ -448,6 +451,7 @@ export default function Dashboard() {
                 branchId: editBranch === "global" ? null : editBranch,
                 subareaId: editSubArea === "global" ? null : editSubArea,
                 isBanned: editIsBanned,
+                bypassGeofence: editBypassGeofence,
                 workStartDate: editWorkStartDate ? new Date(editWorkStartDate).getTime() : null,
                 workEndDate: editWorkEndDate ? new Date(editWorkEndDate).getTime() : null,
                 monthlyShifts: editMonthlyShifts,

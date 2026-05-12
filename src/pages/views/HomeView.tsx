@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 export const HomeView = () => {
   const { 
     isCardExpanded, setIsCardExpanded, currentTime, user, resolvedShifts, 
-    settings, location, distance, locationError, currentAreaName, 
+    settings, location, distance, targetRadius, locationError, currentAreaName, 
     myHistory, setType, setView, canEnableOvertime, pendingCount, announcements 
   } = useUserAppContext();
 
@@ -120,16 +120,7 @@ export const HomeView = () => {
                         <span className="font-mono font-semibold tracking-tight truncate mr-2">LT: {location.lat.toFixed(5)} LG: {location.lng.toFixed(5)}</span>
                         {settings?.geofenceEnabled && (
                           <span className="font-bold tracking-widest uppercase shrink-0">
-                            RAD: {
-                            (() => {
-                              if (user?.areaId && settings?.areas && settings.areas[user.areaId]) {
-                                return `${settings.areas[user.areaId].radius}M`;
-                              } else if (settings?.areas && Object.keys(settings.areas).length > 0) {
-                                return `TITIK`;
-                              }
-                              return "-";
-                            })()
-                            }
+                            RAD: {targetRadius !== null && targetRadius !== undefined ? `${targetRadius}M` : (Object.keys(settings?.areas || {}).length > 0 ? "TITIK" : "-")}
                           </span>
                         )}
                       </div>

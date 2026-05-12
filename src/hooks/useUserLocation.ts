@@ -16,7 +16,7 @@ export function useUserLocation(settings: any, user: any) {
   useEffect(() => {
     if (!settings) return;
 
-    if (!settings.geofenceEnabled) {
+    if (!settings.geofenceEnabled || user?.bypassGeofence) {
       setIsWithinRadius(true);
     }
 
@@ -114,9 +114,11 @@ export function useUserLocation(settings: any, user: any) {
               setCurrentAreaName(foundAreaName);
             } else {
               setDistance(null);
+              setTargetRadius(null);
               if (settings.geofenceEnabled) {
                 setIsWithinRadius(false);
               }
+              setCurrentAreaName("Lokasi Tidak Terkonfigurasi");
             }
           },
           (err) => {
@@ -162,5 +164,14 @@ export function useUserLocation(settings: any, user: any) {
     }
   }, [settings, user?.subareaId]);
 
-  return { location, distance, targetRadius, isWithinRadius, locationError, isFakeGPS, currentAreaName, setIsWithinRadius };
+  return { 
+    location, 
+    distance, 
+    targetRadius, 
+    isWithinRadius: user?.bypassGeofence ? true : isWithinRadius, 
+    locationError, 
+    isFakeGPS, 
+    currentAreaName, 
+    setIsWithinRadius 
+  };
 }

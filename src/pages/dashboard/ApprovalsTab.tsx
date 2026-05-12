@@ -143,7 +143,7 @@ export const ApprovalsTab = ({ user, filteredAttendances, usersList }: { user: a
                                       <div className="text-xs text-slate-500 font-mono tracking-widest">{format(new Date(log.timestamp), "HH:mm")} WIB</div>
                                    </TableCell>
                                    <TableCell className="px-4 py-4 align-top">
-                                      <div className="font-bold text-slate-800 dark:text-white">{u?.name || "User Tidak Dikenal"}</div>
+                                      <div className="font-bold text-slate-800 dark:text-white">{u?.name || log.userName || "User Tidak Dikenal"}</div>
                                       <div className="text-xs text-slate-500 uppercase tracking-widest">{u?.role || "Karyawan"}</div>
                                    </TableCell>
                                    <TableCell className="px-4 py-4 align-top">

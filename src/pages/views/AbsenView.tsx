@@ -76,7 +76,7 @@ export const AbsenView = () => {
                           <div>
                             <span className="text-[10px] font-black text-slate-500 dark:text-gray-400 uppercase tracking-widest block leading-none mb-1">Peta Visual (GPS)</span>
                             <span className={`text-[10px] items-center gap-1 inline-flex font-bold px-2 py-0.5 rounded-full ${isWithinRadius ? 'bg-teal-100 text-teal-700' : 'bg-rose-100 text-rose-700'}`}>
-                              {isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence'}
+                              {user?.bypassGeofence ? 'Bypass Geofence Aktif' : (isWithinRadius ? 'Dalam Geofence' : 'Di Luar Geofence')}
                               {location && user?.subareaId && settings?.subareas?.[user.subareaId]?.lat !== undefined && settings?.subareas?.[user.subareaId]?.lng !== undefined && (
                                 <span className="ml-1 opacity-70">
                                   ({Math.round(calculateDistance(location.lat, location.lng, settings.subareas[user.subareaId].lat, settings.subareas[user.subareaId].lng))}m)

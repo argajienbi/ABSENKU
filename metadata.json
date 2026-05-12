@@ -1,5 +1,5 @@
 {
-  "name": "ABSENKU",
+  "name": "my presensi",
   "description": "A attendance tracking system with geofencing and facial recognition support.",
   "requestFramePermissions": [
     "camera",

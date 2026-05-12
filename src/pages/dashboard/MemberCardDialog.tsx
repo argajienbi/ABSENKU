@@ -1,11 +1,11 @@
 
-import { Dialog, DialogContent } from "../../components/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import { QRCodeCanvas } from 'qrcode.react';
 import { Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { toPng } from "html-to-image";
-import jsPDF from 'jspdf';
 
 interface MemberCardDialogProps {
   selectedUserForCard: any | null;
@@ -15,10 +15,14 @@ interface MemberCardDialogProps {
 }
 
 export function MemberCardDialog({ selectedUserForCard, setSelectedUserForCard, settings, shiftsInput }: MemberCardDialogProps) {
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   return (
-    <Dialog open={!!selectedUserForCard} onOpenChange={(open) => !open && setSelectedUserForCard(null)}>
+    <>
+    <Dialog open={!!selectedUserForCard && !previewImage} onOpenChange={(open) => !open && setSelectedUserForCard(null)}>
       <DialogContent className="sm:max-w-2xl bg-white dark:bg-gray-900 border-0 rounded-[2.5rem] shadow-2xl p-0 overflow-hidden outline-none ring-0">
         {selectedUserForCard && (
+
           <div className="flex flex-col items-center p-8">
             <div 
               id="member-card-print"
@@ -107,29 +111,35 @@ export function MemberCardDialog({ selectedUserForCard, setSelectedUserForCard, 
               <Button onClick={async () => {
                 const el = document.getElementById("member-card-print");
                 if (!el) return;
-                toast.info("Menyiapkan dokumen...", { id: 'print-id' });
+                toast.loading("Memproses gambar...", { id: 'print-id' });
                 try {
                   await new Promise(r => setTimeout(r, 250));
                   const url = await toPng(el, { cacheBust: true, pixelRatio: 3 });
-                  const pdf = new jsPDF({
-                    orientation: "landscape",
-                    unit: "mm",
-                    format: [85.6, 54]
-                  });
-                  pdf.addImage(url, 'PNG', 0, 0, 85.6, 54);
-                  pdf.save(`IDCard_${selectedUserForCard.name?.replace(/\s+/g, '_') || 'Karyawan'}.pdf`);
-                  toast.dismiss();
-                  toast.success("Berhasil mengunduh dokumen", { id: 'print-id' });
+                  setPreviewImage(url);
+                  toast.dismiss('print-id');
+                  toast.success("Berhasil! Tahan gambar untuk menyimpan.", { id: 'print-id-success' });
                 } catch (e) {
-                  toast.dismiss();
+                  toast.dismiss('print-id');
                   console.error("Print error", e);
-                  toast.error("Gagal mengunduh kartu", { id: 'print-id' });
+                  toast.error("Gagal mengunduh kartu", { id: 'print-id-fail' });
                 }
-              }} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-teal-600/20 rounded-2xl active:scale-95 transition-all">UNDUH KARTU (PDF)</Button>
+              }} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-black tracking-widest uppercase text-xs h-12 shadow-lg shadow-teal-600/20 rounded-2xl active:scale-95 transition-all">UNDUH KARTU (JPG)</Button>
             </div>
           </div>
         )}
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+      <DialogContent className="max-w-[400px] p-6 flex flex-col items-center justify-center bg-white dark:bg-gray-900 border-0 rounded-[2.5rem] shadow-2xl outline-none">
+        <DialogHeader>
+           <DialogTitle className="text-center font-bold text-gray-800 dark:text-gray-100 uppercase tracking-widest text-sm mb-2">Simpan Kartu</DialogTitle>
+        </DialogHeader>
+        <p className="text-[11px] text-center text-slate-500 mb-4 font-medium dark:text-gray-400">Tekan dan tahan gambar di bawah ini lalu pilih <strong>"Download Image" / "Simpan Gambar"</strong>.</p>
+        {previewImage && <img src={previewImage} alt="ID Card" className="w-full h-auto rounded-xl shadow-2xl pointer-events-auto" />}
+        <Button variant="outline" className="w-full mt-6 h-12 rounded-2xl font-bold uppercase tracking-widest text-xs" onClick={() => setPreviewImage(null)}>Tutup</Button>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

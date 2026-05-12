@@ -313,7 +313,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
     const records = filteredData.map(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
       return [
-        user?.name || "Unknown",
+        user?.name || log.userName || "Unknown",
         user?.role || "-",
         user?.companyId === 'global' ? "ALL" : (settings?.companies?.[user?.companyId]?.name || user?.companyId || "-"),
         user?.areaId === 'global' ? "ALL" : (settings?.areas?.[user?.areaId]?.name || user?.areaId || "-"),
@@ -355,7 +355,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
       const structName = `${user?.companyId === 'global' ? '*' : 'PT'}/${user?.areaId === 'global' ? '*' : 'AR'}/${user?.subareaId === 'global' ? '*' : 'SA'}/${user?.branchId === 'global' ? '*' : 'CB'}`;
       return [
-        user?.name || "Unknown",
+        user?.name || log.userName || "Unknown",
         structName,
         format(new Date(log.timestamp), "yyyy-MM-dd"),
         format(new Date(log.timestamp), "HH:mm:ss"),
@@ -625,7 +625,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
                   <TableRow key={log.id} className="group border-b border-slate-100 dark:border-gray-700/50 hover:bg-slate-50 dark:hover:bg-gray-700/30 transition-colors">
                     <TableCell className="py-3 px-4">
                        <div className="flex flex-col">
-                          <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{u?.name || log.userId}</span>
+                          <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{u?.name || log.userName || log.userId}</span>
                           <span className="text-[10px] text-slate-500">{u?.role ? String(u.role).toUpperCase() : "-"}</span>
                           <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-bold">
                             {u?.companyId && u?.companyId !== 'global' && <span className="text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-gray-800 px-1 py-0.5 rounded uppercase leading-none">{settings?.companies?.[u.companyId]?.name || u.companyId}</span>}

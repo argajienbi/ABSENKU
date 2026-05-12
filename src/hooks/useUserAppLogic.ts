@@ -145,6 +145,7 @@ export function useUserAppLogic(user: any, settings: any, myHistory: any[], loca
 
       const attendancePayload: any = {
         userId: targetUid,
+        userName: qrUserIdentity?.name || user.name || "Unknown",
         timestamp: Date.now(),
         type,
         method: confirmData.method,
