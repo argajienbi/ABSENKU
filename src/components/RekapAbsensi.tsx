@@ -32,6 +32,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
   const [selectedShift, setSelectedShift] = useState<string>("all");
   const [selectedRole, setSelectedRole] = useState<string>("all");
   const [selectedStatus, setSelectedStatus] = useState<string>("all"); // Tipe log
+  const [selectedApprovalStatus, setSelectedApprovalStatus] = useState<string>("all");
   
   const [searchQuery, setSearchQuery] = useState("");
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
@@ -304,9 +305,21 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
            if (!isLate) return false;
         }
       }
+      // Filter by Approval Status
+      if (selectedApprovalStatus !== "all") {
+        const logStatus = (log.status || "APPROVED").toLowerCase();
+        if (selectedApprovalStatus === 'pending') {
+          if (logStatus !== 'pending' && logStatus !== 'pending_approval') return false;
+        } else if (selectedApprovalStatus === 'rejected') {
+          if (logStatus !== 'rejected') return false;
+        } else if (selectedApprovalStatus === 'approved') {
+          if (logStatus !== 'approved' && logStatus !== 'valid') return false;
+        }
+      }
+
       return true;
     });
-  }, [attendanceData, selectedUserId, selectedCompany, selectedArea, selectedSubArea, selectedBranch, selectedShift, selectedRole, selectedStatus, isFetched, usersList, settings]);
+  }, [attendanceData, selectedUserId, selectedCompany, selectedArea, selectedSubArea, selectedBranch, selectedShift, selectedRole, selectedStatus, selectedApprovalStatus, isFetched, usersList, settings]);
 
   const handleExportExcel = () => {
     const header = ["Nama", "Role", "PT / Perusahaan", "Area / Regional", "Sub Area", "Cabang / Ruangan", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan", "Keterangan/Alasan"];
@@ -385,6 +398,20 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
       <CardContent className="p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6 bg-slate-50 dark:bg-gray-900/50 p-4 rounded-xl border border-slate-100 dark:border-gray-800">
            
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Status Approval</label>
+             <select 
+               value={selectedApprovalStatus} 
+               onChange={(e) => setSelectedApprovalStatus(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                 <option value="all">Semua Status</option>
+                 <option value="approved">Approved</option>
+                 <option value="pending">Pending</option>
+                 <option value="rejected">Rejected</option>
+             </select>
+           </div>
+
            {/* Row 1/2 of Filters */}
            <div className="col-span-1 lg:col-span-2">
              <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Cari Karyawan / NIK</label>
@@ -614,7 +641,8 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
                 <TableRow className="hover:bg-transparent border-slate-200 dark:border-gray-700">
                   <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Karyawan</TableHead>
                   <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Tanggal & Jam</TableHead>
-                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Tipe & Status</TableHead>
+                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Tipe Absensi</TableHead>
+                  <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4">Status Approval</TableHead>
                   <TableHead className="font-bold text-slate-600 dark:text-gray-300 uppercase text-[10px] tracking-wider py-3 px-4 min-w-[200px]">Detail / Informasi</TableHead>
                 </TableRow>
               </TableHeader>
@@ -647,26 +675,26 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
                        </div>
                     </TableCell>
                     <TableCell className="py-3 px-4">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                          log.type === 'in' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' 
-                          : log.type === 'out' ? 'bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-slate-300'
-                          : log.type === 'overtime_in' || log.type === 'overtime' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                          : log.type === 'overtime_out' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                          : log.type === 'sick' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                          : log.type === 'permit' || log.type === 'cuti' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                          : 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
-                        }`}>
-                          {log.type.replace('_', ' ')}
-                        </span>
-                        {log.status === "PENDING" || log.status === "pending_approval" ? (
-                          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-[9px] h-4">Menunggu</Badge>
-                        ) : log.status === "REJECTED" || log.status === "rejected" ? (
-                          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[9px] h-4">Ditolak</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] h-4">Valid</Badge>
-                        )}
-                      </div>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                        log.type === 'in' ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' 
+                        : log.type === 'out' ? 'bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-slate-300'
+                        : log.type === 'overtime_in' || log.type === 'overtime' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                        : log.type === 'overtime_out' ? 'bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                        : log.type === 'sick' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : log.type === 'permit' || log.type === 'cuti' ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                        : 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400'
+                      }`}>
+                        {log.type.replace('_', ' ')}
+                      </span>
+                    </TableCell>
+                    <TableCell className="py-3 px-4">
+                      {log.status === "PENDING" || log.status === "pending_approval" ? (
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200 text-[9px] h-4">Menunggu</Badge>
+                      ) : log.status === "REJECTED" || log.status === "rejected" ? (
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 text-[9px] h-4">Ditolak</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] h-4">Valid</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="py-3 px-4">
                        <div className="flex flex-col gap-1 items-start">

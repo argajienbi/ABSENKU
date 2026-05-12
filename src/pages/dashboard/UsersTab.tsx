@@ -20,32 +20,44 @@ export function UsersTab({
   setEditWeeklyShiftPattern, setEditShiftMode, settings, handleEditUser, shiftsInput, areasInput, handleKoreksiAlpa, handleAddManualOvertime, idRefsList
 }: any) {
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState("");
   const [filterRole, setFilterRole] = React.useState("all");
   const [filterShift, setFilterShift] = React.useState("all");
   const [filterCompany, setFilterCompany] = React.useState("all");
   const [filterArea, setFilterArea] = React.useState("all");
   const [filterBranch, setFilterBranch] = React.useState("all");
   const [filterSubArea, setFilterSubArea] = React.useState("all");
+
+  // Debounce search term
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   
   const [refCompany, setRefCompany] = React.useState("global");
   const [refArea, setRefArea] = React.useState("global");
   const [refBranch, setRefBranch] = React.useState("global");
   const [refSubArea, setRefSubArea] = React.useState("global");
 
-  const displayUsers = filteredUsersList.filter((u: any) => {
-    const matchSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        (u.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (u.uniqueId || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchRole = filterRole === "all" || u.role === filterRole;
-    const matchShift = filterShift === "all" || u.shiftId === filterShift;
-    const matchCompany = filterCompany === "all" || u.companyId === filterCompany;
-    const matchArea = filterArea === "all" || (filterArea === "global" ? (!u.areaId || u.areaId === "global") : u.areaId === filterArea);
-    const matchBranch = filterBranch === "all" || u.branchId === filterBranch;
-    const matchSubArea = filterSubArea === "all" || u.subareaId === filterSubArea;
+  const displayUsers = React.useMemo(() => {
+    return filteredUsersList.filter((u: any) => {
+      const matchSearch = !debouncedSearchTerm || 
+                          (u.name || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) || 
+                          (u.email || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                          (u.uniqueId || '').toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+      
+      const matchRole = filterRole === "all" || u.role === filterRole;
+      const matchShift = filterShift === "all" || u.shiftId === filterShift;
+      const matchCompany = filterCompany === "all" || u.companyId === filterCompany;
+      const matchArea = filterArea === "all" || (filterArea === "global" ? (!u.areaId || u.areaId === "global") : u.areaId === filterArea);
+      const matchBranch = filterBranch === "all" || u.branchId === filterBranch;
+      const matchSubArea = filterSubArea === "all" || u.subareaId === filterSubArea;
 
-    return matchSearch && matchRole && matchShift && matchCompany && matchArea && matchBranch && matchSubArea;
-  });
+      return matchSearch && matchRole && matchShift && matchCompany && matchArea && matchBranch && matchSubArea;
+    });
+  }, [filteredUsersList, debouncedSearchTerm, filterRole, filterShift, filterCompany, filterArea, filterBranch, filterSubArea]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out">
