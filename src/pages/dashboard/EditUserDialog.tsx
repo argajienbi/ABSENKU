@@ -14,6 +14,10 @@ interface EditUserDialogProps {
   setEditName: (name: string) => void;
   editRole: string;
   setEditRole: (role: string) => void;
+  editAppRole: string;
+  setEditAppRole: (role: string) => void;
+  editJobRole: string;
+  setEditJobRole: (role: string) => void;
   editCompany: string;
   setEditCompany: (company: string) => void;
   editArea: string;
@@ -48,6 +52,7 @@ interface EditUserDialogProps {
 export function EditUserDialog({
   selectedUserForEdit, setSelectedUserForEdit,
   editName, setEditName, editRole, setEditRole,
+  editAppRole, setEditAppRole, editJobRole, setEditJobRole,
   editCompany, setEditCompany, editArea, setEditArea,
   editBranch, setEditBranch, editSubArea, setEditSubArea,
   editShift, setEditShift, editUniqueId, setEditUniqueId,
@@ -84,21 +89,47 @@ export function EditUserDialog({
                 className="bg-slate-50 dark:bg-slate-900/50 border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Jabatan / Role</Label>
-              <select 
-                value={editRole}
-                onChange={(e) => setEditRole(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-12 rounded-2xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
-              >
-                <option value="superadmin">SUPERADMIN</option>
-                <option value="admin_pt">ADMIN PT / PERUSAHAAN</option>
-                <option value="admin_area">ADMIN AREA / REGIONAL</option>
-                <option value="admin_cabang">ADMIN CABANG</option>
-                <option value="admin">ADMIN (LEAD)</option>
-                <option value="staff">STAFF</option>
-                <option value="crew">CREW</option>
-              </select>
+            <div className="space-y-4 p-4 bg-slate-100/50 dark:bg-slate-800/20 rounded-2xl border border-slate-200/50 dark:border-slate-800/50">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Role Aplikasi (Akses Sistem)</Label>
+                <select 
+                  value={editAppRole}
+                  onChange={(e) => {
+                    const newAppRole = e.target.value;
+                    setEditAppRole(newAppRole);
+                    // Also update legacy role for backward compatibility
+                    if (newAppRole === 'superadmin' || newAppRole === 'admin' || newAppRole === 'demo') {
+                      setEditRole(newAppRole);
+                    } else {
+                      setEditRole('staff');
+                    }
+                  }}
+                  className="w-full bg-white dark:bg-slate-900 border border-teal-100 dark:border-teal-900 h-11 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                >
+                  <option value="superadmin">SUPERADMIN (Full Akses)</option>
+                  <option value="admin">ADMIN (Akses Dashboard)</option>
+                  <option value="user">USER (Pekerja Lapangan)</option>
+                  <option value="demo">DEMO (View Only)</option>
+                </select>
+                <p className="text-[9px] text-slate-500 font-medium px-1 italic">Menentukan akses menu dashboard dan database.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">Jabatan Perusahaan (Struktur Organisasi)</Label>
+                <select 
+                  value={editJobRole}
+                  onChange={(e) => setEditJobRole(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-teal-100 dark:border-teal-900 h-11 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-4 focus:ring-2 focus:ring-teal-500/20 transition-all outline-none"
+                >
+                  <option value="admin_pt">ADMIN PT / PERUSAHAAN</option>
+                  <option value="admin_area">ADMIN AREA / REGIONAL</option>
+                  <option value="admin_cabang">ADMIN CABANG</option>
+                  <option value="lead">ADMIN (LEAD)</option>
+                  <option value="staff">STAFF</option>
+                  <option value="crew">CREW</option>
+                </select>
+                <p className="text-[9px] text-slate-500 font-medium px-1 italic">Menentukan posisi dalam manajemen perusahaan.</p>
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">PT / Perusahaan</Label>

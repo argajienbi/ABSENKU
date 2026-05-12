@@ -28,6 +28,11 @@ export function UsersTab({
   const [filterBranch, setFilterBranch] = React.useState("all");
   const [filterSubArea, setFilterSubArea] = React.useState("all");
 
+  const [refCompany, setRefCompany] = React.useState("global");
+  const [refArea, setRefArea] = React.useState("global");
+  const [refBranch, setRefBranch] = React.useState("global");
+  const [refSubArea, setRefSubArea] = React.useState("global");
+
   // Debounce search term
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -36,10 +41,28 @@ export function UsersTab({
     return () => clearTimeout(timer);
   }, [searchTerm]);
   
-  const [refCompany, setRefCompany] = React.useState("global");
-  const [refArea, setRefArea] = React.useState("global");
-  const [refBranch, setRefBranch] = React.useState("global");
-  const [refSubArea, setRefSubArea] = React.useState("global");
+  const isSuperAdmin = user?.appRole === 'superadmin' || user?.role === 'superadmin';
+  const myCompanyId = user?.companyId;
+
+  // Initial state for refCompany should match user's company if not superadmin
+  React.useEffect(() => {
+    if (!isSuperAdmin && myCompanyId) {
+      setRefCompany(myCompanyId);
+      setFilterCompany(myCompanyId);
+    }
+  }, [isSuperAdmin, myCompanyId]);
+
+  const filteredCompanies = isSuperAdmin 
+    ? settings?.companies 
+    : Object.fromEntries(Object.entries(settings?.companies || {}).filter(([id, c]: any) => id === myCompanyId || c.id === myCompanyId));
+
+  const filteredBranches = isSuperAdmin 
+    ? settings?.branches 
+    : Object.fromEntries(Object.entries(settings?.branches || {}).filter(([id, b]: any) => b.companyId === myCompanyId));
+
+  const filteredSubAreas = isSuperAdmin
+    ? settings?.subareas
+    : Object.fromEntries(Object.entries(settings?.subareas || {}).filter(([id, sa]: any) => filteredBranches[sa.branchId]));
 
   const displayUsers = React.useMemo(() => {
     return filteredUsersList.filter((u: any) => {
@@ -95,10 +118,15 @@ export function UsersTab({
                     <option key={id} value={id}>{shift.name}</option>
                   ))}
                 </select>
-                <select value={filterCompany} onChange={e => setFilterCompany(e.target.value)} className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 h-9 rounded-lg px-3 text-xs outline-none focus:border-teal-500">
+                <select 
+                  value={filterCompany} 
+                  onChange={e => setFilterCompany(e.target.value)} 
+                  disabled={!isSuperAdmin}
+                  className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 h-9 rounded-lg px-3 text-xs outline-none focus:border-teal-500 disabled:opacity-50"
+                >
                   <option value="all">Semua Perusahaan</option>
                   <option value="global">Global (Default)</option>
-                  {Object.entries(settings?.companies || {}).map(([id, c]: [string, any]) => (
+                  {Object.entries(filteredCompanies || {}).map(([id, c]: [string, any]) => (
                     <option key={id} value={id}>{c.name}</option>
                   ))}
                 </select>
@@ -112,14 +140,14 @@ export function UsersTab({
                 <select value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 h-9 rounded-lg px-3 text-xs outline-none focus:border-teal-500">
                   <option value="all">Semua Cabang / Area</option>
                   <option value="global">Global (Default)</option>
-                  {Object.entries(settings?.branches || {}).map(([id, b]: [string, any]) => (
+                  {Object.entries(filteredBranches || {}).map(([id, b]: [string, any]) => (
                     <option key={id} value={id}>{b.name}</option>
                   ))}
                 </select>
                 <select value={filterSubArea} onChange={e => setFilterSubArea(e.target.value)} className="bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-700 h-9 rounded-lg px-3 text-xs outline-none focus:border-teal-500">
                   <option value="all">Semua Sub Area (Koordinat)</option>
                   <option value="global">Global (Default)</option>
-                  {Object.entries(settings?.subareas || {}).map(([id, sa]: [string, any]) => (
+                  {Object.entries(filteredSubAreas || {}).map(([id, sa]: [string, any]) => (
                     <option key={id} value={id}>{sa.name}</option>
                   ))}
                 </select>
@@ -131,7 +159,7 @@ export function UsersTab({
                       <TableRow className="border-b border-teal-100 dark:border-teal-900 hover:bg-transparent">
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Nama User</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Kontak Email</TableHead>
-                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Jabatan</TableHead>
+                        <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Jabatan / Akses</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Shift</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Penempatan</TableHead>
                         <TableHead className="px-6 py-4 h-auto text-[11px] font-black uppercase tracking-widest text-teal-700 dark:text-teal-300">Bergabung</TableHead>
@@ -153,7 +181,14 @@ export function UsersTab({
                           </TableCell>
                           <TableCell className="px-6 py-4 text-slate-500 dark:text-gray-400 font-medium">{usr.email}</TableCell>
                           <TableCell className="px-6 py-4">
-                            <span className={`px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${usr.role === 'superadmin' ? 'bg-rose-500/20 text-rose-600' : usr.role === 'admin' ? 'bg-teal-500/20 text-teal-600' : 'bg-slate-100 text-slate-600 dark:bg-gray-700 dark:text-gray-300'}`}>{usr.role}</span>
+                            <div className="flex flex-col gap-1 items-start">
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase ${usr.jobRole === 'admin_pt' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-700 dark:bg-gray-700 dark:text-gray-300'}`}>
+                                {usr.jobRole || usr.role || 'STAFF'}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-bold tracking-wider uppercase ${usr.appRole === 'superadmin' ? 'text-rose-500' : usr.appRole === 'admin' ? 'text-teal-500' : 'text-slate-400'}`}>
+                                Access: {usr.appRole || (['superadmin', 'admin', 'demo'].includes(usr.role) ? usr.role : 'user')}
+                              </span>
+                            </div>
                           </TableCell>
                           <TableCell className="px-6 py-4">
                             {(() => {
@@ -237,12 +272,13 @@ export function UsersTab({
             <div className="space-y-2">
               <label className="text-[10px] font-black text-teal-700 dark:text-teal-300 uppercase tracking-[0.2em] ml-1">PT / Perusahaan Default</label>
               <select 
-                value={refCompany}
+                value={isSuperAdmin ? refCompany : myCompanyId}
                 onChange={(e) => setRefCompany(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-10 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-3 text-xs outline-none"
+                disabled={!isSuperAdmin}
+                className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-10 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-3 text-xs outline-none disabled:opacity-50"
               >
                 <option value="global">Semua / Global (Default)</option>
-                {Object.entries(settings?.companies || {}).map(([id, c]: [string, any]) => (
+                {Object.entries(filteredCompanies || {}).map(([id, c]: [string, any]) => (
                   <option key={id} value={id}>{c.name}</option>
                 ))}
               </select>
@@ -268,7 +304,7 @@ export function UsersTab({
                 className="w-full bg-slate-50 dark:bg-slate-900/50 border border-teal-100 dark:border-teal-900 h-10 rounded-xl font-bold text-teal-900 dark:text-teal-50 px-3 text-xs outline-none"
               >
                 <option value="global">Semua / Global (Default)</option>
-                {Object.entries(settings?.branches || {}).map(([id, b]: [string, any]) => (
+                {Object.entries(filteredBranches || {}).map(([id, b]: [string, any]) => (
                   <option key={id} value={id}>{b.name}</option>
                 ))}
               </select>
@@ -289,11 +325,10 @@ export function UsersTab({
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {[
-              { role: "crew", prefix: "USER", color: "teal", label: "Crew" },
-              { role: "staff", prefix: "STAFF", color: "teal", label: "Staff" },
-              { role: "admin", prefix: "ADMIN", color: "rose", label: "Admin" },
-              { role: "demo", prefix: "DEMO", color: "indigo", label: "Demo" },
-              { role: "demouser", prefix: "DEMOUSER", color: "indigo", label: "DemoUser" }
+              { role: "crew", appRole: "user", prefix: "USER", color: "teal", label: "Crew" },
+              { role: "staff", appRole: "user", prefix: "STAFF", color: "teal", label: "Staff" },
+              { role: "admin", appRole: "admin", prefix: "ADMIN", color: "rose", label: "Admin" },
+              { role: "demo", appRole: "demo", prefix: "DEMO", color: "indigo", label: "Demo" },
             ].map((btn) => (
               <Button 
                 key={btn.role}
@@ -301,7 +336,17 @@ export function UsersTab({
                     if (user?.role === "demo") { toast.error("Akun demo."); return; }
                     try {
                       const refId = `${btn.prefix}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-                      await setDoc(doc(db, "idRefs", refId), { role: btn.role, companyId: refCompany, areaId: refArea, branchId: refBranch, subareaId: refSubArea, used: false, createdAt: Date.now() });
+                      await setDoc(doc(db, "idRefs", refId), { 
+                        role: btn.role, // Legacy
+                        jobRole: btn.role === 'admin' ? 'admin_pt' : btn.role, 
+                        appRole: btn.appRole,
+                        companyId: isSuperAdmin ? refCompany : myCompanyId, 
+                        areaId: refArea, 
+                        branchId: refBranch, 
+                        subareaId: refSubArea, 
+                        used: false, 
+                        createdAt: Date.now() 
+                      });
                       toast.success(`${btn.label} REF di-generate: ${refId}`);
                     } catch (e) {
                       handleFirestoreError(e, OperationType.WRITE, "idRefs");

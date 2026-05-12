@@ -31,7 +31,25 @@ export function SettingsLocationTab({
   const [newSubAreaLatInput, setNewSubAreaLatInput] = useState("-6.2088");
   const [newSubAreaLngInput, setNewSubAreaLngInput] = useState("106.8456");
 
+  const isSuperAdmin = user?.appRole === 'superadmin' || user?.role === 'superadmin';
+  const isAdmin = user?.appRole === 'admin' || user?.role === 'admin';
+  const myCompanyId = user?.companyId;
+
+  // Render filter
+  const filteredCompanies = isSuperAdmin 
+    ? companies 
+    : Object.fromEntries(Object.entries(companies || {}).filter(([_, c]: any) => c.id === myCompanyId || _ === myCompanyId));
+
+  const filteredBranches = isSuperAdmin 
+    ? branches 
+    : Object.fromEntries(Object.entries(branches || {}).filter(([_, b]: any) => b.companyId === myCompanyId));
+
+  const filteredSubAreas = isSuperAdmin
+    ? subareas
+    : Object.fromEntries(Object.entries(subareas || {}).filter(([_, sa]: any) => filteredBranches[sa.branchId]));
+
   const handleSaveArea = async () => {
+    if (!isSuperAdmin) { toast.error("Hanya Superadmin yang bisa mengelola data Provinsi."); return; }
     if (user?.role === "demo") { toast.error("Akun demo."); return; }
     if (!newArea.name) { toast.error("Isi Nama Provinsi/Wilayah"); return; }
     try {
@@ -46,6 +64,7 @@ export function SettingsLocationTab({
   };
 
   const handleAddCompany = async () => {
+    if (!isSuperAdmin) { toast.error("Hanya Superadmin yang bisa mengelola data PT."); return; }
     if (user?.role === "demo") { toast.error("Akun demo."); return; }
     if (!newCompany?.name) { toast.error("Isi Nama Perusahaan"); return; }
     if (!newCompany?.areaId) { toast.error("Pilih Provinsi/Wilayah terlebih dahulu"); return; }
@@ -62,18 +81,21 @@ export function SettingsLocationTab({
   const handleSaveBranch = async () => {
     if (user?.role === "demo") { toast.error("Akun demo."); return; }
     if (!newBranch?.name) { toast.error("Isi Nama Cabang"); return; }
-    if (!newBranch?.companyId) { toast.error("Pilih PT / Perusahaan"); return; }
+    
+    // Auto-select company if not superadmin
+    const targetCompanyId = isSuperAdmin ? newBranch.companyId : myCompanyId;
+    if (!targetCompanyId) { toast.error("Pilih PT / Perusahaan"); return; }
     
     // Auto-detect areaId based on companyId
-    const targetComp = companies?.[newBranch.companyId];
-    const targetAreaId = newBranch.areaId || (targetComp ? targetComp.areaId : "global");
+    const targetComp = companies?.[targetCompanyId];
+    const targetAreaId = targetComp ? targetComp.areaId : "global";
 
     try {
       const id = editingBranchId || `cb_${Date.now()}`;
       await setDoc(doc(db, "branches", id), { 
         name: newBranch.name, 
         areaId: targetAreaId, 
-        companyId: newBranch.companyId
+        companyId: targetCompanyId
       });
       setNewBranch({ name: "", companyId: "" });
       setEditingBranchId(null);
@@ -147,15 +169,17 @@ export function SettingsLocationTab({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {Object.entries(areas || {}).map(([id, a]: [string, any]) => (
-              <div key={id} className="flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed">
+              <div key={id} className={`flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed ${!isSuperAdmin ? 'opacity-70' : ''}`}>
                 <span className="text-xs font-bold text-teal-900 dark:text-teal-50">{a.name}</span>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] text-teal-600" onClick={() => {
-                    setEditingAreaId(id);
-                    setNewArea({ name: a.name });
-                  }}>Edit</Button>
-                  <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-500" onClick={() => handleDeleteArea(id)}>Hapus</Button>
-                </div>
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] text-teal-600" onClick={() => {
+                      setEditingAreaId(id);
+                      setNewArea({ name: a.name });
+                    }}>Edit</Button>
+                    <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-500" onClick={() => handleDeleteArea(id)}>Hapus</Button>
+                  </div>
+                )}
               </div>
             ))}
             {Object.keys(areas || {}).length === 0 && <p className="text-xs text-slate-400 italic text-center py-4 sm:col-span-2">Belum ada Provinsi / Wilayah.</p>}
@@ -180,13 +204,15 @@ export function SettingsLocationTab({
             <Button onClick={handleAddCompany} className="bg-teal-600 hover:bg-teal-700 text-white font-bold h-10">Tambah</Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {Object.entries(companies || {}).map(([id, c]: [string, any]) => (
-              <div key={id} className="flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed">
+            {Object.entries(filteredCompanies || {}).map(([id, c]: [string, any]) => (
+              <div key={id} className={`flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed ${!isSuperAdmin ? 'opacity-70' : ''}`}>
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-teal-900 dark:text-teal-50">{c.name}</span>
                   <span className="text-[10px] text-teal-600 dark:text-teal-400 uppercase">{areas?.[c.areaId]?.name || "Tanpa Provinsi"}</span>
                 </div>
-                <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-500 hover:text-rose-600" onClick={() => handleDeleteCompany(id)}>Hapus</Button>
+                {isSuperAdmin && (
+                  <Button variant="ghost" size="sm" className="h-6 text-[10px] text-rose-500 hover:text-rose-600" onClick={() => handleDeleteCompany(id)}>Hapus</Button>
+                )}
               </div>
             ))}
             {Object.keys(companies || {}).length === 0 && <p className="text-xs text-slate-400 italic text-center py-4 sm:col-span-2">Belum ada PT / Perusahaan.</p>}
@@ -222,9 +248,14 @@ export function SettingsLocationTab({
         </div>
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row gap-2">
-            <select value={newBranch?.companyId || ""} onChange={e => setNewBranch({...newBranch, companyId: e.target.value})} className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 h-10 rounded-xl px-4 text-sm outline-none focus:border-teal-500 min-w-[200px]">
+            <select 
+              value={isSuperAdmin ? (newBranch?.companyId || "") : myCompanyId} 
+              onChange={e => setNewBranch({...newBranch, companyId: e.target.value})} 
+              disabled={!isSuperAdmin}
+              className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 h-10 rounded-xl px-4 text-sm outline-none focus:border-teal-500 min-w-[200px] disabled:bg-gray-50 disabled:text-gray-400"
+            >
               <option value="">-- Pilih PT / Perusahaan --</option>
-              {Object.entries(companies || {}).map(([id, c]: [string, any]) => (
+              {Object.entries(filteredCompanies || {}).map(([id, c]: [string, any]) => (
                 <option key={id} value={id}>{c.name}</option>
               ))}
             </select>
@@ -238,7 +269,7 @@ export function SettingsLocationTab({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-            {Object.entries(branches || {}).map(([id, b]: [string, any]) => (
+            {Object.entries(filteredBranches || {}).map(([id, b]: [string, any]) => (
               <div key={id} className="flex justify-between items-center p-3 rounded-xl border border-teal-100 bg-teal-50 dark:bg-teal-900/10 dark:border-teal-900 border-dashed">
                 <div className="flex flex-col">
                   <span className="text-xs font-bold text-teal-900 dark:text-teal-50">{b.name}</span>
@@ -269,7 +300,7 @@ export function SettingsLocationTab({
                 <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pilih Cabang / Area</Label>
                 <select value={newSubArea?.branchId || ""} onChange={e => setNewSubArea({...newSubArea, branchId: e.target.value})} className="bg-white dark:bg-gray-900 border border-slate-200 dark:border-gray-700 h-10 rounded-xl px-4 text-sm outline-none focus:border-teal-500 w-full">
                   <option value="">-- Pilih Cabang --</option>
-                  {Object.entries(branches || {}).map(([id, b]: [string, any]) => (
+                  {Object.entries(filteredBranches || {}).map(([id, b]: [string, any]) => (
                     <option key={id} value={id}>{b.name}</option>
                   ))}
                 </select>
@@ -320,7 +351,7 @@ export function SettingsLocationTab({
           </div>
 
           <div className="space-y-3 mt-4">
-            {Object.entries(subareas || {}).map(([id, sa]: [string, any]) => (
+            {Object.entries(filteredSubAreas || {}).map(([id, sa]: [string, any]) => (
               <div key={id} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 dark:bg-gray-800/50 dark:border-gray-700/50 rounded-2xl">
                   <div>
                     <div className="font-bold text-sm text-teal-900 dark:text-teal-50">{sa.name}</div>

@@ -8,7 +8,9 @@ interface AppUser {
   uid: string;
   email: string;
   name: string;
-  role: "superadmin" | "admin" | "staff" | "crew" | "demo" | "demouser";
+  role: "superadmin" | "admin" | "staff" | "crew" | "demo" | "demouser"; // Legacy
+  appRole: "superadmin" | "admin" | "user" | "demo";
+  jobRole: "admin_pt" | "admin_area" | "admin_cabang" | "lead" | "staff" | "crew";
   avatarUrl?: string;
   shiftId?: string;
   waNumber?: string;

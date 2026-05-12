@@ -22,8 +22,18 @@ export function useDashboardData(user: any, settings: any) {
   useEffect(() => {
     if (!user || !['superadmin', 'admin', 'demo'].includes(user.role)) return;
 
-    const q = query(collection(db, "attendance"), orderBy("timestamp", "desc"), limit(50));
-    const unsub = onSnapshot(q, (snapshot) => {
+    // Determine filter
+    const isSuperAdmin = user.appRole === 'superadmin' || user.role === 'superadmin';
+    const isDemo = user.appRole === 'demo' || user.role === 'demo';
+    const companyFilter = (!isSuperAdmin && !isDemo && user.companyId) ? where("companyId", "==", user.companyId) : null;
+
+    // 1. Attendance Query
+    let qAtt = query(collection(db, "attendance"), orderBy("timestamp", "desc"), limit(100));
+    if (companyFilter) {
+       qAtt = query(collection(db, "attendance"), companyFilter, orderBy("timestamp", "desc"), limit(100));
+    }
+
+    const unsub = onSnapshot(qAtt, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setAttendances(data);
 
@@ -47,14 +57,25 @@ export function useDashboardData(user: any, settings: any) {
       handleFirestoreError(error, OperationType.LIST, "attendance");
     });
     
-    const unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
+    // 2. Users Query
+    let qUsers = query(collection(db, "users"));
+    if (companyFilter) {
+       qUsers = query(collection(db, "users"), companyFilter);
+    }
+
+    const unsubUsers = onSnapshot(qUsers, (snapshot) => {
       const uData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsersList(uData);
     }, (error) => {
        console.log('Cant list users', error);
     });
 
-    const qRefs = query(collection(db, "idRefs"), orderBy("createdAt", "desc"));
+    // 3. ID Refs Query
+    let qRefs = query(collection(db, "idRefs"), orderBy("createdAt", "desc"));
+    if (companyFilter) {
+       qRefs = query(collection(db, "idRefs"), companyFilter, orderBy("createdAt", "desc"));
+    }
+
     const unsubRefs = onSnapshot(qRefs, (snapshot) => {
       setIdRefsList(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     }, (error) => console.error("idRefs snapshot error:", error));

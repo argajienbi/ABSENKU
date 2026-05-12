@@ -23,7 +23,10 @@ const PageLoading = () => (
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/app" />;
+  if (allowedRoles) {
+    const currentAppRole = user.appRole || user.role;
+    if (!allowedRoles.includes(currentAppRole)) return <Navigate to="/app" />;
+  }
   return <>{children}</>;
 }
 
@@ -49,7 +52,7 @@ export default function App() {
               } />
 
               <Route path="/dashboard" element={
-                <ProtectedRoute allowedRoles={['superadmin', 'admin', 'demo', 'admin_pt', 'admin_area', 'admin_cabang']}>
+                <ProtectedRoute allowedRoles={['superadmin', 'admin', 'demo']}>
                   <WaveBackground>
                     <Dashboard />
                   </WaveBackground>

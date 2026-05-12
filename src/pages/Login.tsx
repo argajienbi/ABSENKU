@@ -164,6 +164,8 @@ export default function Login() {
 
       // Assign role based on ID Ref
       let assignedRole = "crew";
+      let assignedAppRole = "user";
+      let assignedJobRole = "crew";
       let assignedCompany = "global";
       let assignedArea = "global";
       let assignedBranch = "global";
@@ -173,8 +175,12 @@ export default function Login() {
 
       if (idRefUpper === "DEMO123") {
          assignedRole = "demo";
+         assignedAppRole = "demo";
+         assignedJobRole = "crew";
       } else if (idRefUpper === "DEMOUSER123") {
          assignedRole = "demouser";
+         assignedAppRole = "user";
+         assignedJobRole = "crew";
       } else {
          const idRefDocRef = doc(db, "idRefs", idRefUpper);
          const idRefSnap = await getDoc(idRefDocRef);
@@ -191,7 +197,10 @@ export default function Login() {
             return;
          }
          
-         assignedRole = refData.role;
+         assignedRole = refData.role || "staff";
+         assignedAppRole = refData.appRole || (['superadmin', 'admin', 'demo'].includes(assignedRole) ? assignedRole : 'user');
+         assignedJobRole = refData.jobRole || (['superadmin', 'admin', 'demo'].includes(assignedRole) ? 'admin_pt' : assignedRole || 'staff');
+         
          if (refData.companyId) assignedCompany = refData.companyId;
          if (refData.areaId) assignedArea = refData.areaId;
          if (refData.branchId) assignedBranch = refData.branchId;
@@ -220,6 +229,8 @@ export default function Login() {
         email: fbUser.email || email,
         name: name,
         role: assignedRole,
+        appRole: assignedAppRole,
+        jobRole: assignedJobRole,
         waNumber: waNumber,
         createdAt: Date.now(),
         avatarUrl: avatarStorageUrl,
