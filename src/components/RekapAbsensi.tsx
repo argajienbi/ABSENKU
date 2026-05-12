@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { getEffectiveShiftId } from '../lib/dateUtils';
 
 interface RekapAbsensiProps {
   usersList: any[];
@@ -26,6 +27,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
   // New Filters
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [selectedArea, setSelectedArea] = useState<string>("all");
+  const [selectedSubArea, setSelectedSubArea] = useState<string>("all");
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
   const [selectedShift, setSelectedShift] = useState<string>("all");
   const [selectedRole, setSelectedRole] = useState<string>("all");
@@ -39,6 +41,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
   // Extract unique elements
   const uniqueCompanies = useMemo(() => Array.from(new Set(usersList.map(u => u.companyId).filter(Boolean))), [usersList]);
   const uniqueAreas = useMemo(() => Array.from(new Set(usersList.map(u => u.areaId).filter(Boolean))), [usersList]);
+  const uniqueSubAreas = useMemo(() => Array.from(new Set(usersList.map(u => u.subareaId).filter(Boolean))), [usersList]);
   const uniqueBranches = useMemo(() => Array.from(new Set(usersList.map(u => u.branchId).filter(Boolean))), [usersList]);
   const uniqueShifts = useMemo(() => Array.from(new Set(usersList.map(u => u.shiftId).filter(Boolean))), [usersList]);
   const uniqueRoles = useMemo(() => Array.from(new Set(usersList.map(u => u.role).filter(Boolean))), [usersList]);
@@ -52,6 +55,16 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
     );
     return new Set(list.map(u => u.areaId).filter(Boolean));
   }, [usersList, selectedShift, selectedRole, selectedUserId]);
+
+  const availableSubAreas = useMemo(() => {
+    const list = usersList.filter(u => 
+      (selectedArea === "all" || u.areaId === selectedArea) &&
+      (selectedShift === "all" || u.shiftId === selectedShift) &&
+      (selectedRole === "all" || u.role === selectedRole) &&
+      (selectedUserId === "all" || (u.uid || u.id) === selectedUserId)
+    );
+    return new Set(list.map(u => u.subareaId).filter(Boolean));
+  }, [usersList, selectedArea, selectedShift, selectedRole, selectedUserId]);
 
   const availableShifts = useMemo(() => {
     const list = usersList.filter(u => 
@@ -83,17 +96,22 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
     const list = filteredUsers.filter(u => 
       (selectedCompany === "all" || u.companyId === selectedCompany) &&
       (selectedArea === "all" || u.areaId === selectedArea) &&
+      (selectedSubArea === "all" || u.subareaId === selectedSubArea) &&
       (selectedBranch === "all" || u.branchId === selectedBranch) &&
       (selectedShift === "all" || u.shiftId === selectedShift) &&
       (selectedRole === "all" || u.role === selectedRole)
     );
     return new Set(list.map(u => u.uid || u.id));
-  }, [filteredUsers, selectedCompany, selectedArea, selectedBranch, selectedShift, selectedRole]);
+  }, [filteredUsers, selectedCompany, selectedArea, selectedSubArea, selectedBranch, selectedShift, selectedRole]);
 
   // Auto-reset invalid selections
   useEffect(() => {
     if (selectedArea !== "all" && !availableAreas.has(selectedArea)) setSelectedArea("all");
   }, [availableAreas, selectedArea]);
+
+  useEffect(() => {
+    if (selectedSubArea !== "all" && !availableSubAreas.has(selectedSubArea)) setSelectedSubArea("all");
+  }, [availableSubAreas, selectedSubArea]);
 
   useEffect(() => {
     if (selectedShift !== "all" && !availableShifts.has(selectedShift)) setSelectedShift("all");
@@ -169,9 +187,11 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
 
     const baseData = attendanceData.filter(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      if (!user) return false;
       if (selectedUserId !== "all" && log.userId !== selectedUserId) return false;
       if (selectedCompany !== "all" && user?.companyId !== selectedCompany) return false;
       if (selectedArea !== "all" && user?.areaId !== selectedArea) return false;
+      if (selectedSubArea !== "all" && user?.subareaId !== selectedSubArea) return false;
       if (selectedBranch !== "all" && user?.branchId !== selectedBranch) return false;
       if (selectedShift !== "all" && user?.shiftId !== selectedShift) return false;
       if (selectedRole !== "all" && user?.role !== selectedRole) return false;
@@ -191,14 +211,16 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
 
     Object.keys(grouped).forEach(uId => {
        const user = usersList.find(u => u.uid === uId || u.id === uId);
-       const shiftStr = user?.shiftId || 'morning';
-       const shiftConfig = settings?.shifts?.[shiftStr] || { startTime: "09:00", gracePeriod: 0 };
-       const startParts = (shiftConfig.start || shiftConfig.startTime || "09:00").split(':');
-       const startHour = Number(startParts[0] || '9');
-       const startMin = Number(startParts[1] || '0');
-       const shiftStartMinutes = (startHour * 60) + startMin + (shiftConfig.gracePeriod || 0);
 
        Object.keys(grouped[uId]).forEach(dateStr => {
+          const logDate = parseISO(dateStr);
+          const shiftStr = getEffectiveShiftId(user, logDate) || 'morning';
+          const shiftConfig = settings?.shifts?.[shiftStr] || { startTime: "09:00", gracePeriod: 0 };
+          const startParts = (shiftConfig.start || shiftConfig.startTime || "09:00").split(':');
+          const startHour = Number(startParts[0] || '9');
+          const startMin = Number(startParts[1] || '0');
+          const shiftStartMinutes = (startHour * 60) + startMin + (shiftConfig.gracePeriod || 0);
+
           const dayLogs = grouped[uId][dateStr].sort((a: any, b: any) => a.timestamp - b.timestamp);
           
           const inLog = dayLogs.find(l => l.type === 'in');
@@ -228,13 +250,14 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
     });
 
     return { totalHadir, totalTelat, totalSakitIzin, totalHariLembur, totalMenitKerja, totalMenitLembur };
-  }, [attendanceData, selectedUserId, selectedArea, selectedShift, selectedRole, isFetched, usersList, settings]);
+  }, [attendanceData, selectedUserId, selectedCompany, selectedArea, selectedSubArea, selectedBranch, selectedShift, selectedRole, isFetched, usersList, settings]);
 
   const filteredData = useMemo(() => {
     if (!isFetched) return [];
     
     return attendanceData.filter(log => {
       const user = usersList.find(u => u.uid === log.userId || u.id === log.userId);
+      if (!user) return false;
       
       // Filter by User
       if (selectedUserId !== "all" && log.userId !== selectedUserId) return false;
@@ -244,6 +267,9 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
 
       // Filter by Area
       if (selectedArea !== "all" && user?.areaId !== selectedArea) return false;
+      
+      // Filter by Sub Area
+      if (selectedSubArea !== "all" && user?.subareaId !== selectedSubArea) return false;
       
       // Filter by Branch
       if (selectedBranch !== "all" && user?.branchId !== selectedBranch) return false;
@@ -268,9 +294,9 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
            if (log.type !== 'in') return false;
            // Check if late based on settings
            let isLate = false;
-           const userShiftStr = user?.shiftId || 'morning';
-           const shiftConfig = settings?.shifts?.[userShiftStr] || { startTime: "09:00", gracePeriod: 0 };
            const logDate = new Date(log.timestamp);
+           const userShiftStr = getEffectiveShiftId(user, logDate) || 'morning';
+           const shiftConfig = settings?.shifts?.[userShiftStr] || { startTime: "09:00", gracePeriod: 0 };
            const [startHour, startMin] = (shiftConfig.start || shiftConfig.startTime || "09:00").split(':').map(Number);
            const shiftStartMinutes = (startHour * 60) + startMin + (shiftConfig.gracePeriod || 0);
            const userInMinutes = (logDate.getHours() * 60) + logDate.getMinutes();
@@ -280,7 +306,7 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
       }
       return true;
     });
-  }, [attendanceData, selectedUserId, selectedArea, selectedShift, selectedRole, selectedStatus, isFetched, usersList, settings]);
+  }, [attendanceData, selectedUserId, selectedCompany, selectedArea, selectedSubArea, selectedBranch, selectedShift, selectedRole, selectedStatus, isFetched, usersList, settings]);
 
   const handleExportExcel = () => {
     const header = ["Nama", "Role", "PT / Perusahaan", "Area / Regional", "Cabang / Ruangan", "Shift", "Tanggal", "Jam", "Tipe", "Status", "Radius", "Lokasi", "Catatan"];
@@ -421,6 +447,18 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
              >
                 <option value="all">Semua Area</option>
                 {uniqueAreas.map(a => <option key={String(a)} value={String(a)} disabled={!availableAreas.has(a)}>{settings?.areas?.[String(a)]?.name || String(a)}</option>)}
+             </select>
+           </div>
+
+           <div className="col-span-1">
+             <label className="text-[10px] font-bold text-slate-500 dark:text-gray-400 mb-1.5 block uppercase tracking-wider">Sub Area / Titik</label>
+             <select 
+               value={selectedSubArea} 
+               onChange={(e) => setSelectedSubArea(e.target.value)}
+               className="w-full h-9 rounded-lg border border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-1 text-xs text-slate-700 dark:text-gray-300 font-medium outline-none"
+             >
+                <option value="all">Semua Sub Area</option>
+                {uniqueSubAreas.map(a => <option key={String(a)} value={String(a)} disabled={!availableSubAreas.has(a)}>{settings?.subareas?.[String(a)]?.name || String(a)}</option>)}
              </select>
            </div>
 
@@ -589,8 +627,9 @@ export function RekapAbsensi({ usersList, settings, user }: RekapAbsensiProps) {
                           <div className="flex flex-wrap gap-1 mt-1 text-[9px] font-bold">
                             {u?.companyId && u?.companyId !== 'global' && <span className="text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-gray-800 px-1 py-0.5 rounded uppercase leading-none">{settings?.companies?.[u.companyId]?.name || u.companyId}</span>}
                             {u?.areaId && u?.areaId !== 'global' && <span className="text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/10 px-1 py-0.5 rounded uppercase leading-none">{settings?.areas?.[u.areaId]?.name || u.areaId}</span>}
+                            {u?.subareaId && u?.subareaId !== 'global' && <span className="text-fuchsia-600 dark:text-fuchsia-400 bg-fuchsia-50 dark:bg-fuchsia-900/10 px-1 py-0.5 rounded uppercase leading-none">{settings?.subareas?.[u.subareaId]?.name || u.subareaId}</span>}
                             {u?.branchId && u?.branchId !== 'global' && <span className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10 px-1 py-0.5 rounded uppercase leading-none">{settings?.branches?.[u.branchId]?.name || u.branchId}</span>}
-                            {(!u?.companyId || u?.companyId === 'global') && (!u?.areaId || u?.areaId === 'global') && (!u?.branchId || u?.branchId === 'global') && <span className="text-slate-400 uppercase">GLOBAL</span>}
+                            {(!u?.companyId || u?.companyId === 'global') && (!u?.areaId || u?.areaId === 'global') && (!u?.subareaId || u?.subareaId === 'global') && (!u?.branchId || u?.branchId === 'global') && <span className="text-slate-400 uppercase">GLOBAL</span>}
                           </div>
                        </div>
                     </TableCell>
