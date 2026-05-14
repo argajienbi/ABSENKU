@@ -1,21 +1,14 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { 
-  initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager 
-} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase } from "firebase/database";
 import firebaseConfig from "../../firebase-applet-config.json";
 
 export const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with modern persistent cache configuration
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-}, firebaseConfig.firestoreDatabaseId);
-
+// Firebase Realtime Database is now the primary database for this project.
+// Firestore was removed because the Android frontend will be implemented in
+// Sketchware Pro and will read/write the same RTDB JSON paths directly.
 export const rtdb = getDatabase(app);
 
 export const auth = getAuth(app);
@@ -30,7 +23,7 @@ export enum OperationType {
   WRITE = "write",
 }
 
-export interface FirestoreErrorInfo {
+export interface DatabaseErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
@@ -42,12 +35,12 @@ export interface FirestoreErrorInfo {
   };
 }
 
-export function handleFirestoreError(
+export function handleDatabaseError(
   error: unknown,
   operationType: OperationType,
   path: string | null
 ) {
-  const errInfo: FirestoreErrorInfo = {
+  const errInfo: DatabaseErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
       userId: auth.currentUser?.uid,
@@ -58,6 +51,9 @@ export function handleFirestoreError(
     operationType,
     path,
   };
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  console.error("Realtime Database Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+// Backward-compatible alias while old components are being migrated.
+export const handleFirestoreError = handleDatabaseError;
