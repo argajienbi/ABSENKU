@@ -23,10 +23,7 @@ const PageLoading = () => (
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;
-  if (allowedRoles) {
-    const currentAppRole = user.appRole || user.role;
-    if (!allowedRoles.includes(currentAppRole)) return <Navigate to="/app" />;
-  }
+  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/app" />;
   return <>{children}</>;
 }
 

@@ -71,9 +71,7 @@ export default function Dashboard() {
 
   // Edit User details
   const [editName, setEditName] = useState("");
-  const [editRole, setEditRole] = useState(""); // Backward compatibility
-  const [editAppRole, setEditAppRole] = useState("user");
-  const [editJobRole, setEditJobRole] = useState("staff");
+  const [editRole, setEditRole] = useState("");
   const [editShift, setEditShift] = useState("");
   const [editUniqueId, setEditUniqueId] = useState("");
   const [editArea, setEditArea] = useState("");
@@ -121,14 +119,10 @@ export default function Dashboard() {
     }
   }, [settings]);
 
-  const isSuperAdmin = user?.appRole === 'superadmin' || user?.role === 'superadmin';
-
   const handleEditUser = (user: any) => {
     setSelectedUserForEdit(user);
     setEditName(user.name || "");
     setEditRole(user.role || "");
-    setEditAppRole(user.appRole || (['superadmin', 'admin', 'demo'].includes(user.role) ? user.role : 'user'));
-    setEditJobRole(user.jobRole || (['superadmin', 'admin', 'demo'].includes(user.role) ? 'admin_pt' : user.role || 'staff'));
     setEditShift(user.shiftId || "shift1");
     setEditUniqueId(user.uniqueId || "");
     setEditArea(user.areaId || "global");
@@ -143,13 +137,14 @@ export default function Dashboard() {
     setEditWeeklyShiftPattern(user.weeklyShiftPattern || []);
   };
 
-  const filteredUsersList = (isSuperAdmin || user?.appRole === 'demo' || user?.role === 'demo')
+  const filteredUsersList = (user?.role === 'superadmin' || user?.role === 'demo')
     ? usersList 
     : usersList.filter(u => {
-        if (user?.companyId && user?.companyId !== 'global') {
-          return u.companyId === user.companyId;
-        }
-        return true;
+        let match = true;
+        if (user?.companyId && user?.companyId !== 'global') match = match && u.companyId === user.companyId;
+        if (user?.areaId && user?.areaId !== 'global') match = match && u.areaId === user.areaId;
+        if (user?.branchId && user?.branchId !== 'global') match = match && u.branchId === user.branchId;
+        return match;
       });
   
   const filteredUsersRecordIds = new Set(filteredUsersList.map(u => u.uid || u.id));
@@ -185,7 +180,7 @@ export default function Dashboard() {
             { value: "announcements", label: "Portal Informasi", icon: Briefcase },
             { value: "analytics", label: "Performance", icon: Activity },
             { value: "guide", label: "Buku Petunjuk", icon: BookOpen },
-            ...(isSuperAdmin ? [
+            ...(user?.role === 'superadmin' ? [
                 { value: "settings-shift", label: "Pengaturan Shift", icon: Briefcase },
                 { value: "settings-system", label: "Sistem & Branding", icon: Settings },
                 { value: "logs", label: "Log Keamanan", icon: ShieldAlert }
@@ -325,88 +320,86 @@ export default function Dashboard() {
                 <PerformanceAnalytics attendances={filteredAttendances} usersList={filteredUsersList} />
               </TabsContent>
 
-              {user?.appRole !== 'demo' && (
-                <TabsContent value="live-map" className="space-y-6">
-                    <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden min-h-[500px] flex flex-col">
-                      <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <CardTitle className="text-xl font-black tracking-tight">Peta Pantauan Langsung</CardTitle>
-                            <CardDescription className="text-blue-100 font-medium">Lokasi absen karyawan hari ini secara real-time</CardDescription>
-                          </div>
-                          <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
-                            <MapPin className="w-6 h-6 text-white" />
-                          </div>
+              <TabsContent value="live-map" className="space-y-6">
+                  <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-3xl border-0 shadow-xl overflow-hidden min-h-[500px] flex flex-col">
+                    <CardHeader className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 shrink-0">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-xl font-black tracking-tight">Peta Pantauan Langsung</CardTitle>
+                          <CardDescription className="text-blue-100 font-medium">Lokasi absen karyawan hari ini secara real-time</CardDescription>
                         </div>
-                      </CardHeader>
-                      <CardContent className="p-0 flex-1 relative min-h-[500px] h-[60vh]">
-                          {!settings?.googleMapsApiKey ? (
-                              <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
-                                <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
-                                <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">API Key Belum Diatur</h3>
-                                <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
-                              </div>
-                          ) : (
-                            <LiveMap 
-                              attendances={attendances} 
-                              users={usersList} 
-                              apiKey={settings.googleMapsApiKey}
-                              useGoogleMaps={settings.useGoogleMaps}
-                              center={{ 
-                                lat: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lat !== undefined) ? (Object.values(settings.subareas)[0] as any).lat! : -6.2088, 
-                                lng: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lng !== undefined) ? (Object.values(settings.subareas)[0] as any).lng! : 106.8456 
-                              }}
-                            />
-                          )}
-                      </CardContent>
-                    </Card>
+                        <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-sm">
+                          <MapPin className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-0 flex-1 relative min-h-[500px] h-[60vh]">
+                        {!settings?.googleMapsApiKey ? (
+                            <div className="flex flex-col items-center justify-center h-full text-center p-6 bg-slate-50 dark:bg-gray-900 border-2 border-indigo-50 dark:border-indigo-900/50">
+                              <AlertCircle className="w-12 h-12 text-slate-400 mb-3" />
+                              <h3 className="text-lg font-bold text-slate-600 dark:text-slate-300">API Key Belum Diatur</h3>
+                              <p className="text-sm text-slate-500 max-w-md mt-2">Silahkan lengkapi Google Maps API Key di menu Pengaturan untuk menggunakan fitur Peta Pantauan Langsung.</p>
+                            </div>
+                        ) : (
+                          <LiveMap 
+                            attendances={attendances} 
+                            users={usersList} 
+                            apiKey={settings.googleMapsApiKey}
+                            useGoogleMaps={settings.useGoogleMaps}
+                            center={{ 
+                              lat: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lat !== undefined) ? (Object.values(settings.subareas)[0] as any).lat! : -6.2088, 
+                              lng: (settings?.subareas && Object.values(settings.subareas).length > 0 && (Object.values(settings.subareas)[0] as any).lng !== undefined) ? (Object.values(settings.subareas)[0] as any).lng! : 106.8456 
+                            }}
+                          />
+                        )}
+                    </CardContent>
+                  </Card>
 
-                    <SettingsLocationTab 
-                        settings={settings} loadingConfig={loadingConfig}
-                        areas={settings?.areas} companies={settings?.companies} branches={settings?.branches} subareas={settings?.subareas}
-                        toggleGeofence={toggleGeofence} user={user}
-                    />
-                </TabsContent>
-              )}
+                  {user?.role === 'superadmin' && (
+                      <SettingsLocationTab 
+                          settings={settings} loadingConfig={loadingConfig}
+                          areas={settings?.areas} companies={settings?.companies} branches={settings?.branches} subareas={settings?.subareas}
+                          toggleGeofence={toggleGeofence} user={user}
+                      />
+                  )}
+              </TabsContent>
 
               <TabsContent value="rekap">
                 <RekapAbsensi usersList={filteredUsersList} settings={settings} />
               </TabsContent>
 
-              {isSuperAdmin && (
-                <>
-                  <TabsContent value="settings-shift">
-                      <SettingsShiftTab
-                          loadingConfig={loadingConfig} shiftsInput={shiftsInput}
-                          setShiftsInput={setShiftsInput} holidaysInput={holidaysInput}
-                          setHolidaysInput={setHolidaysInput} newHoliday={newHoliday}
-                          setNewHoliday={setNewHoliday} 
-                          saveSettings={() => saveSettings({ shifts: shiftsInput, holidays: holidaysInput })}
-                      />
-                  </TabsContent>
+              <TabsContent value="settings-shift">
+                  <SettingsShiftTab
+                      loadingConfig={loadingConfig} shiftsInput={shiftsInput}
+                      setShiftsInput={setShiftsInput} holidaysInput={holidaysInput}
+                      setHolidaysInput={setHolidaysInput} newHoliday={newHoliday}
+                      setNewHoliday={setNewHoliday} 
+                      saveSettings={() => saveSettings({ shifts: shiftsInput, holidays: holidaysInput })}
+                  />
+              </TabsContent>
 
-                  <TabsContent value="settings-system">
-                      <SettingsSystemTab
-                          loadingConfig={loadingConfig} appNameInput={appNameInput}
-                          setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
-                          setAppLogoUrlInput={setAppLogoUrlInput} 
-                          useGoogleMapsInput={useGoogleMapsInput} setUseGoogleMapsInput={setUseGoogleMapsInput}
-                          googleMapsApiKeyInput={googleMapsApiKeyInput}
-                          setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput}
-                          saveSettings={() => saveSettings({ 
-                            appName: appNameInput, 
-                            appLogoUrl: appLogoUrlInput, 
-                            useGoogleMaps: useGoogleMapsInput,
-                            googleMapsApiKey: googleMapsApiKeyInput 
-                          })} 
-                          user={user} idRefsList={idRefsList}
-                      />
-                  </TabsContent>
-                    
-                  <TabsContent value="logs">
-                      <LogsTab securityLogs={securityLogs} />
-                  </TabsContent>
-                </>
+              <TabsContent value="settings-system">
+                  <SettingsSystemTab
+                      loadingConfig={loadingConfig} appNameInput={appNameInput}
+                      setAppNameInput={setAppNameInput} appLogoUrlInput={appLogoUrlInput}
+                      setAppLogoUrlInput={setAppLogoUrlInput} 
+                      useGoogleMapsInput={useGoogleMapsInput} setUseGoogleMapsInput={setUseGoogleMapsInput}
+                      googleMapsApiKeyInput={googleMapsApiKeyInput}
+                      setGoogleMapsApiKeyInput={setGoogleMapsApiKeyInput}
+                      saveSettings={() => saveSettings({ 
+                        appName: appNameInput, 
+                        appLogoUrl: appLogoUrlInput, 
+                        useGoogleMaps: useGoogleMapsInput,
+                        googleMapsApiKey: googleMapsApiKeyInput 
+                      })} 
+                      user={user} idRefsList={idRefsList}
+                  />
+              </TabsContent>
+                
+              {user?.role === 'superadmin' && (
+                <TabsContent value="logs">
+                    <LogsTab securityLogs={securityLogs} />
+                </TabsContent>
               )}
 
               <TabsContent value="guide">
@@ -441,10 +434,7 @@ export default function Dashboard() {
 
             <EditUserDialog 
               selectedUserForEdit={selectedUserForEdit} setSelectedUserForEdit={setSelectedUserForEdit}
-              editName={editName} setEditName={setEditName} 
-              editRole={editRole} setEditRole={setEditRole}
-              editAppRole={editAppRole} setEditAppRole={setEditAppRole}
-              editJobRole={editJobRole} setEditJobRole={setEditJobRole}
+              editName={editName} setEditName={setEditName} editRole={editRole} setEditRole={setEditRole}
               editCompany={editCompany} setEditCompany={setEditCompany} editArea={editArea} setEditArea={setEditArea}
               editBranch={editBranch} setEditBranch={setEditBranch} editSubArea={editSubArea} setEditSubArea={setEditSubArea}
               editShift={editShift} setEditShift={setEditShift} editUniqueId={editUniqueId} setEditUniqueId={setEditUniqueId}
@@ -455,12 +445,7 @@ export default function Dashboard() {
               editIsBanned={editIsBanned} setEditIsBanned={setEditIsBanned}
               editBypassGeofence={editBypassGeofence} setEditBypassGeofence={setEditBypassGeofence}
               saveUserChanges={() => saveUserChanges(selectedUserForEdit.id, {
-                name: editName, 
-                role: editRole, // Keep for legacy
-                appRole: editAppRole,
-                jobRole: editJobRole,
-                shiftId: editShift, 
-                uniqueId: editUniqueId,
+                name: editName, role: editRole, shiftId: editShift, uniqueId: editUniqueId,
                 areaId: editArea === "global" ? null : editArea,
                 companyId: editCompany === "global" ? null : editCompany,
                 branchId: editBranch === "global" ? null : editBranch,

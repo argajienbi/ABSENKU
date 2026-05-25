@@ -17,33 +17,20 @@ service cloud.firestore {
 
     function isSuperAdmin() { 
       return isSignedIn() && (
-        request.auth.token.email == "armin.gandi@gmail.com" || 
-        (userExists() && (
-          ('appRole' in getUserData() && getUserData().appRole == "superadmin") ||
-          (!('appRole' in getUserData()) && 'role' in getUserData() && getUserData().role == "superadmin")
-        ))
+        ("email" in request.auth.token && request.auth.token.email == "armin.gandi@gmail.com") || 
+        (userExists() && 'role' in getUserData() && getUserData().role == "superadmin")
       );
     }
     
     function isAdmin() { 
       return isSignedIn() && (
-        request.auth.token.email == "armin.gandi@gmail.com" || 
-        (userExists() && (
-          ('appRole' in getUserData() && getUserData().appRole in ["superadmin", "admin"]) ||
-          (!('appRole' in getUserData()) && 'role' in getUserData() && getUserData().role in ["superadmin", "admin"])
-        ))
+        ("email" in request.auth.token && request.auth.token.email == "armin.gandi@gmail.com") || 
+        (userExists() && 'role' in getUserData() && getUserData().role in ["superadmin", "admin"])
       );
-    }
-
-    function isAdminOfCompany(companyId) {
-       return isAdmin() && (isSuperAdmin() || ('companyId' in getUserData() && getUserData().companyId == companyId));
     }
     
     function isDemo() { 
-      return isSignedIn() && userExists() && (
-        ('appRole' in getUserData() && getUserData().appRole == "demo") ||
-        (!('appRole' in getUserData()) && 'role' in getUserData() && getUserData().role == "demo")
-      );
+      return isSignedIn() && userExists() && 'role' in getUserData() && getUserData().role == "demo"; 
     }
     
     function isAdminOrDemo() { return isAdmin() || isDemo(); }
@@ -62,13 +49,11 @@ service cloud.firestore {
       return data.uid is string && data.uid.size() <= 128 &&
              data.email is string && data.email.size() <= 256 &&
              data.name is string && data.name.size() <= 256 &&
-             (!('appRole' in data) || data.appRole in ["superadmin", "admin", "user", "demo"]) &&
-             (!('jobRole' in data) || data.jobRole in ["admin_pt", "admin_area", "admin_cabang", "lead", "staff", "crew"]) &&
-             (!('role' in data) || data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser", "admin_pt", "admin_area", "admin_cabang"]) && 
+             data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"] && 
              data.createdAt is number && 
              data.avatarUrl is string && data.avatarUrl.size() <= 2048 &&
-             (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
-             (!('uniqueId' in data) || data.uniqueId == null || (data.uniqueId is string && data.uniqueId.size() <= 128)) &&
+             data.shiftId is string && data.shiftId.size() <= 128 &&
+             data.uniqueId is string && data.uniqueId.size() <= 128 &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
              (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
              (!('branchId' in data) || data.branchId == null || (data.branchId is string && data.branchId.size() <= 128)) &&
@@ -128,9 +113,7 @@ service cloud.firestore {
       return data.used is bool &&
              (!('usedBy' in data) || data.usedBy == null || (data.usedBy is string && data.usedBy.size() <= 128)) &&
              (!('usedAt' in data) || data.usedAt == null || data.usedAt is number) &&
-             (!('appRole' in data) || data.appRole in ["superadmin", "admin", "user", "demo"]) &&
-             (!('jobRole' in data) || data.jobRole in ["admin_pt", "admin_area", "admin_cabang", "lead", "staff", "crew"]) &&
-             (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser", "admin_pt", "admin_area", "admin_cabang"])) &&
+             (!('role' in data) || data.role == null || (data.role is string && data.role in ["superadmin", "admin", "staff", "crew", "demo", "demouser"])) &&
              (!('shiftId' in data) || data.shiftId == null || (data.shiftId is string && data.shiftId.size() <= 128)) &&
              (!('areaId' in data) || data.areaId == null || (data.areaId is string && data.areaId.size() <= 128)) &&
              (!('companyId' in data) || data.companyId == null || (data.companyId is string && data.companyId.size() <= 128)) &&
@@ -178,7 +161,8 @@ service cloud.firestore {
     // Companies Collection
     match /companies/{companyId} {
       allow read: if true;
-      allow create, update, delete: if isSuperAdmin();
+      allow create, update: if isAdmin() && isValidCompany(incoming());
+      allow delete: if isAdmin();
     }
 
     // Branches Collection
@@ -198,15 +182,15 @@ service cloud.firestore {
     // Users Collection
     match /users/{userId} {
       allow get: if isValidId(userId) && (isOwner(userId) || isAdminOrDemo());
-      allow list: if isSuperAdmin() || isDemo() || (isAdmin() && resource.data.companyId == getUserData().companyId);
+      allow list: if isAdminOrDemo();
       allow create: if request.auth != null && request.auth.uid == userId && isValidUser(incoming());
       allow update: if isValidId(userId) && isSignedIn() && isValidUser(incoming()) &&
                     (
                       isSuperAdmin() ||
                       (isOwner(userId) && !isBanned() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'fcmToken', 'deviceId']) && incoming().uid == existing().uid) ||
-                      (isAdminOfCompany(existing().companyId) &&
+                      (isAdmin() &&
                        get(/databases/$(database)/documents/users/$(userId)).data.role != 'superadmin' &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'appRole', 'jobRole', 'shiftId', 'uniqueId', 'areaId', 'companyId', 'branchId', 'subareaId', 'isBanned', 'fcmToken', 'deviceId']) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['name', 'waNumber', 'avatarUrl', 'role', 'shiftId', 'uniqueId', 'areaId', 'companyId', 'branchId', 'subareaId', 'isBanned', 'fcmToken', 'deviceId']) &&
                        incoming().uid == existing().uid
                       )
                     );
@@ -216,32 +200,32 @@ service cloud.firestore {
     // Attendance Collection
     match /attendance/{attendanceId} {
       allow get: if isValidId(attendanceId) && (isOwner(resource.data.userId) || isAdminOrDemo());
-      allow list: if isSignedIn() && (isSuperAdmin() || isDemo() || (isAdmin() && resource.data.companyId == getUserData().companyId) || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
       allow create: if isValidId(attendanceId) && isSignedIn() && !isBanned() && isValidAttendance(incoming()) && 
                     (incoming().userId == request.auth.uid || (incoming().method == 'qr' && incoming().deviceOwnerUid == request.auth.uid) || isAdmin()) &&
                     exists(/databases/$(database)/documents/users/$(incoming().userId));
-      allow update: if isValidId(attendanceId) && isAdminOfCompany(existing().companyId) && isValidAttendance(incoming()) &&
+      allow update: if isValidId(attendanceId) && isAdmin() && isValidAttendance(incoming()) &&
                     (
                       isSuperAdmin() ||
                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'photoBase64'])
                     );
-      allow delete: if isValidId(attendanceId) && isAdminOfCompany(existing().companyId);
+      allow delete: if isValidId(attendanceId) && isAdmin();
     }
 
     // LeaveRequests Collection
     match /leaveRequests/{requestId} {
       allow get: if isValidId(requestId) && (isOwner(resource.data.userId) || isAdminOrDemo());
-      allow list: if isSignedIn() && (isSuperAdmin() || isDemo() || (isAdmin() && resource.data.companyId == getUserData().companyId) || resource.data.userId == request.auth.uid);
+      allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
       allow create: if isValidId(requestId) && isSignedIn() && !isBanned() && isValidLeaveRequest(incoming()) && incoming().userId == request.auth.uid;
-      allow update: if isValidId(requestId) && isAdminOfCompany(existing().companyId) && isValidLeaveRequest(incoming());
+      allow update: if isValidId(requestId) && isAdmin() && isValidLeaveRequest(incoming());
     }
 
     // Payroll Collection
     match /payroll/{payrollId} {
       allow get: if isValidId(payrollId) && (isOwner(resource.data.userId) || isAdminOrDemo());
-      allow list: if isSignedIn() && (isSuperAdmin() || isDemo() || (isAdmin() && resource.data.companyId == getUserData().companyId) || resource.data.userId == request.auth.uid);
-      allow create, update: if isValidId(payrollId) && isAdminOfCompany(incoming().companyId) && isValidPayrollRecord(incoming());
-      allow delete: if isValidId(payrollId) && isAdminOfCompany(existing().companyId);
+      allow list: if isSignedIn() && (isAdminOrDemo() || resource.data.userId == request.auth.uid);
+      allow create, update: if isValidId(payrollId) && isAdmin() && isValidPayrollRecord(incoming());
+      allow delete: if isValidId(payrollId) && isAdmin();
     }
 
     // Settings Collection
@@ -294,13 +278,12 @@ service cloud.firestore {
     // IdRefs Collection
     match /idRefs/{refId} {
       allow get: if isValidId(refId); 
-      allow list: if isSuperAdmin() || isDemo() || (isAdmin() && resource.data.companyId == getUserData().companyId);
-      allow create: if isValidId(refId) && isSuperAdmin() && isValidIdRef(incoming());
-      allow delete: if isValidId(refId) && isSuperAdmin();
+      allow list: if isAdminOrDemo();
+      allow create: if isValidId(refId) && isAdmin() && isValidIdRef(incoming());
+      allow delete: if isValidId(refId) && isAdmin();
       allow update: if isValidId(refId) && isSignedIn() && isValidIdRef(incoming()) &&
                     (
-                       (isSuperAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'appRole', 'jobRole', 'shiftId', 'areaId', 'companyId', 'branchId', 'subareaId'])) ||
-                       (isAdminOfCompany(existing().companyId) && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'appRole', 'jobRole', 'shiftId', 'areaId', 'companyId', 'branchId', 'subareaId'])) ||
+                       (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt', 'role', 'shiftId', 'areaId', 'companyId', 'branchId', 'subareaId'])) ||
                        (!existing().used && incoming().used == true && incoming().diff(existing()).affectedKeys().hasOnly(['used', 'usedBy', 'usedAt']))
                     );
     }

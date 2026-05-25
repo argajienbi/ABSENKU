@@ -2,15 +2,12 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { User as FirebaseUser } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, addDoc, collection } from "firebase/firestore";
 import { auth, db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { toast } from "sonner";
 
 interface AppUser {
   uid: string;
   email: string;
   name: string;
-  role: "superadmin" | "admin" | "staff" | "crew" | "demo" | "demouser"; // Legacy
-  appRole: "superadmin" | "admin" | "user" | "demo";
-  jobRole: "admin_pt" | "admin_area" | "admin_cabang" | "lead" | "staff" | "crew";
+  role: "superadmin" | "admin" | "staff" | "crew" | "demo" | "demouser";
   avatarUrl?: string;
   shiftId?: string;
   waNumber?: string;
@@ -75,10 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Check for device lock
             if (userData.deviceId && userData.deviceId !== currentDeviceId && !localStorage.getItem("suppress_device_logout")) {
                console.log("Device mismatch detected. Found ID:", userData.deviceId, "Current:", currentDeviceId);
-               toast.error("Sesi Berakhir", {
-                 description: "Anda telah masuk (login) dari perangkat lain. Anda akan dikeluarkan dari perangkat ini.",
-                 duration: 5000
-               });
+               alert("Anda telah masuk (login) dari perangkat lain. Anda akan dikeluarkan dari perangkat ini.");
                auth.signOut();
                setUser(null);
                return;
